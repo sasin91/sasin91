@@ -114,7 +114,7 @@ pub fn load_posts(dir: &Path, render: impl Fn(&str) -> Result<String>) -> Result
         });
     }
 
-    posts.sort_by(|a, b| b.date.cmp(&a.date));
+    posts.sort_by_key(|b| std::cmp::Reverse(b.date));
     Ok(posts)
 }
 
