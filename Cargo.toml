@@ -1,0 +1,22 @@
+[package]
+name = "site"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "site"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+askama = "0.14"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+jotdown = "0.10"
+latex2mathml = "0.2"
+serde = { version = "1", features = ["derive"] }
+syntect = { version = "5", default-features = false, features = ["default-fancy"] }
+toml = "0.8"
+walkdir = "2"
+
+[profile.release]
+opt-level = 2
