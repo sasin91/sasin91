@@ -25,9 +25,7 @@ pub fn render(source: &str, hl: &Highlighter) -> Result<String> {
     for event in Parser::new(source) {
         match event {
             Event::Start(Container::CodeBlock { language }, attrs) => {
-                let title = attrs
-                    .get_value("title")
-                    .map(|v| v.to_string().trim_matches('"').to_string());
+                let title = attrs.get_value("title").map(|v| v.to_string());
                 code = Some((language.to_string(), title));
                 buffer.clear();
             }
@@ -145,5 +143,22 @@ mod tests {
     fn escapes_a_title_that_contains_markup() {
         let html = render_str("{title=\"<script>\"}\n```bash\nx\n```\n");
         assert!(!html.contains("<div class=\"filename\"><script>"), "got: {html}");
+    }
+
+    #[test]
+    fn keeps_escaped_quotes_in_a_title_intact() {
+        let html = render_str("{title=\"\\\"weird\\\".sh\"}\n```bash\nx\n```\n");
+        assert!(
+            html.contains("<div class=\"filename\">&quot;weird&quot;.sh</div>"),
+            "got: {html}"
+        );
+    }
+
+    #[test]
+    fn renders_display_math_to_mathml_rather_than_deferring_to_javascript() {
+        let html = render_str("$$`e = w(1 + r/30)`\n");
+        assert!(html.contains("<math") && html.contains(r#"display="block""#), "got: {html}");
+        // jotdown's default would emit \[ ... \] for KaTeX to pick up.
+        assert!(!html.contains(r"\(") && !html.contains(r"\["), "must not defer to KaTeX: {html}");
     }
 }
