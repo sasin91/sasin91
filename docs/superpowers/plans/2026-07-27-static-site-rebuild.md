@@ -11,7 +11,9 @@
 ## Global Constraints
 
 - Design doc: `docs/superpowers/specs/2026-07-27-static-site-rebuild-design.md`. Read it first.
-- Working reference implementation exists on branch `prototype/ssg-bakeoff` under `prototypes/rust/`. Harvest from it; do not assume it is correct — it has two known URL bugs this plan fixes.
+- **This is a fresh repository** at `~/Code/sasin91.xyz`, with no shared history. The old Laravel repo stays at `~/Herd/sasin91.xyz` as an archive and is the source for harvested material. Reach it with `git -C ~/Herd/sasin91.xyz show <ref>:<path>`.
+- Working reference implementation is on branch `prototype/ssg-bakeoff` of the OLD repo, under `prototypes/rust/`. Harvest from it; do not assume it is correct — it has two known URL bugs this plan fixes.
+- `escape()` lives once, in `src/html.rs`. Neither `djot.rs` nor `math.rs` defines its own copy.
 - **Zero JavaScript.** `public/` must contain no `<script>` tags. No KaTeX, no MathJax, no webfonts.
 - **These URLs must not break:** `/`, `/blog`, `/blog/trongate`, `/blog/trongate/mx-transition`, `/blog/freebsd-on-hetzner`, `/blog/athletos-freebsd`.
 - Post output paths come from an explicit `path` key in frontmatter, never from the filename.
@@ -20,7 +22,7 @@
 - Homepage is posts-first. The career timeline lives at `/about`, not on `/`.
 - `public/` is disposable and fully regenerated every run. Nothing is ever mutated in place.
 - Every task ends with a commit.
-- **Between Tasks 2 and 6 the modules are not yet wired into `main`, so `cargo clippy -- -D warnings` will fail on `dead_code`.** This is expected. Run `cargo test` for those tasks; clippy becomes meaningful again from Task 6, where `main` uses everything.
+- **Between Tasks 2 and 7 the modules are not yet wired into `main`, so `cargo clippy -- -D warnings` will fail on `dead_code`.** This is expected. Run `cargo test` for those tasks; clippy becomes meaningful again from Task 7, where `main` uses everything.
 
 ---
 
@@ -34,6 +36,7 @@
 | `src/djot.rs` | Djot → HTML, intercepting code blocks and math |
 | `src/highlight.rs` | syntect wrapper: class-based HTML, dual-theme stylesheet |
 | `src/math.rs` | LaTeX → MathML |
+| `src/html.rs` | HTML escaping, shared by djot.rs and math.rs |
 | `templates/*.html`, `templates/*.xml` | Askama templates |
 | `content/cv.toml` | Profile and career timeline |
 | `content/blog/*.dj` | One file per post |
@@ -42,24 +45,24 @@
 
 ---
 
-### Task 1: Clear the repo and scaffold the Rust project
+### Task 1: Scaffold the new repository
 
-Deletes the Laravel application and replaces it with a Cargo project that builds and runs. Git history retains everything deleted.
+The repo already exists at `~/Code/sasin91.xyz` with the design docs committed. This task adds the Cargo project, the images the posts need, the README, and CI.
 
 **Files:**
-- Delete: `app/`, `bootstrap/`, `config/`, `database/`, `routes/`, `resources/`, `tests/`, `public/`, `storage/`, `vendor/`, `node_modules/`, `composer.json`, `composer.lock`, `package.json`, `package-lock.json`, `artisan`, `phpunit.xml`, `pint.json`, `vite.config.ts`, `tsconfig.json`, `eslint.config.js`, `components.json`, `.prettierrc`, `.prettierignore`, `.env`, `.env.example`
-- Create: `Cargo.toml`, `src/main.rs`, `.gitignore`
-- Modify: `.github/workflows/pipeline.yml` (replace PHP/Node jobs with Rust)
+- Create: `Cargo.toml`, `src/main.rs`, `.gitignore`, `README.md`, `.github/workflows/pipeline.yml`
+- Create: `static/images/` (copied from the old repo)
 
 **Interfaces:**
 - Consumes: nothing
 - Produces: a `site` binary that compiles and prints a placeholder line
 
-- [ ] **Step 1: Record the URLs that must survive, before deleting the routes**
+- [ ] **Step 1: Record the URLs that must survive**
+
+These come from the old repo's routes and are the contract this rebuild must honour.
 
 ```bash
-git show HEAD:routes/web.php | grep -oP "Route::get\('\K/blog[^']*" > /tmp/urls-before.txt
-cat /tmp/urls-before.txt
+git -C ~/Herd/sasin91.xyz show main:routes/web.php | grep -oP "Route::get\('\K/blog[^']*"
 ```
 
 Expected output, exactly:
@@ -72,28 +75,17 @@ Expected output, exactly:
 /blog/athletos-freebsd
 ```
 
-- [ ] **Step 2: Preserve the images the posts need**
+- [ ] **Step 2: Copy the images the posts need out of the old repo**
 
 ```bash
 mkdir -p static/images
-cp -r resources/images/blog/* static/images/
+cp -r ~/Herd/sasin91.xyz/resources/images/blog/* static/images/
 ls -R static/images
 ```
 
 Expected: `athletos-freebsd/` (3 svg), `freebsd-on-hetzner/` (1 svg), `trongate/` (4 files).
 
-- [ ] **Step 3: Delete the Laravel application**
-
-```bash
-git rm -r --quiet app bootstrap config database routes resources tests storage vendor \
-  composer.json composer.lock package.json package-lock.json artisan phpunit.xml \
-  pint.json vite.config.ts tsconfig.json eslint.config.js components.json \
-  .prettierrc .prettierignore 2>/dev/null || true
-rm -rf node_modules public .env .env.example
-git status --short | head -20
-```
-
-- [ ] **Step 4: Write `Cargo.toml`**
+- [ ] **Step 3: Write `Cargo.toml`**
 
 ```toml
 [package]
@@ -122,17 +114,15 @@ opt-level = 2
 
 Note `syntect` uses `default-fancy`, the pure-Rust regex engine. Do not use `default-onig`; it needs a C toolchain and will fail on a clean CI runner.
 
-- [ ] **Step 5: Write `.gitignore`**
+- [ ] **Step 4: Write `.gitignore`**
 
 ```gitignore
 /target
 /public
+/.superpowers
 ```
 
-- [ ] **Step 6: Write `README.md`**
-
-Laravel's README goes with the rest of the application, and the repo would
-otherwise have none.
+- [ ] **Step 5: Write `README.md`**
 
 ````markdown
 # sasin91.xyz
@@ -164,9 +154,14 @@ A post is one `.dj` file under `content/blog/` with a `+++` TOML header. The
 
 Pushing to `main` builds the site in CI and rsyncs it to the FreeBSD box.
 See `docs/deploy.md`.
+
+## History
+
+This replaced a Laravel + Inertia + React application. That repo is archived
+separately; nothing here shares history with it.
 ````
 
-- [ ] **Step 7: Write a placeholder `src/main.rs`**
+- [ ] **Step 6: Write a placeholder `src/main.rs`**
 
 ```rust
 fn main() -> anyhow::Result<()> {
@@ -175,12 +170,12 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
-- [ ] **Step 8: Verify it builds and runs**
+- [ ] **Step 7: Verify it builds and runs**
 
 Run: `cargo run --release`
 Expected: compiles, prints `site builder`.
 
-- [ ] **Step 9: Replace the CI pipeline**
+- [ ] **Step 8: Write the CI pipeline**
 
 Create `.github/workflows/pipeline.yml`:
 
@@ -219,22 +214,19 @@ jobs:
         run: cargo test
 ```
 
-- [ ] **Step 10: Verify formatting and lints pass locally**
+- [ ] **Step 9: Verify formatting and lints pass locally**
 
 Run: `cargo fmt --check && cargo clippy -- -D warnings && cargo test`
 Expected: all pass. `cargo test` reports `0 passed` — there are no tests yet.
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
 git add -A
-git commit -m "feat: replace the Laravel application with a Rust site builder
+git commit -m "feat: scaffold the Rust site builder
 
-Deletes the Inertia/React app, Fortify auth, and the training feature.
-Git history retains all of it. Blog images move to static/images/."
+Cargo project, CI, and the blog images carried over from the old repo."
 ```
-
----
 
 ### Task 2: Content model — frontmatter, explicit paths, loading
 
@@ -643,7 +635,86 @@ git commit -m "feat: class-based syntax highlighting with dual themes"
 
 ---
 
-### Task 4: LaTeX to MathML
+### Task 4: HTML escaping
+
+One escaper, used by both the Djot renderer and the math renderer. Defined once so the two cannot drift apart.
+
+**Files:**
+- Create: `src/html.rs`
+- Modify: `src/main.rs`
+
+**Interfaces:**
+- Consumes: nothing
+- Produces: `pub fn escape(raw: &str) -> String`
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `src/html.rs` containing only:
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn escapes_the_four_dangerous_characters() {
+        assert_eq!(escape(r#"<a href="x">&</a>"#), "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;");
+    }
+
+    #[test]
+    fn escapes_ampersands_before_the_entities_it_creates() {
+        // A naive implementation that replaces < before & yields "&amp;lt;".
+        assert_eq!(escape("&lt;"), "&amp;lt;");
+    }
+
+    #[test]
+    fn leaves_ordinary_text_alone() {
+        assert_eq!(escape("4-remaster.sh"), "4-remaster.sh");
+    }
+}
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Add `mod html;` to `src/main.rs`, then run: `cargo test`
+Expected: FAIL — `cannot find function escape`.
+
+- [ ] **Step 3: Implement the escaper**
+
+Insert above the `mod tests` block in `src/html.rs`:
+
+```rust
+//! HTML escaping, shared by the Djot and math renderers so the two cannot
+//! drift apart.
+
+/// Escape text for insertion into HTML, including inside a double-quoted
+/// attribute value.
+///
+/// Ampersand is replaced first, so the entities produced by the later
+/// replacements are not themselves re-escaped.
+pub fn escape(raw: &str) -> String {
+    raw.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+```
+
+- [ ] **Step 4: Run the tests to verify they pass**
+
+Run: `cargo test`
+Expected: 13 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/html.rs src/main.rs
+git commit -m "feat: shared HTML escaper"
+```
+
+---
+
+### Task 5: LaTeX to MathML
 
 **Files:**
 - Create: `src/math.rs`
@@ -709,6 +780,8 @@ Insert above the `mod tests` block in `src/math.rs`:
 
 use latex2mathml::{latex_to_mathml, DisplayStyle};
 
+use crate::html::escape;
+
 pub fn to_mathml(tex: &str, display: bool) -> String {
     let style = if display {
         DisplayStyle::Block
@@ -727,18 +800,12 @@ pub fn to_mathml(tex: &str, display: bool) -> String {
     }
 }
 
-fn escape(raw: &str) -> String {
-    raw.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-}
 ```
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `cargo test`
-Expected: 14 passed.
+Expected: 17 passed.
 
 If `renders_broken_math_visibly_instead_of_dropping_it` fails because `latex2mathml` accepted `\frac{`, replace the input with `\frac` alone and re-run. Do not delete the test — some malformed input must exercise the error path.
 
@@ -751,7 +818,7 @@ git commit -m "feat: render LaTeX to MathML at build time"
 
 ---
 
-### Task 5: Djot rendering
+### Task 6: Djot rendering
 
 Intercepts two event types off jotdown's stream. Everything else — divs, attributes, links, footnotes, raw HTML — is jotdown's own renderer.
 
@@ -844,6 +911,7 @@ use anyhow::Result;
 use jotdown::{Container, Event, Parser, Render};
 
 use crate::highlight::Highlighter;
+use crate::html::escape;
 use crate::math;
 
 pub fn render(source: &str, hl: &Highlighter) -> Result<String> {
@@ -928,18 +996,12 @@ fn code_html(language: &str, title: Option<&str>, code: &str, hl: &Highlighter) 
     })
 }
 
-fn escape(raw: &str) -> String {
-    raw.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-}
 ```
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `cargo test`
-Expected: 20 passed.
+Expected: 23 passed.
 
 - [ ] **Step 5: Commit**
 
@@ -950,7 +1012,7 @@ git commit -m "feat: render Djot, with highlighted code blocks and inline MathML
 
 ---
 
-### Task 6: Templates and page generation
+### Task 7: Templates and page generation
 
 **Files:**
 - Create: `templates/base.html`, `templates/index.html`, `templates/about.html`, `templates/blog.html`, `templates/post.html`
@@ -1357,7 +1419,7 @@ Homepage is posts-first; the career timeline moves to /about."
 
 ---
 
-### Task 7: Feeds — RSS, sitemap, robots
+### Task 8: Feeds — RSS, sitemap, robots
 
 **Files:**
 - Create: `templates/rss.xml`, `templates/sitemap.xml`
@@ -1463,7 +1525,7 @@ git commit -m "feat: generate RSS, sitemap and robots.txt"
 
 ---
 
-### Task 8: The stylesheet
+### Task 9: The stylesheet
 
 Plain CSS styling semantic elements, with a small number of classes. Harvest from `prototypes/_shared/site.css` on the prototype branch, which already carries the fix for the `<pre>` padding bug.
 
@@ -1477,7 +1539,7 @@ Plain CSS styling semantic elements, with a small number of classes. Harvest fro
 - [ ] **Step 1: Harvest the stylesheet from the prototype**
 
 ```bash
-git show prototype/ssg-bakeoff:prototypes/_shared/site.css > static/site.css
+git -C ~/Herd/sasin91.xyz show prototype/ssg-bakeoff:prototypes/_shared/site.css > static/site.css
 wc -l static/site.css
 ```
 
@@ -1570,7 +1632,7 @@ git commit -m "feat: stylesheet, adapted to Djot's callout markup"
 
 ---
 
-### Task 9: Convert the four existing posts to Djot
+### Task 10: Convert the four existing posts to Djot
 
 Djot inverts Markdown's emphasis, so this is not a rename. Each post must be verified by reading the rendered output, not assumed correct.
 
@@ -1586,7 +1648,7 @@ Djot inverts Markdown's emphasis, so this is not a rename. Each post must be ver
 ```bash
 mkdir -p /tmp/oldposts
 for p in trongate mx-transition freebsd-on-hetzner athletos-freebsd; do
-  git show prototype/ssg-bakeoff:resources/js/pages/blog/$p.tsx > /tmp/oldposts/$p.tsx 2>/dev/null \
+  git -C ~/Herd/sasin91.xyz show prototype/ssg-bakeoff:resources/js/pages/blog/$p.tsx > /tmp/oldposts/$p.tsx 2>/dev/null \
     || git show main:resources/js/pages/blog/$p.tsx > /tmp/oldposts/$p.tsx
 done
 wc -l /tmp/oldposts/*.tsx
@@ -1595,9 +1657,9 @@ wc -l /tmp/oldposts/*.tsx
 - [ ] **Step 2: Harvest the two posts already converted on the prototype branch**
 
 ```bash
-git show prototype/ssg-bakeoff:prototypes/rust/content/blog/freebsd-on-hetzner.dj \
+git -C ~/Herd/sasin91.xyz show prototype/ssg-bakeoff:prototypes/rust/content/blog/freebsd-on-hetzner.dj \
   > content/blog/freebsd-on-hetzner.dj
-git show prototype/ssg-bakeoff:prototypes/rust/content/blog/athletos-freebsd.dj \
+git -C ~/Herd/sasin91.xyz show prototype/ssg-bakeoff:prototypes/rust/content/blog/athletos-freebsd.dj \
   > content/blog/athletos-freebsd.dj
 ```
 
@@ -1738,7 +1800,7 @@ rather than converted mechanically."
 
 ---
 
-### Task 10: Deploy — CI build and rsync to the FreeBSD box
+### Task 11: Deploy — CI build and rsync to the FreeBSD box
 
 The binary never runs on the server. CI builds the site on Linux and copies `public/`.
 
