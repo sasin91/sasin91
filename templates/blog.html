@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Writing — {{ cv.site.name }}{% endblock %}
+
+{% block content %}
+  <h1>Writing</h1>
+  <p class="lede">Notes on things I built and what broke on the way.</p>
+
+  <ul class="post-list">
+    {% for post in posts %}
+      <li>
+        <div class="meta">
+          <time datetime="{{ post.date_iso() }}">{{ post.date_long() }}</time>
+        </div>
+        <h2><a href="{{ post.url() }}">{{ post.title }}</a></h2>
+        <p>{{ post.description }}</p>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

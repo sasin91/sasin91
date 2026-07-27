@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}{{ cv.site.name }}{% endblock %}</title>
+    {% block description %}{% endblock %}
+    <link rel="stylesheet" href="/site.css" />
+    <link rel="stylesheet" href="/syntax.css" />
+    <link rel="alternate" type="application/rss+xml" title="{{ cv.site.name }}" href="/rss.xml" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="site-head">
+        <a class="brand" href="/">{{ cv.site.name }}</a>
+        <nav class="site-nav">
+          <a href="/blog/">Writing</a>
+          <a href="/about/">About</a>
+          <a href="{{ cv.site.links.github }}">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="site-foot">
+        <span>&copy; {{ year }} {{ cv.site.name }}</span>
+        <a href="/rss.xml">RSS</a>
+      </footer>
+    </div>
+  </body>
+</html>

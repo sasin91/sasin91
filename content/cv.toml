@@ -1,0 +1,40 @@
+[site]
+name = "Jonas Hansen"
+title = "Full-Stack Developer"
+stack = "PHP · Laravel · React · TypeScript · MySQL · Docker"
+since = "10+ years of experience (since 2015)"
+
+[site.links]
+github = "https://github.com/sasin91"
+linkedin = "https://www.linkedin.com/in/jonas-hansen-2b6828110"
+email = "mailto:jonas.kerwin.hansen@gmail.com"
+
+[[timeline]]
+date = "2024-09"
+name = "Web developer at JUICE"
+description = "Like a boomerang, I'm back at Juice again."
+
+[[timeline]]
+date = "2023-09"
+name = "Developer at Supeo"
+description = "Primarily Laravel and React, across several different domains in a changeable everyday life."
+
+[[timeline]]
+date = "2023-01"
+name = "Web developer at JUICE"
+description = "Helped develop a platform that turns the job market upside down."
+
+[[timeline]]
+date = "2020-02"
+name = "Developer at Syncronet"
+description = "Helped develop their video streaming platform. In broad strokes, I took most of it."
+
+[[timeline]]
+date = "2017-02"
+name = "Web developer at GHC Travel"
+description = "Responsible for migrating and modernizing their existing website from pure PHP to Laravel 6."
+
+[[timeline]]
+date = "2015-08"
+name = "Trained WebIntegrator"
+description = "Passed my training as a WebIntegrator with a 12."

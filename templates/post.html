@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+{% block description %}<meta name="description" content="{{ post.description }}" />{% endblock %}
+
+{% block content %}
+  <article class="prose">
+    {% if let Some(hero) = post.hero %}
+      <img src="{{ hero }}" alt="{{ post.alt() }}" />
+    {% endif %}
+
+    <h1>{{ post.title }}</h1>
+    <div class="meta">
+      <time datetime="{{ post.date_iso() }}">{{ post.date_long() }}</time>
+    </div>
+
+    {{ post.body|safe }}
+  </article>
+{% endblock %}
