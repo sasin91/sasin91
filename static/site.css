@@ -8,9 +8,6 @@
   --muted: #6c6c68;
   --rule: #e3e3dd;
   --accent: #2f5aa8;
-  --code-bg: #1c1c22;
-  --code-bar: #26262e;
-  --code-text: #e2e2e6;
   --warn-bg: #fdf7ec;
   --warn-edge: #c99a3e;
 
@@ -30,8 +27,6 @@
     --muted: #97978f;
     --rule: #2b2b31;
     --accent: #8fb2ea;
-    --code-bg: #0f0f13;
-    --code-bar: #1b1b21;
     --warn-bg: #241f14;
     --warn-edge: #b08434;
   }
@@ -273,65 +268,67 @@ h2 {
 
 /* code block with a filename bar */
 
-.codeblock {
+/* Highlighter::to_html always emits <pre class="hl-code"><code>…</code></pre>,
+   whether or not the block carries a title (djot::code_html only adds the
+   .codeblock wrapper + filename bar when a title= attribute is present).
+   Frame properties (padding, wrapping, type) live on pre.hl-code so an
+   untitled block gets them too instead of being rendered bare. */
+pre.hl-code {
   margin: 1.6rem 0;
-  border-radius: 7px;
-  overflow: hidden;
-  background: var(--code-bg);
-  border: 1px solid var(--rule);
-}
-
-.codeblock .filename {
-  font-family: var(--mono);
-  font-size: 0.76rem;
-  color: #9b9baa;
-  background: var(--code-bar);
-  padding: 0.5rem 0.9rem;
-  border-bottom: 1px solid rgb(255 255 255 / 0.06);
-}
-
-.codeblock pre {
-  margin: 0;
   padding: 0.95rem 1.1rem;
   overflow-x: auto;
+  border-radius: 7px;
   font-family: var(--mono);
   font-size: 0.83rem;
   line-height: 1.6;
 }
 
+/* syntect writes both palettes into syntax.css keyed on .hl-code, so the
+   frame must not impose its own background — only the filename bar tracks
+   the theme. */
+.codeblock {
+  margin: 1.6rem 0;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  background: none;
+}
+
+/* When wrapped, the margin/radius belong to .codeblock instead: the pre
+   sits flush below the filename bar, so its top corners must be square —
+   the outer box's overflow:hidden + border-radius clip the whole frame
+   (filename bar and pre together) into one rounded shape. */
+.codeblock pre.hl-code {
+  margin: 0;
+  border-radius: 0;
+}
+
+.codeblock .filename {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  padding: 0.5rem 0.9rem;
+  color: #93a1a1;
+  background: #eee8d5;
+  border-bottom: 1px solid rgb(0 0 0 / 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  .codeblock .filename {
+    color: #a7adba;
+    background: #343d46;
+    border-bottom-color: rgb(255 255 255 / 0.06);
+  }
+}
+
 /* The inner <code> must not re-pad or re-colour — that belongs to the frame
-   and to the highlighter respectively. */
-.codeblock code {
+   and to the highlighter respectively. Applies whether or not the block is
+   wrapped, since both cases share <pre class="hl-code"><code>…</code></pre>. */
+pre.hl-code code {
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
   background: none;
   padding: 0;
-}
-
-/* ---------- callouts (the escape-hatch test) ---------- */
-
-.callout {
-  margin: 1.8rem 0;
-  padding: 1rem 1.15rem;
-  border-left: 2px solid var(--warn-edge);
-  background: var(--warn-bg);
-  border-radius: 0 5px 5px 0;
-  font-size: 0.95rem;
-}
-
-.callout .callout-title {
-  font-weight: 620;
-  margin-bottom: 0.35rem;
-}
-
-.callout > :last-child {
-  margin-bottom: 0;
-}
-
-.callout.note {
-  border-left-color: var(--accent);
-  background: var(--surface);
 }
 
 /* ---- Djot output ----
@@ -363,28 +360,6 @@ h2 {
 .prose .warning > :last-child,
 .prose .note > :last-child {
   margin-bottom: 0;
-}
-
-/* syntect writes both palettes into syntax.css keyed on .hl-code, so the
-   frame must not impose its own background. Only the filename bar tracks
-   the theme. */
-
-.codeblock {
-  background: none;
-}
-
-.codeblock .filename {
-  color: #93a1a1;
-  background: #eee8d5;
-  border-bottom: 1px solid rgb(0 0 0 / 0.08);
-}
-
-@media (prefers-color-scheme: dark) {
-  .codeblock .filename {
-    color: #a7adba;
-    background: #343d46;
-    border-bottom-color: rgb(255 255 255 / 0.06);
-  }
 }
 
 .math-error {
