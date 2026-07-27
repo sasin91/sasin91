@@ -1554,6 +1554,20 @@ Expected: roughly 300 lines.
 
 - [ ] **Step 2: Adapt the callout selectors to Djot's output**
 
+First DELETE the harvested `.callout`, `.callout .callout-title`,
+`.callout > :last-child` and `.callout.note` rules, and the unused
+`--code-text` property. Djot emits `<div class="warning">` and
+`<div class="note">`; nothing on this site ever produces `class="callout"`,
+so those rules are dead weight.
+
+Note also that `djot.rs` wraps a code block in `.codeblock` ONLY when it has
+a `title=`. Untitled blocks are emitted bare as `<pre class="hl-code">`, so
+the frame properties (padding, `overflow-x: auto`, mono font) must hang off
+`pre.hl-code` rather than `.codeblock pre` — otherwise a plain fenced block
+has no padding and overflows the page on long lines.
+
+Then append:
+
 Djot emits `<div class="warning">`, not `<aside class="callout">`. Append to `static/site.css`:
 
 ```css
