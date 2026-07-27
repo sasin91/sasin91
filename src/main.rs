@@ -91,6 +91,21 @@ struct PostPage<'a> {
     year: i32,
 }
 
+#[derive(Template)]
+#[template(path = "rss.xml", escape = "xml")]
+struct Feed<'a> {
+    cv: &'a Cv,
+    posts: &'a [Post],
+    base: &'a str,
+}
+
+#[derive(Template)]
+#[template(path = "sitemap.xml", escape = "xml")]
+struct Sitemap<'a> {
+    posts: &'a [Post],
+    base: &'a str,
+}
+
 fn write(path: impl AsRef<Path>, contents: &str) -> Result<()> {
     let path = path.as_ref();
     if let Some(dir) = path.parent() {
@@ -152,6 +167,19 @@ fn main() -> Result<()> {
             &PostPage { cv: &cv, post, year }.render()?,
         )?;
     }
+
+    write(
+        format!("{OUT}/rss.xml"),
+        &Feed { cv: &cv, posts: &posts, base: BASE_URL }.render()?,
+    )?;
+    write(
+        format!("{OUT}/sitemap.xml"),
+        &Sitemap { posts: &posts, base: BASE_URL }.render()?,
+    )?;
+    write(
+        format!("{OUT}/robots.txt"),
+        &format!("User-agent: *\nAllow: /\nSitemap: {BASE_URL}/sitemap.xml\n"),
+    )?;
 
     println!(
         "built {} posts in {:.0?} -> {OUT}/",

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>{{ cv.site.name }}</title>
+    <link>{{ base }}</link>
+    <description>{{ cv.site.title }}</description>
+{%- for post in posts %}
+    <item>
+      <title>{{ post.title }}</title>
+      <link>{{ base }}{{ post.url() }}</link>
+      <guid>{{ base }}{{ post.url() }}</guid>
+      <pubDate>{{ post.date_rfc2822() }}</pubDate>
+      <description>{{ post.description }}</description>
+    </item>
+{%- endfor %}
+  </channel>
+</rss>
