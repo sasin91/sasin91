@@ -22,7 +22,7 @@
 - Homepage is posts-first. The career timeline lives at `/about`, not on `/`.
 - `public/` is disposable and fully regenerated every run. Nothing is ever mutated in place.
 - Every task ends with a commit.
-- **Between Tasks 2 and 7 the modules are not yet wired into `main`, so `cargo clippy -- -D warnings` will fail on `dead_code`.** This is expected. Run `cargo test` for those tasks; clippy becomes meaningful again from Task 7, where `main` uses everything.
+- **Between Tasks 2 and 7 the modules are not yet wired into `main`, so `cargo clippy -- -D warnings` will fail on `dead_code`.** This is expected. Run `cargo test` for those tasks; clippy becomes meaningful again from Task 8. Task 7 wires `main` up but leaves `BASE_URL` and `Post::date_rfc2822` unused until the feed templates consume them, so two `dead_code` errors persist through Task 7 and clear in Task 8.
 
 ---
 
@@ -446,7 +446,7 @@ pub fn load_posts(dir: &Path, render: impl Fn(&str) -> Result<String>) -> Result
         });
     }
 
-    posts.sort_by(|a, b| b.date.cmp(&a.date));
+    posts.sort_by_key(|b| std::cmp::Reverse(b.date));
     Ok(posts)
 }
 ```
@@ -1241,6 +1241,7 @@ description = "Passed my training as a WebIntegrator with a 12."
 mod content;
 mod djot;
 mod highlight;
+mod html;
 mod math;
 
 use anyhow::{Context, Result};
