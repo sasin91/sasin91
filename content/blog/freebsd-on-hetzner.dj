@@ -7,7 +7,7 @@ hero = "/images/freebsd-on-hetzner/header.svg"
 hero_alt = "FreeBSD 15.1 on root-on-ZFS, with the disk partition layout"
 +++
 
-Hetzner has no FreeBSD image and their ISO library stops at 15.0. You can still get _any_ release on there, unattended, in about an hour.
+Hetzner has no FreeBSD image and their ISO library stops at 15.0. You can still get *any* release on there, unattended, in about an hour.
 
 > The box runs AthletOS, a training app I am building. Predefined programs, session logging and tracking.
 >

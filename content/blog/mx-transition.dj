@@ -7,7 +7,12 @@ description = "MX transition provides an easy and intuitive way to add animation
 
 ![Trongate: The framework they don't want you to know about](/images/trongate/trongate_logo_trans_bg.png)
 
-![](/images/trongate/view_transitions.png)
+``` =html
+<video controls loop muted playsinline width="100%">
+  <source src="/videos/blog/trongate/view_transitions.webm" type="video/webm">
+  Your browser cannot play this video. <a href="/videos/blog/trongate/view_transitions.webm">Download it directly</a>.
+</video>
+```
 
 [Demo](https://trongate-framework.fly.dev)
 
