@@ -930,9 +930,10 @@ pub fn render(source: &str, hl: &Highlighter) -> Result<String> {
     for event in Parser::new(source) {
         match event {
             Event::Start(Container::CodeBlock { language }, attrs) => {
-                let title = attrs
-                    .get_value("title")
-                    .map(|v| v.to_string().trim_matches('"').to_string());
+                // jotdown already strips the syntactic quotes and resolves
+                // escapes, so do not trim again — that would corrupt a title
+                // whose content legitimately begins or ends with a quote.
+                let title = attrs.get_value("title").map(|v| v.to_string());
                 code = Some((language.to_string(), title));
                 buffer.clear();
             }
