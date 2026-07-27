@@ -763,7 +763,7 @@ mod tests {
         // `<script>alert(1)</script>` is accepted by latex2mathml as valid
         // LaTeX, so it never reaches the Err arm and the test passes for the
         // wrong reason.
-        let html = to_mathml(r"rac{<script>", false);
+        let html = to_mathml(r"\frac{<script>", false);
         assert!(html.contains("math-error"), "error path not taken: {html}");
         assert!(!html.contains("<script>"), "got: {html}");
     }
