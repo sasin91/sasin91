@@ -1,4 +1,5 @@
 mod content;
+mod djot;
 mod highlight;
 mod html;
 mod math;
