@@ -759,7 +759,12 @@ mod tests {
 
     #[test]
     fn escapes_markup_in_the_error_path() {
-        let html = to_mathml("<script>alert(1)</script>", false);
+        // The input must BOTH contain markup AND fail to parse. Plain
+        // `<script>alert(1)</script>` is accepted by latex2mathml as valid
+        // LaTeX, so it never reaches the Err arm and the test passes for the
+        // wrong reason.
+        let html = to_mathml(r"rac{<script>", false);
+        assert!(html.contains("math-error"), "error path not taken: {html}");
         assert!(!html.contains("<script>"), "got: {html}");
     }
 }
