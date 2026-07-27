@@ -183,4 +183,67 @@ Body text here.
         assert_eq!(post.date_iso(), "2025-03-03");
         assert_eq!(post.date_long(), "March 3, 2025");
     }
+
+    /// Writes a minimal `.dj` fixture: `{dir}/{slug}.dj` with the given
+    /// frontmatter `path`/`date` and body.
+    fn write_fixture(dir: &Path, slug: &str, path: &str, date: &str, body: &str) {
+        fs::write(
+            dir.join(format!("{slug}.dj")),
+            format!(
+                "+++\npath = \"{path}\"\ntitle = \"{slug}\"\ndate = {date}\ndescription = \"d\"\n+++\n{body}\n"
+            ),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn load_posts_walks_filters_sorts_and_renders() {
+        let dir = std::env::temp_dir().join("content-rs-load-posts-fixture");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        // Sort order: three dated posts, deliberately written out of order.
+        write_fixture(&dir, "newest", "blog/newest", "2025-01-01", "newest body");
+        write_fixture(&dir, "middle", "blog/middle", "2022-06-15", "middle body");
+        write_fixture(&dir, "oldest", "blog/oldest", "2020-01-01", "oldest body");
+        // Nested path: the constraint the whole plan exists to protect,
+        // exercised here through the real loading path rather than a
+        // hand-built `Post`.
+        write_fixture(
+            &dir,
+            "nested",
+            "blog/trongate/mx-transition",
+            "2021-06-01",
+            "nested body",
+        );
+        // Extension filtering: neither of these is a `.dj` file, so
+        // `load_posts` must skip them entirely.
+        fs::write(dir.join("ignored.md"), "not a post").unwrap();
+        fs::write(dir.join("ignored.txt"), "also not a post").unwrap();
+
+        // Render closure wiring: wrap the trimmed body distinctively so we
+        // can prove the closure actually ran, not just that a body exists.
+        let posts = load_posts(&dir, |body| Ok(format!("[{}]", body.trim()))).unwrap();
+
+        assert_eq!(
+            posts.len(),
+            4,
+            "the two non-.dj files must not be loaded as posts"
+        );
+
+        let titles: Vec<&str> = posts.iter().map(|p| p.title.as_str()).collect();
+        assert_eq!(
+            titles,
+            vec!["newest", "middle", "nested", "oldest"],
+            "posts must come back newest first"
+        );
+
+        let nested = posts.iter().find(|p| p.title == "nested").unwrap();
+        assert_eq!(nested.url(), "/blog/trongate/mx-transition/");
+
+        let newest = posts.iter().find(|p| p.title == "newest").unwrap();
+        assert_eq!(newest.body, "[newest body]");
+
+        fs::remove_dir_all(&dir).unwrap();
+    }
 }
