@@ -51,7 +51,9 @@ mod tests {
 
     #[test]
     fn escapes_markup_in_the_error_path() {
-        let html = to_mathml("<script>alert(1)</script>", false);
+        let html = to_mathml(r"\frac{<script>", false);
+        // The error branch must actually be taken, or this test is vacuous.
+        assert!(html.contains("math-error"), "got: {html}");
         assert!(!html.contains("<script>"), "got: {html}");
     }
 }
