@@ -1648,8 +1648,7 @@ Djot inverts Markdown's emphasis, so this is not a rename. Each post must be ver
 ```bash
 mkdir -p /tmp/oldposts
 for p in trongate mx-transition freebsd-on-hetzner athletos-freebsd; do
-  git -C ~/Herd/sasin91.xyz show prototype/ssg-bakeoff:resources/js/pages/blog/$p.tsx > /tmp/oldposts/$p.tsx 2>/dev/null \
-    || git show main:resources/js/pages/blog/$p.tsx > /tmp/oldposts/$p.tsx
+  cp ~/Herd/sasin91.xyz/resources/js/pages/blog/$p.tsx /tmp/oldposts/$p.tsx
 done
 wc -l /tmp/oldposts/*.tsx
 ```
