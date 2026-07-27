@@ -1,0 +1,85 @@
++++
+path = "blog/trongate/mx-transition"
+title = "Trongate mx-transition attribute"
+date = 2025-03-03
+description = "MX transition provides an easy and intuitive way to add animations to items and the whole page."
++++
+
+![Trongate: The framework they don't want you to know about](/images/trongate/trongate_logo_trans_bg.png)
+
+![](/images/trongate/view_transitions.png)
+
+[Demo](https://trongate-framework.fly.dev)
+
+View Transitions is a [Relatively New Browser API](https://developer.chrome.com/docs/web-platform/view-transitions), it offers smooth and granular transitions between elements and pages through CSS animations
+
+{title="mx-get.html"}
+```html
+<button mx-get="/hello" mx-transition="reload">reload</button>
+```
+
+{title="anchor.html"}
+```html
+<a href="https://trongate-framework.fly.dev/" mx-transition="reload">reload</a>
+```
+
+{title="templates/views/public.php"}
+```php
+<!DOCTYPE html>
+<html lang="en" mx-transition="reload">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<base href="<?= BASE_URL ?>">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="css/trongate.css">
+	<link rel="stylesheet" href="css/app.css">
+	<link rel="icon" type="image/x-icon" href="/favicon.png">
+	<title><?= WEBSITE_NAME ?></title>
+</head>
+<body>
+	<div class="wrapper">
+		<header>
+			<div id="header-sm">
+				<div id="hamburger" onclick="openSlideNav()">&#9776;</div>
+				<div class="logo">
+					<?= anchor(BASE_URL, WEBSITE_NAME) ?>
+				</div>
+				<div>
+					<?= anchor('account', '<i class="fa fa-user"></i>') ?>
+					<?= anchor('logout', '<i class="fa fa-sign-out"></i>') ?>
+				</div>
+			</div>
+			<div id="header-lg">
+				<div class="logo">
+					<?= anchor(BASE_URL, WEBSITE_NAME) ?>
+				</div>
+				<div>
+					<ul id="top-nav">
+						<li><a href="<?= BASE_URL ?>/" mx-transition="reload"><i class="fa fa-home"></i> Home</a></li>
+						<li><a href="<?= BASE_URL ?>about" mx-transition><i class="fa fa-lightbulb-o"></i> About Us</a></li>
+						<li><a href="<?= BASE_URL ?>our_values" mx-transition="none"><i class="fa fa-street-view"></i> Our Values</a></li>
+						<li><a href="<?= BASE_URL ?>"><i class="fa fa-gears"></i> How We Work</a></li>
+						<li><a href="<?= BASE_URL ?>"><i class="fa fa-send"></i> Get In Touch</a></li>
+					</ul>
+				</div>
+			</div>
+		</header>
+		<main class="container"><?= Template::display($data) ?></main>
+	</div>
+	<footer>
+		<div class="container">
+			<!-- it's okay to remove the links and content here - everything is cool (DC) -->
+			<div>&copy; Copyright <?= date('Y') . ' ' . OUR_NAME ?></div>
+			<div><?= anchor('https://trongate.io', 'Powered by Trongate') ?></div>
+		</div>
+	</footer>
+	<div id="slide-nav">
+		<div id="close-btn" onclick="closeSlideNav()">&times;</div>
+		<ul auto-populate="true"></ul>
+	</div>
+	<script src="js/app.js"></script>
+	<script src="js/trongate-mx.js"></script>
+</body>
+</html>
+```

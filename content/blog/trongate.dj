@@ -1,0 +1,36 @@
++++
+path = "blog/trongate"
+title = "Trongate PHP"
+date = 2024-09-14
+description = "Trongate is often misunderstood and gets a bad reputation because it breaks with common standards and takes a journey back to its roots. In this article, I will explore and highlight this rough diamond that deserves a spot in the limelight."
++++
+
+![Trongate: The framework they don't want you to know about](/images/trongate/trongate_logo_trans_bg.png)
+
+An exciting PHP framework that challenges the established standards and offers a simple yet effective approach to development.
+
+## I have worked with PHP since 2014, and one recurring thing is *unnecessary* code that needs maintenance. Occam's razor is clearly visible when all you want is to tear *everything* out by the roots and start fresh, hoping to build something more simple.
+
+> This is where Trongate shines; you get a simple starting point with a solid starting architecture due to everything being divided into modules, including media and JavaScript files.
+
+![Trongate modul struktur](/images/trongate/trongate_lvim_mangos-account.png)
+
+[Read more here](https://trongate.io/docs/basic-concepts/truly-modular-architecture.html)
+
+A criticism that could be made is that internationalization (i18n) hasn't been considered, and there is actually no real language support. This is true and something I have [previously](https://github.com/trongate/trongate-framework/pull/189) addressed. It's on the roadmap, and I look forward to seeing how it gets resolved. :)
+
+![Trongate validation](/images/trongate/trongate_lvim_validation.png)
+
+Another feature that often flies under the radar is _callback_ based validation.
+
+### Before I go, I just want to shout out
+
+## Trongate MX
+
+A library based on [HTMX](https://htmx.org) and in many ways has the same features, just using mx- instead of hx-.
+
+And yet it offers so much more, with close integration, built-in modal support, ["optimistic" UI](https://trongate.io/docs/trongate-mx/managing-ui-during-requests.html), and [more.](https://trongate.io/docs/trongate-mx/after-swap-operations.html)
+
+My hope with this article is to spark people's interest and highlight a rough diamond that unfortunately has gained a somewhat bad reputation.
+
+// sasin91, 18.09.2024

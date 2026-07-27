@@ -1,0 +1,136 @@
++++
+path = "blog/athletos-freebsd"
+title = "One box, two jails and a five second deploy"
+date = 2026-07-26
+description = "AthletOS runs on a single €7 FreeBSD box. Two jails that are always up, Caddy handling certificates on its own, and a rolling deploy that never leaves zero healthy backends. What the boring choices bought, measured rather than estimated."
+hero = "/images/athletos-freebsd/architecture.svg"
+hero_alt = "One FreeBSD box: Caddy in front of two always-running jails, with Postgres on the host"
++++
+
+The essence is simple and efficient. That is exactly why I chose
+[FreeBSD](/blog/freebsd-on-hetzner/) as the foundation and
+[Rust](https://github.com/sasin91/athletos.app/tree/main/backend) as the base.
+
+> AthletOS picks a program, prescribes the weights, and records what you
+> actually lifted next to what it asked for.
+>
+> The gap between those two numbers is the entire product. I do not need a
+> motivational chart, I need to be told 100 kg and not talk myself into 120.
+
+One Hetzner CX23, about €7 a month. FreeBSD 15.1, root-on-ZFS, two jails, Caddy,
+Postgres.
+
+## Why not Docker
+
+While Docker is great, well supported and convenient, it is also additional
+complexity and overhead that I do not need. With
+[FreeBSD](/blog/freebsd-on-hetzner/) I have everything I need to ensure smooth
+rollouts and consistent performance with _minimal_ overhead and tooling.
+
+## Rollouts
+
+Two jails, blue and green, both running all the time and both registered with
+Caddy. A deploy takes one out, swaps a symlink, waits for it to answer, and only
+then touches the other.
+
+![Rolling deploy timeline: five seconds, always at least one healthy backend](/images/athletos-freebsd/deploy-timeline.svg)
+
+Five seconds, and never a moment without a healthy backend. The same machinery
+covers a crash at 3am: Caddy marks the jail down and the other one serves until
+I look.
+
+::: note
+## Migrations
+
+Two releases are briefly live against one database, so a migration has to be
+backward compatible with the one before it.
+:::
+
+## Certificates
+
+Certificate lifetimes are dropping to *47 days*, which turns renewal into eight
+chances a year for a hook to fail quietly. Caddy just does it. No certbot, no
+timer, nothing to forget.
+
+{title="Caddyfile"}
+```caddy
+{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy 10.0.0.2:3000 10.0.0.3:3000 {
+		lb_policy       least_conn
+		health_uri      /login
+		health_interval 5s
+	}
+}
+```
+
+## Efficiency
+
+![Memory footprint: 2.19 GB free of 3.86 GB with everything running](/images/athletos-freebsd/footprint.svg)
+
+The efficiency speaks for itself. Plenty of room — likely more than I will ever
+need for this app.
+
+The API answers in under a millisecond. Everything else in the numbers below is
+the distance to Helsinki and a fresh handshake per sample.
+
+{title="latency, from my desk in Denmark"}
+```bash
+api, loopback inside the box      p50  0.0 ms   p95  0.6 ms
+https://api.athletos.app/health   p50  136 ms   p95  143 ms
+https://athletos.app/login        p50  136 ms   p95  247 ms
+```
+
+## Backups
+
+The backup story is refreshingly stable and efficient, with
+[sanoid](https://github.com/jimsalterjrs/sanoid) taking snapshots on a timer and
+syncoid piggybacking on ZFS to move them offsite. Jails ensure a reproducible
+and reliable runtime environment. There is little left for me to desire at this
+scale.
+
+{title="zfs list -t snapshot"}
+```bash
+zroot/data/pgdata@autosnap_2026-07-26_17:24:00_hourly
+zroot/data/pgdata@autosnap_2026-07-26_17:24:00_daily
+zroot/data/pgdata@autosnap_2026-07-26_17:24:00_monthly
+```
+
+## Was it worth it
+
+Absolutely. Stable, reliable and predictable. I can trust this to keep running.
+
+::: warning
+## What broke on first contact
+
+Five things broke on a real box. Four were ordinary. The fifth was worth
+remembering: `${name}_user` is a reserved `rc.subr` variable, and `rc.subr`
+wraps your command in `su -m` before it runs. My rc script named a variable
+`athletos_api_user` thinking it was mine, so `daemon(8)` was already running as
+that user when it tried to drop privileges to that user. Two privilege drops
+fighting, and `-r` retried it forever. The error it prints is "failed to set
+user environment", which sounds like `login.conf` and is not.
+:::
+
+::: note
+## Building on the target
+
+CI builds inside a FreeBSD VM and runs the test suite there before producing a
+binary. Rust is a Tier 2 platform on FreeBSD — the project builds it but does
+not test it — so building and testing on the release you actually deploy to is
+doing work nobody upstream does for you.
+:::
+
+::: warning
+## ARC eats your RAM
+
+ARC takes half your RAM unless told otherwise. On a 4 GB box that is 2 GB it
+does not need, and it shows up later looking like a database problem. Put
+`vfs.zfs.arc_max="512M"` in `loader.conf`, on day one.
+:::
+
+Raw HTML is available whenever an element is easier written directly:
+
+``` =html
+<p class="colophon">Every number above was measured on the box, not estimated.</p>
+```
