@@ -86,6 +86,17 @@ query as the no-JS fallback.
 The control is a real `<button>` with an accessible name and `aria-pressed`,
 reachable by keyboard, never a bare styled `<div>`.
 
+A `:target`/hash-based CSS-only toggle was considered and rejected: the site
+already publishes eight heading anchors (`#What-went-wrong` and friends), so a
+theme hash would collide with them — following a heading link would reset the
+theme, and setting the theme would scroll to a phantom element. It also would
+not survive navigation to another page.
+
+Separately, `@view-transition { navigation: auto; }` is added for smooth
+cross-document navigation. It needs no JavaScript, degrades silently where
+unsupported, and is orthogonal to the toggle — one animates, the other
+persists.
+
 ### SVG diagrams are inlined
 
 **This is forced by the toggle.** An SVG referenced via `<img>` is a separate
@@ -140,6 +151,9 @@ a single destination. Revisit at five or more.
 
 **Out:** a `/projects` page (still premature at one project), per-section CV
 sub-pages, intrinsic image dimensions, an integration test for the generator.
+
+**Not listed as a role:** the period from February 2026 is job-seeking, not
+independent work, and is not given a CV entry.
 
 ## Verification
 
