@@ -290,8 +290,17 @@ h2 {
   max-width: 100%;
   height: auto;
   display: block;
-  border-radius: 6px;
+  border-radius: 7px;
   border: 1px solid var(--rule);
+}
+
+/* The Trongate logo is a near-white artwork that disappears on the light
+   page. Giving raster media the same frame as the diagrams makes
+   dark-designed media read as one deliberate family. Inlined SVGs are not
+   <img> and are handled by .diagram. */
+.prose img[src$=".png"],
+.prose img[src$=".webp"] {
+  background: var(--diagram-bg);
 }
 
 .prose .diagram {
@@ -333,11 +342,15 @@ h2 {
    .codeblock wrapper + filename bar when a title= attribute is present).
    Frame properties (padding, wrapping, type) live on pre.hl-code so an
    untitled block gets them too instead of being rendered bare. */
+/* Solarized cream on a near-white page is 1.06:1, so an unwrapped block does
+   not read as an object at all. A titled block gets its border from
+   .codeblock instead, so .codeblock pre.hl-code cancels this one out. */
 pre.hl-code {
   margin: 1.6rem 0;
   padding: 0.95rem 1.1rem;
   overflow-x: auto;
   border-radius: 7px;
+  border: 1px solid var(--rule);
   font-family: var(--mono);
   font-size: 0.83rem;
   line-height: 1.6;
@@ -361,6 +374,7 @@ pre.hl-code {
 .codeblock pre.hl-code {
   margin: 0;
   border-radius: 0;
+  border: none;
 }
 
 .codeblock .filename {
