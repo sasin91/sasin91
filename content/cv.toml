@@ -7,9 +7,9 @@ intro = [
 # AthletOS post, and the FreeBSD post. Jonas to rewrite in his own words.
 # /cv renders `intro` instead - that page is the record, this one is a person.
 about = [
-  "Based in Slagelse. PHP and Laravel since 2015 — a ticketing agency, a video streaming platform, a recruitment platform — with Symfony, Go, Kubernetes and Rust picked up where the problem asked for them. I like building the thing, and I like the support work that comes after it.",
-  "Right now I am building AthletOS: a training app that prescribes the weights and records what you actually lifted next to what it asked for. The gap between those two numbers is the entire product. It runs on a single €7 FreeBSD box — two jails, Caddy, Postgres — because I would rather a bad deploy be a rollback than an incident.",
-  "I write here when something is worth writing down. Usually after it broke, and usually with the numbers.",
+  "Based in Slagelse. PHP and Laravel since 2015 — a ticketing agency, a video streaming platform, a recruitment platform — with Symfony, Go, Kubernetes and Rust picked up along the way, where the problem asked for them. I like building the thing, and I like the support work that comes after it.",
+  "Right now I am building AthletOS, a training app that tells me what to lift and records what I actually managed. It runs on one small FreeBSD box, which is more than enough for it. I picked FreeBSD mostly so I can roll things back when I break them.",
+  "I write here when something seems worth writing down. Usually after it broke, and usually with the numbers.",
 ]
 
 education_note = "Two short-cycle higher educations."
