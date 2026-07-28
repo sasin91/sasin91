@@ -1,23 +1,18 @@
 {% extends "base.html" %}
 
 {% block title %}About — {{ cv.site.name }}{% endblock %}
-{% block description %}<meta name="description" content="{{ cv.site.title }}. {{ cv.site.available_note }}." />{% endblock %}
+{% block description %}<meta name="description" content="{{ cv.site.title }} in {{ cv.contact.town }}. {{ cv.site.available_note }}." />{% endblock %}
 
 {% block content %}
   <h1>About</h1>
   <p class="lede">{{ cv.site.title }}. {{ cv.site.available_note }}.</p>
-  <p class="stack">{{ cv.site.stack }}</p>
 
-  <p>
-    I'm currently building <a href="/blog/athletos-freebsd/">AthletOS</a>, a
-    training app with a Rust backend running on a single FreeBSD box. This is
-    where I write in detail about things I've built or worked with, including
-    what went wrong along the way.
-  </p>
-
-  {% for paragraph in cv.intro %}
+  {# `about` is written for a reader arriving cold. `intro` is the CV's own
+     wording and renders on /cv instead, so the two pages do not repeat each
+     other — one is a person, the other is a record. #}
+  {% for paragraph in cv.about %}
     <p>{{ paragraph }}</p>
   {% endfor %}
 
-  <p><a href="/cv/">Full CV</a></p>
+  <p><a href="/cv/">Read the full CV</a>, or take the <a href="/cv.pdf">PDF</a>.</p>
 {% endblock %}

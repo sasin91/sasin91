@@ -12,6 +12,9 @@ pub struct Cv {
     pub site: Profile,
     pub contact: Contact,
     pub intro: Vec<String>,
+    /// Prose for /about only. `intro` is the CV's own wording and belongs on
+    /// /cv; this is written for a reader arriving at the site cold.
+    pub about: Vec<String>,
     pub roles: Vec<Role>,
     pub skills: Vec<Skill>,
     pub education: Vec<Education>,

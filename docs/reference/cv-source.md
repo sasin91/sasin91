@@ -11,8 +11,12 @@ Slagelse, 4200 · +45 50106917 · jonas.kerwin.hansen@gmail.com
 I have been working with PHP and Laravel since 2015 and since then I have helped
 develop a ticketing agency, a video streaming platform and a recruitment platform.
 
-I enjoy designing and delivering customized and solid solutions, but also takes
+I enjoy designing and delivering customized and solid solutions, but also enjoy
 support and listening to user requests and issues with a smile.
+
+<!-- The source PDF reads "takes" here. Jonas confirmed the intended sense is
+     "enjoys", so the site renders "enjoy" to agree with the leading "I enjoy".
+     Worth correcting in the source PDF too. -->
 
 ## Work history & achievements
 
