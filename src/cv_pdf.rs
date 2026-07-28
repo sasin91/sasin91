@@ -2,15 +2,13 @@
 //! mirrors the `@page` rule in static/site.css so the printed measure matches
 //! what /cv/ prints to, even though the two do not share a layout.
 
-// `wrap` is not called from `main.rs` yet: Task 5 consumes it to lay out the CV.
-// Until then `-D warnings` would fail the build on dead code that a later task
-// gives a caller, so the allow stays until Task 5 lands.
+// `render` is not called from `main.rs` yet: Task 6 wires it into the build.
+// Until then `-D warnings` would fail on dead code that Task 6 gives a caller,
+// so the allow stays until Task 6 lands.
 #![allow(dead_code)]
 
-// Import only what this task uses. `cargo clippy -- -D warnings` fails on an
-// unused import, so `Cv` and `write_pdf` are added by Task 5 as they come
-// into use, not up front.
-use crate::pdf::{Font, POINTS_PER_MM, Page, Placement};
+use crate::cv::Cv;
+use crate::pdf::{Font, POINTS_PER_MM, Page, Placement, write_pdf};
 
 const PAGE_W_MM: f32 = 210.0;
 const PAGE_H_MM: f32 = 297.0;
@@ -124,6 +122,181 @@ fn wrap(text: &str, font: Font, size_pt: f32, width_mm: f32) -> Vec<String> {
         lines.push(line);
     }
     lines
+}
+
+fn pt(points: f32) -> f32 {
+    points / POINTS_PER_MM
+}
+
+/// Wrap `text` and return it as lines in one style. `indent_mm` shifts the
+/// whole block right; `hanging` is the extra indent applied to every line
+/// after the first, which is what makes a bullet's text align under itself
+/// rather than under the bullet.
+fn lines(
+    text: &str,
+    font: Font,
+    size_pt: f32,
+    leading_pt: f32,
+    indent_mm: f32,
+    hanging_mm: f32,
+) -> Vec<Line> {
+    wrap(text, font, size_pt, COLUMN_MM - indent_mm - hanging_mm)
+        .into_iter()
+        .enumerate()
+        .map(|(i, text)| Line {
+            text,
+            font,
+            size_pt,
+            leading_mm: pt(leading_pt),
+            indent_mm: indent_mm + if i == 0 { 0.0 } else { hanging_mm },
+        })
+        .collect()
+}
+
+const BULLET_INDENT_MM: f32 = 5.0;
+
+/// The date range and location under a heading: "September 2024 - February
+/// 2026 - Copenhagen". The web page uses an en dash between the dates and an
+/// em dash before the location; both are WinAnsi, so they carry over.
+fn meta(start: &str, end: Option<String>, location: &str) -> String {
+    let end = end.unwrap_or_else(|| "present".into());
+    format!("{start} \u{2013} {end} \u{2014} {location}")
+}
+
+/// A role or education entry as one keep-together block.
+fn entry(heading: &str, meta_line: &str, body: Option<&str>, bullets: &[String]) -> Vec<Line> {
+    let mut block = lines(heading, Font::HelveticaBold, 10.5, 14.0, 0.0, 0.0);
+    block.extend(lines(meta_line, Font::Helvetica, 8.5, 12.0, 0.0, 0.0));
+    if let Some(body) = body {
+        block.extend(lines(body, Font::Helvetica, 10.0, 14.0, 0.0, 0.0));
+    }
+    for bullet in bullets {
+        block.extend(lines(
+            &format!("\u{2022}  {bullet}"),
+            Font::Helvetica,
+            10.0,
+            14.0,
+            BULLET_INDENT_MM,
+            BULLET_INDENT_MM,
+        ));
+    }
+    block
+}
+
+/// Lay `cv` out into pages. Separate from `render` so tests can assert on
+/// placements rather than on parsed PDF bytes.
+///
+/// Infallible by construction: `Cv::validate` has already run by the time the
+/// build reaches here, which is the same guarantee `Role::start_label()` leans
+/// on when it unwraps.
+///
+/// This takes a `&Cv`, not a URL. That is the whole point -- the previous
+/// implementation fetched /cv/ over HTTP and shipped the homepage as cv.pdf
+/// for several deploys, a failure that is not expressible here.
+fn layout(cv: &Cv) -> Vec<Page> {
+    let mut cursor = Cursor::new();
+
+    cursor.place(&lines(
+        &cv.site.name,
+        Font::HelveticaBold,
+        20.0,
+        24.0,
+        0.0,
+        0.0,
+    ));
+    cursor.place(&lines(
+        &cv.site.title,
+        Font::Helvetica,
+        11.0,
+        15.0,
+        0.0,
+        0.0,
+    ));
+
+    let contact = format!(
+        "{}, {} \u{b7} {} \u{b7} {}",
+        cv.contact.town, cv.contact.postcode, cv.contact.phone, cv.contact.email
+    );
+    cursor.place(&lines(&contact, Font::Helvetica, 9.0, 13.0, 0.0, 0.0));
+    let links = format!("{} \u{b7} {}", cv.site.links.github, cv.site.links.linkedin);
+    cursor.place(&lines(&links, Font::Helvetica, 9.0, 13.0, 0.0, 0.0));
+
+    cursor.gap(pt(8.0));
+    for paragraph in &cv.intro {
+        cursor.place(&lines(paragraph, Font::Helvetica, 10.0, 14.0, 0.0, 0.0));
+        cursor.gap(pt(4.0));
+    }
+
+    section(&mut cursor, "Experience");
+    for role in &cv.roles {
+        cursor.place_together(&entry(
+            &format!("{} \u{b7} {}", role.title, role.company),
+            &meta(&role.start_label(), role.end_label(), &role.location),
+            Some(&role.summary),
+            &role.achievements,
+        ));
+        cursor.gap(pt(6.0));
+    }
+
+    section(&mut cursor, "Skills");
+    for skill in &cv.skills {
+        cursor.place(&lines(
+            &format!("\u{2022}  {}", skill.name),
+            Font::Helvetica,
+            10.0,
+            14.0,
+            BULLET_INDENT_MM,
+            BULLET_INDENT_MM,
+        ));
+    }
+
+    section(&mut cursor, "Education");
+    if let Some(note) = &cv.education_note {
+        cursor.place(&lines(note, Font::Helvetica, 10.0, 14.0, 0.0, 0.0));
+        cursor.gap(pt(4.0));
+    }
+    for education in &cv.education {
+        cursor.place_together(&entry(
+            &format!("{} \u{b7} {}", education.title, education.school),
+            &meta(
+                &education.start_label(),
+                education.end_label(),
+                &education.location,
+            ),
+            education.note.as_deref(),
+            &[],
+        ));
+        cursor.gap(pt(6.0));
+    }
+
+    cursor.finish()
+}
+
+/// Render `cv` as a complete PDF.
+pub fn render(cv: &Cv) -> Vec<u8> {
+    let title = format!("{} \u{2014} CV", cv.site.name);
+    write_pdf(&title, PAGE_W_MM, PAGE_H_MM, &layout(cv))
+}
+
+/// A section heading. `break-after: avoid` from the print stylesheet, done by
+/// reserving room for the heading plus a first line of content: a heading
+/// stranded alone at the foot of a page reads as a section with nothing in it.
+///
+/// This breaks the page directly rather than delegating to
+/// `Cursor::place_together`: `place_together` measures only the heading's own
+/// height, so when the room left is between that height and `needed` it
+/// declines to break, the heading lands on the old page, and the first
+/// content line then overflows onto a new one -- the exact orphan this
+/// function exists to prevent.
+fn section(cursor: &mut Cursor, title: &str) {
+    cursor.gap(pt(10.0));
+    let heading = lines(title, Font::HelveticaBold, 11.0, 16.0, 0.0, 0.0);
+    let needed: f32 = heading.iter().map(|l| l.leading_mm).sum::<f32>() + pt(14.0) * 2.0;
+    if cursor.remaining_mm() < needed {
+        cursor.break_page();
+    }
+    cursor.place(&heading);
+    cursor.gap(pt(3.0));
 }
 
 #[cfg(test)]
@@ -282,5 +455,190 @@ mod tests {
         let mut cursor = Cursor::new();
         cursor.place_together(&[body("a"), body("b")]);
         assert_eq!(cursor.finish().len(), 1);
+    }
+
+    /// The real content, not a fixture. These tests are the replacement for the
+    /// pdftotext guards the deploy workflow used to run, and they are only worth
+    /// anything if they check what actually ships.
+    fn real_cv() -> Cv {
+        let src = std::fs::read_to_string("content/cv.toml").expect("content/cv.toml");
+        let cv: Cv = toml::from_str(&src).expect("content/cv.toml must parse");
+        cv.validate()
+            .expect("content/cv.toml must have valid dates");
+        cv
+    }
+
+    fn rendered_text(cv: &Cv) -> String {
+        // The content streams are latin-1; lossy UTF-8 is enough to search for the
+        // ASCII substrings these tests care about.
+        String::from_utf8_lossy(&render(cv)).into_owned()
+    }
+
+    #[test]
+    fn the_pdf_carries_every_section() {
+        let text = rendered_text(&real_cv());
+        for heading in ["Experience", "Skills", "Education"] {
+            assert!(text.contains(heading), "missing section: {heading}");
+        }
+    }
+
+    #[test]
+    fn the_pdf_carries_the_name_and_contact_details() {
+        let cv = real_cv();
+        let text = rendered_text(&cv);
+        assert!(text.contains(&cv.site.name));
+        assert!(text.contains(&cv.contact.town));
+        assert!(text.contains(&cv.contact.email));
+    }
+
+    /// Wrapping breaks achievements across lines, so a whole sentence will not
+    /// appear contiguously. Checking the first few words of each is enough to
+    /// prove no entry was dropped.
+    #[test]
+    fn the_pdf_carries_every_role_and_achievement() {
+        let cv = real_cv();
+        let text = rendered_text(&cv);
+        for role in &cv.roles {
+            assert!(
+                text.contains(&role.company),
+                "missing company: {}",
+                role.company
+            );
+            assert!(text.contains(&role.title), "missing title: {}", role.title);
+            for achievement in &role.achievements {
+                let opening: String = achievement
+                    .split_whitespace()
+                    .take(4)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                assert!(text.contains(&opening), "missing achievement: {opening}");
+            }
+        }
+        for education in &cv.education {
+            assert!(
+                text.contains(&education.school),
+                "missing school: {}",
+                education.school
+            );
+        }
+        for skill in &cv.skills {
+            let opening: String = skill
+                .name
+                .split_whitespace()
+                .take(3)
+                .collect::<Vec<_>>()
+                .join(" ");
+            assert!(text.contains(&opening), "missing skill: {opening}");
+        }
+    }
+
+    /// A CV is one to two pages. Three is the tolerance; anything beyond it means
+    /// the layout is broken, not that the content grew.
+    #[test]
+    fn the_cv_fits_in_a_sane_number_of_pages() {
+        let pages = layout(&real_cv()).len();
+        assert!((1..=3).contains(&pages), "rendered {pages} pages");
+    }
+
+    /// Guards the one silent failure mode: a character with no WinAnsi form
+    /// becomes '?' on a document sent to employers. An em dash or a curly
+    /// apostrophe pasted into content/cv.toml must fail here, not in someone's
+    /// inbox.
+    #[test]
+    fn every_character_in_the_real_cv_is_representable() {
+        let src = std::fs::read_to_string("content/cv.toml").expect("content/cv.toml");
+        let cv: Cv = toml::from_str(&src).expect("content/cv.toml must parse");
+        let mut strings: Vec<&str> = vec![
+            &cv.site.name,
+            &cv.site.title,
+            &cv.contact.town,
+            &cv.contact.postcode,
+            &cv.contact.phone,
+            &cv.contact.email,
+        ];
+        strings.extend(cv.intro.iter().map(String::as_str));
+        for role in &cv.roles {
+            strings.extend([
+                role.title.as_str(),
+                role.company.as_str(),
+                role.location.as_str(),
+                role.summary.as_str(),
+            ]);
+            strings.extend(role.achievements.iter().map(String::as_str));
+        }
+        for education in &cv.education {
+            strings.extend([
+                education.title.as_str(),
+                education.school.as_str(),
+                education.location.as_str(),
+            ]);
+            if let Some(note) = &education.note {
+                strings.push(note);
+            }
+        }
+        for skill in &cv.skills {
+            strings.push(&skill.name);
+        }
+
+        for s in strings {
+            for c in s.chars() {
+                assert!(
+                    crate::pdf::winansi_byte(c).is_some(),
+                    "{c:?} (U+{:04X}) in {s:?} has no WinAnsi form and would ship as '?'",
+                    c as u32
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn rendering_is_reproducible() {
+        let cv = real_cv();
+        assert_eq!(render(&cv), render(&cv));
+    }
+
+    /// `break-after: avoid` on h2. A heading alone at the foot of a page reads as
+    /// a section with nothing in it.
+    #[test]
+    fn no_page_ends_on_a_section_heading() {
+        for page in layout(&real_cv()) {
+            let last = page
+                .placements
+                .last()
+                .map(|p| p.text.as_str())
+                .unwrap_or_default();
+            for heading in ["Experience", "Skills", "Education"] {
+                assert_ne!(last, heading, "page ends on the {heading} heading");
+            }
+        }
+    }
+
+    /// Two placements on the same baseline extract with no separator between
+    /// them: a bold "Senior" at one x and a roman "Engineer" at the next comes
+    /// back from pdfminer and pypdf as "SeniorEngineer", and an applicant
+    /// tracking system matching "Senior Engineer" finds nothing.
+    ///
+    /// This layout emits exactly one placement per baseline, so it cannot happen
+    /// today. The test exists because the obvious future change -- setting a role
+    /// title in bold and its company in roman on one line -- reintroduces it
+    /// silently, and the PDF looks perfectly correct while doing so.
+    #[test]
+    fn no_two_placements_share_a_baseline() {
+        for (index, page) in layout(&real_cv()).into_iter().enumerate() {
+            let mut baselines: Vec<String> = page
+                .placements
+                .iter()
+                .map(|p| format!("{:.3}", p.y_mm))
+                .collect();
+            let before = baselines.len();
+            baselines.sort();
+            baselines.dedup();
+            assert_eq!(
+                baselines.len(),
+                before,
+                "page {index} has two placements on one baseline; they will \
+                 extract as one run-together word"
+            );
+        }
     }
 }
