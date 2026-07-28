@@ -8,14 +8,9 @@
   <p class="lede">{{ cv.site.title }}. {{ cv.site.available_note }}.</p>
   <p class="stack">{{ cv.site.stack }}</p>
 
-  <h2>Experience</h2>
-  <ul class="timeline">
-    {% for role in cv.roles %}
-      <li>
-        <div class="meta">{{ role.period() }}</div>
-        <div class="role">{{ role.title }} at {{ role.company }}</div>
-        <p>{{ role.summary }}</p>
-      </li>
-    {% endfor %}
-  </ul>
+  {% for paragraph in cv.intro %}
+    <p>{{ paragraph }}</p>
+  {% endfor %}
+
+  <p><a href="/cv/">Full CV</a></p>
 {% endblock %}

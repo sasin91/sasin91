@@ -80,13 +80,20 @@ fn month(m: &str) -> String {
         .unwrap_or_else(|_| m.to_string())
 }
 
+/// "September 2024 – February 2026", or "… – present" while open. Shared by
+/// `Role::period` and `Education::period` — both have the same `start` /
+/// `end: Option<String>` shape.
+fn period(start: &str, end: &Option<String>) -> String {
+    match end {
+        Some(end) => format!("{} – {}", month(start), month(end)),
+        None => format!("{} – present", month(start)),
+    }
+}
+
 impl Role {
     /// "September 2024 – February 2026", or "… – present" while open.
     pub fn period(&self) -> String {
-        match &self.end {
-            Some(end) => format!("{} – {}", month(&self.start), month(end)),
-            None => format!("{} – present", month(&self.start)),
-        }
+        period(&self.start, &self.end)
     }
 }
 
@@ -109,10 +116,7 @@ pub struct Education {
 impl Education {
     /// "February 2014 – August 2015", or "… – present" while open.
     pub fn period(&self) -> String {
-        match &self.end {
-            Some(end) => format!("{} – {}", month(&self.start), month(end)),
-            None => format!("{} – present", month(&self.start)),
-        }
+        period(&self.start, &self.end)
     }
 }
 
@@ -127,6 +131,13 @@ struct IndexPage<'a> {
 #[derive(Template)]
 #[template(path = "about.html")]
 struct AboutPage<'a> {
+    cv: &'a Cv,
+    year: i32,
+}
+
+#[derive(Template)]
+#[template(path = "cv.html")]
+struct CvPage<'a> {
     cv: &'a Cv,
     year: i32,
 }
@@ -263,6 +274,10 @@ fn main() -> Result<()> {
     write(
         format!("{OUT}/about/index.html"),
         &AboutPage { cv: &cv, year }.render()?,
+    )?;
+    write(
+        format!("{OUT}/cv/index.html"),
+        &CvPage { cv: &cv, year }.render()?,
     )?;
     write(
         format!("{OUT}/blog/index.html"),

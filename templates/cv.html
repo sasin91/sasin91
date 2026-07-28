@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}CV — {{ cv.site.name }}{% endblock %}
+{% block description %}<meta name="description" content="{{ cv.site.name }}, {{ cv.site.title }}. {{ cv.contact.town }}, {{ cv.contact.postcode }}." />{% endblock %}
+
+{% block content %}
+  <article class="cv">
+    <header class="cv-header">
+      <h1>{{ cv.site.name }}</h1>
+      <p class="lede">{{ cv.site.title }}</p>
+      <p class="cv-contact">
+        {{ cv.contact.town }}, {{ cv.contact.postcode }}
+        · <a href="tel:{{ cv.contact.phone }}">{{ cv.contact.phone }}</a>
+        · <a href="mailto:{{ cv.contact.email }}">{{ cv.contact.email }}</a>
+        · <a href="{{ cv.site.links.github }}">GitHub</a>
+        · <a href="{{ cv.site.links.linkedin }}">LinkedIn</a>
+      </p>
+    </header>
+
+    {% for paragraph in cv.intro %}
+      <p>{{ paragraph }}</p>
+    {% endfor %}
+
+    <h2>Experience</h2>
+    {% for role in cv.roles %}
+      <article class="cv-role">
+        <h3>{{ role.title }} · {{ role.company }}</h3>
+        <p class="meta">
+          <time datetime="{{ role.start }}">{{ role.period() }}</time>
+          — {{ role.location }}
+        </p>
+        <p>{{ role.summary }}</p>
+        {% if !role.achievements.is_empty() %}
+          <ul>
+            {% for achievement in role.achievements %}
+              <li>{{ achievement }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </article>
+    {% endfor %}
+
+    <h2>Skills</h2>
+    <ul class="cv-skills">
+      {% for skill in cv.skills %}
+        <li>{{ skill.name }}</li>
+      {% endfor %}
+    </ul>
+
+    <h2>Education</h2>
+    {% if let Some(note) = cv.education_note %}
+      <p class="lede">{{ note }}</p>
+    {% endif %}
+    {% for education in cv.education %}
+      <article class="cv-role">
+        <h3>{{ education.title }} · {{ education.school }}</h3>
+        <p class="meta">
+          <time datetime="{{ education.start }}">{{ education.period() }}</time>
+          — {{ education.location }}
+        </p>
+        {% if let Some(note) = education.note %}
+          <p>{{ note }}</p>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </article>
+{% endblock %}

@@ -9,7 +9,10 @@
     <p class="lede">{{ cv.site.title }}</p>
     <p class="stack">{{ cv.site.stack }}</p>
     {% if cv.site.available %}
-      <p class="available"><a href="{{ cv.site.links.email }}">{{ cv.site.available_note }}</a></p>
+      <p class="available">
+        {{ cv.site.available_note }} —
+        <a href="{{ cv.site.links.email }}">get in touch</a>
+      </p>
     {% endif %}
 
     <div class="social">

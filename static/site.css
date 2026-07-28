@@ -147,6 +147,11 @@ body {
   color: var(--muted);
 }
 
+.site-foot-links {
+  display: flex;
+  gap: 1.1rem;
+}
+
 /* ---------- links & type ---------- */
 
 a {
@@ -202,41 +207,62 @@ h2 {
   font-size: 0.94rem;
 }
 
-.timeline {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border-left: 1px solid var(--rule);
+/* ---------- cv ---------- */
+
+.cv-header {
+  margin-bottom: 2rem;
 }
 
-.timeline li {
-  position: relative;
-  padding: 0 0 2rem 1.75rem;
-}
-
-.timeline li::before {
-  content: "";
-  position: absolute;
-  left: -3.5px;
-  top: 0.72em;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--rule);
-}
-
-.timeline li:first-child::before {
-  background: var(--accent);
-}
-
-.timeline .role {
-  font-weight: 590;
-}
-
-.timeline p {
-  margin: 0.15rem 0 0;
+.cv-contact {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.94rem;
+}
+
+.cv-contact a {
+  color: var(--muted);
+}
+
+.cv-contact a:hover {
+  color: var(--accent);
+}
+
+.cv-role {
+  margin: 0 0 2.2rem;
+  padding-bottom: 2.2rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.cv-role:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.cv-role h3 {
+  font-size: 1.05rem;
+  margin: 0 0 0.2rem;
+}
+
+.cv-role .meta {
+  margin: 0 0 0.5rem;
+}
+
+.cv-role ul {
+  margin: 0.6rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.cv-role li {
+  margin: 0.3rem 0;
+}
+
+.cv-skills {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.cv-skills li {
+  margin: 0.3rem 0;
 }
 
 /* ---------- post list ---------- */
