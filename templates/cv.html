@@ -10,12 +10,15 @@
     <header class="cv-header">
       <h1>{{ cv.site.name }}</h1>
       <p class="lede">{{ cv.site.title }}</p>
-      <p class="cv-contact">
-        {{ cv.contact.town }}, {{ cv.contact.postcode }}
-        · <a href="tel:{{ cv.contact.phone_href() }}">{{ cv.contact.phone }}</a>
-        · <a href="mailto:{{ cv.contact.email }}">{{ cv.contact.email }}</a>
-        · <a href="{{ cv.site.links.github }}">GitHub</a>
-        · <a href="{{ cv.site.links.linkedin }}">LinkedIn</a>
+      {# Each item is one unbreakable unit carrying its own trailing "·", so
+         the line can only wrap between items -- writing the separators as
+         leading text put "· LinkedIn" at the start of the second line. #}
+      <p class="cv-contact sep-list">
+        <span>{{ cv.contact.town }}, {{ cv.contact.postcode }}</span>
+        <span><a href="tel:{{ cv.contact.phone_href() }}">{{ cv.contact.phone }}</a></span>
+        <span><a href="mailto:{{ cv.contact.email }}">{{ cv.contact.email }}</a></span>
+        <span><a href="{{ cv.site.links.github }}">GitHub</a></span>
+        <span><a href="{{ cv.site.links.linkedin }}">LinkedIn</a></span>
       </p>
     </header>
 

@@ -1,13 +1,18 @@
 {% extends "base.html" %}
 
 {% block title %}{{ cv.site.name }} — {{ cv.site.title }}{% endblock %}
-{% block description %}<meta name="description" content="{{ cv.site.stack }}" />{% endblock %}
+{% block description %}<meta name="description" content="{{ cv.site.stack_line() }}" />{% endblock %}
 
 {% block content %}
   <section class="intro">
     <h1>{{ cv.site.name }}</h1>
     <p class="lede">{{ cv.site.title }}</p>
-    <p class="stack">{{ cv.site.stack }}</p>
+    {# The newline after each span is the only break opportunity in the line;
+       `.sep-list` glues each generated "·" to the word before it. #}
+    <p class="stack sep-list">
+      {% for item in cv.site.stack %}<span>{{ item }}</span>
+      {% endfor %}
+    </p>
     {% if cv.site.available %}
       <p class="available">
         {{ cv.site.available_note }} —

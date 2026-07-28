@@ -37,7 +37,11 @@
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo,
     Consolas, monospace;
 
-  --measure: 68ch;
+  /* `ch` is the width of "0", which in this sans is wider than the average
+     lowercase letter, so the column renders roughly 1.2 characters for every
+     1ch. 68ch measured out at 79-81 characters on the longest lines, past the
+     ~75 where the eye starts losing the return sweep; 62ch lands them at 72-74. */
+  --measure: 62ch;
 }
 
 /* The toggle writes data-theme; these pin color-scheme so light-dark() resolves
@@ -61,9 +65,21 @@ body {
   color: var(--text);
   font-family: var(--sans);
   font-size: 17px;
-  line-height: 1.65;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* `pretty` is the widow fix: it looks ahead at the last few lines and pulls a
+   word down rather than leaving one stranded. Seven paragraphs across the
+   three posts were ending on a single short word -- "120.", "installer.",
+   "can verify." -- which reads as a typo in the rhythm rather than a
+   sentence ending. */
+p,
+li,
+figcaption,
+dd {
+  text-wrap: pretty;
 }
 
 .wrap {
@@ -287,28 +303,52 @@ a {
   text-decoration-thickness: 1px;
 }
 
+/* Tracking is a function of size, so one value cannot serve 2.1rem display
+   type and a 1.12rem list heading. Optical spacing grows as type shrinks:
+   the larger the size, the more negative the tracking wants to be.
+
+   `text-wrap: balance` is what stops a heading dropping one short word onto
+   its own line -- "One box, two jails and a five second / deploy" was
+   breaking 36 characters against 6. Browsers cap balancing at a handful of
+   lines, which is exactly the range headings occupy, and anything that does
+   not support it simply wraps as before. */
 h1,
 h2,
 h3 {
-  letter-spacing: -0.02em;
   line-height: 1.2;
   font-weight: 640;
+  text-wrap: balance;
 }
 
 h1 {
   font-size: 2.1rem;
+  letter-spacing: -0.028em;
   margin: 0 0 0.6rem;
 }
 
 h2 {
   font-size: 1.3rem;
+  letter-spacing: -0.019em;
   margin: 3rem 0 0.75rem;
+}
+
+h3 {
+  letter-spacing: -0.012em;
 }
 
 .lede {
   font-size: 1.12rem;
   color: var(--muted);
   margin: 0 0 2.5rem;
+}
+
+/* The other end of the size/tracking curve. Below about 15px this sans sets
+   tight, and these are the labels a reader scans rather than reads, so they
+   get a little air instead of a little less. */
+.meta,
+.site-nav,
+figcaption {
+  letter-spacing: 0.008em;
 }
 
 .meta {
@@ -338,6 +378,19 @@ h2 {
 
 .cv-header {
   margin-bottom: 2rem;
+}
+
+/* Inline lists whose items are divided by a middle dot. The separator is
+   generated after every item but the last and sits inside that item's
+   nowrap box, so it can never be pushed onto the next line ahead of the word
+   it belongs to. Written as literal text, "· FreeBSD" and "· LinkedIn" both
+   ended up opening a line. */
+.sep-list > * {
+  white-space: nowrap;
+}
+
+.sep-list > *:not(:last-child)::after {
+  content: " ·";
 }
 
 .cv-contact {
@@ -412,6 +465,8 @@ h2 {
 .post-list h2,
 .post-list h3 {
   font-size: 1.12rem;
+  /* Smaller than a section heading, so it wants back most of h2's tracking. */
+  letter-spacing: -0.01em;
   margin: 0.2rem 0 0.35rem;
 }
 

@@ -9,7 +9,10 @@ description = "Trongate is often misunderstood and gets a bad reputation because
 
 An exciting PHP framework that challenges the established standards and offers a simple yet effective approach to development.
 
-## I have worked with PHP since 2014, and one recurring thing is *unnecessary* code that needs maintenance. Occam's razor is clearly visible when all you want is to tear *everything* out by the roots and start fresh, hoping to build something more simple.
+I have worked with PHP since 2014, and one recurring thing is _unnecessary_ code
+that needs maintenance. Occam's razor is clearly visible when all you want is to
+tear _everything_ out by the roots and start fresh, hoping to build something
+more simple.
 
 > This is where Trongate shines; you get a simple starting point with a solid starting architecture due to everything being divided into modules, including media and JavaScript files.
 
@@ -23,7 +26,7 @@ A criticism that could be made is that internationalization (i18n) hasn't been c
 
 Another feature that often flies under the radar is _callback_ based validation.
 
-### Before I go, I just want to shout out
+Before I go, I just want to shout out:
 
 ## Trongate MX
 
