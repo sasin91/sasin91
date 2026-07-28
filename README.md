@@ -16,7 +16,7 @@ cargo run --release      # writes ./public
 
 ```sh
 cargo install watchexec-cli               # once
-watchexec -e dj,html,css,rs -- cargo run  # rebuild on change
+watchexec -e dj,html,css,rs,toml -- cargo run  # rebuild on change
 python -m http.server 8000                # serve, in another shell
 ```
 
