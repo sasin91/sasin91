@@ -10,6 +10,8 @@ mod djot;
 mod highlight;
 mod html;
 mod math;
+mod pdf;
+mod pdf_metrics;
 
 use anyhow::{Context, Result};
 use askama::Template;
