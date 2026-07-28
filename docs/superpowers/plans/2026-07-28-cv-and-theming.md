@@ -165,8 +165,14 @@ Give the existing `<nav class="site-nav">` an accessible name, and the main elem
 <nav class="site-nav" aria-label="Main">
 ```
 ```html
-<main id="content">
+<main id="content" tabindex="-1">
 ```
+
+The `tabindex="-1"` is required, not decorative. Without it Chromium
+scrolls to the fragment but leaves `document.activeElement` on `<body>`,
+so the skip link jumps visually while focus stays behind — which defeats
+its entire purpose. `-1` makes `<main>` programmatically focusable
+without inserting it into the tab order.
 
 The `<header class="site-head">` and `<footer class="site-foot">` are already implicit `banner` and `contentinfo` landmarks because they are direct children of `body`'s wrapper — verify that is still true given `.wrap` sits between them, and if not, add `role="banner"` and `role="contentinfo"` explicitly. Check rather than assume; a `<header>` nested inside a `<div>` is still `banner` only if not scoped to an article or section.
 
