@@ -6,6 +6,7 @@
 
 mod content;
 mod cv;
+mod cv_pdf;
 mod djot;
 mod highlight;
 mod html;
