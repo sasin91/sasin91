@@ -61,6 +61,16 @@ pub struct Contact {
     pub email: String,
 }
 
+impl Contact {
+    /// `phone` with its spaces stripped, for a `tel:` href — RFC 3966 has no
+    /// concept of the visual grouping spaces `+45 50106917` has for a
+    /// reader, and a raw space in the URI is invalid there. `phone` itself
+    /// is left untouched for display, where the spacing helps.
+    pub fn phone_href(&self) -> String {
+        self.phone.replace(' ', "")
+    }
+}
+
 #[derive(Deserialize)]
 pub struct Role {
     pub start: String,
@@ -80,20 +90,17 @@ fn month(m: &str) -> String {
         .unwrap_or_else(|_| m.to_string())
 }
 
-/// "September 2024 – February 2026", or "… – present" while open. Shared by
-/// `Role::period` and `Education::period` — both have the same `start` /
-/// `end: Option<String>` shape.
-fn period(start: &str, end: &Option<String>) -> String {
-    match end {
-        Some(end) => format!("{} – {}", month(start), month(end)),
-        None => format!("{} – present", month(start)),
-    }
-}
-
 impl Role {
-    /// "September 2024 – February 2026", or "… – present" while open.
-    pub fn period(&self) -> String {
-        period(&self.start, &self.end)
+    /// "September 2024", from `start`.
+    pub fn start_label(&self) -> String {
+        month(&self.start)
+    }
+
+    /// "February 2026", from `end` — `None` while the role is still open, so
+    /// a template can tell "ended" from "ongoing" rather than guessing from
+    /// an empty string.
+    pub fn end_label(&self) -> Option<String> {
+        self.end.as_deref().map(month)
     }
 }
 
@@ -114,9 +121,14 @@ pub struct Education {
 }
 
 impl Education {
-    /// "February 2014 – August 2015", or "… – present" while open.
-    pub fn period(&self) -> String {
-        period(&self.start, &self.end)
+    /// "February 2014", from `start`.
+    pub fn start_label(&self) -> String {
+        month(&self.start)
+    }
+
+    /// "August 2015", from `end` — `None` while ongoing.
+    pub fn end_label(&self) -> Option<String> {
+        self.end.as_deref().map(month)
     }
 }
 

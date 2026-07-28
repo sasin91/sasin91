@@ -10,7 +10,7 @@
       <p class="lede">{{ cv.site.title }}</p>
       <p class="cv-contact">
         {{ cv.contact.town }}, {{ cv.contact.postcode }}
-        · <a href="tel:{{ cv.contact.phone }}">{{ cv.contact.phone }}</a>
+        · <a href="tel:{{ cv.contact.phone_href() }}">{{ cv.contact.phone }}</a>
         · <a href="mailto:{{ cv.contact.email }}">{{ cv.contact.email }}</a>
         · <a href="{{ cv.site.links.github }}">GitHub</a>
         · <a href="{{ cv.site.links.linkedin }}">LinkedIn</a>
@@ -26,7 +26,12 @@
       <article class="cv-role">
         <h3>{{ role.title }} · {{ role.company }}</h3>
         <p class="meta">
-          <time datetime="{{ role.start }}">{{ role.period() }}</time>
+          <time datetime="{{ role.start }}">{{ role.start_label() }}</time>
+          {% if let Some(end) = role.end %}
+            – <time datetime="{{ end }}">{{ role.end_label().unwrap() }}</time>
+          {% else %}
+            – present
+          {% endif %}
           — {{ role.location }}
         </p>
         <p>{{ role.summary }}</p>
@@ -55,7 +60,12 @@
       <article class="cv-role">
         <h3>{{ education.title }} · {{ education.school }}</h3>
         <p class="meta">
-          <time datetime="{{ education.start }}">{{ education.period() }}</time>
+          <time datetime="{{ education.start }}">{{ education.start_label() }}</time>
+          {% if let Some(end) = education.end %}
+            – <time datetime="{{ end }}">{{ education.end_label().unwrap() }}</time>
+          {% else %}
+            – present
+          {% endif %}
           — {{ education.location }}
         </p>
         {% if let Some(note) = education.note %}

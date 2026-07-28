@@ -8,6 +8,12 @@
   <p class="lede">{{ cv.site.title }}. {{ cv.site.available_note }}.</p>
   <p class="stack">{{ cv.site.stack }}</p>
 
+  <p>
+    I'm currently building <a href="/blog/athletos-freebsd/">AthletOS</a>, a
+    training app with a Rust backend running on a single FreeBSD box. This is
+    where I write about infrastructure and what broke along the way.
+  </p>
+
   {% for paragraph in cv.intro %}
     <p>{{ paragraph }}</p>
   {% endfor %}
