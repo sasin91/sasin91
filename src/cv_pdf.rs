@@ -163,6 +163,31 @@ fn meta(start: &str, end: Option<String>, location: &str) -> String {
     format!("{start} \u{2013} {end} \u{2014} {location}")
 }
 
+/// The heading's own lines, with the vertical gap that precedes every
+/// section already applied to the cursor. Returned rather than placed so the
+/// caller can fold it into one `place_together` unit together with whatever
+/// follows: measuring the heading alone -- even against a heuristic buffer
+/// for "a first line of content" -- can't see whether the actual next block
+/// fits, so a heading can still be orphaned one call frame later. Measuring
+/// heading and first block together removes the heuristic instead of tuning it.
+fn section_heading(cursor: &mut Cursor, title: &str) -> Vec<Line> {
+    cursor.gap(pt(10.0));
+    lines(title, Font::HelveticaBold, 11.0, 16.0, 0.0, 0.0)
+}
+
+/// Fold `gap_mm` into the first line of `block`, then append `block` onto
+/// `heading`. The combined vector's total leading is exactly what placing the
+/// heading, then `Cursor::gap(gap_mm)`, then `block` in sequence would have
+/// consumed, so handing it to `Cursor::place_together` measures heading and
+/// first block as a single unbreakable unit.
+fn keep_with_heading(mut heading: Vec<Line>, gap_mm: f32, mut block: Vec<Line>) -> Vec<Line> {
+    if let Some(first) = block.first_mut() {
+        first.leading_mm += gap_mm;
+    }
+    heading.append(&mut block);
+    heading
+}
+
 /// A role or education entry as one keep-together block.
 fn entry(heading: &str, meta_line: &str, body: Option<&str>, bullets: &[String]) -> Vec<Line> {
     let mut block = lines(heading, Font::HelveticaBold, 10.5, 14.0, 0.0, 0.0);
@@ -227,36 +252,58 @@ fn layout(cv: &Cv) -> Vec<Page> {
         cursor.gap(pt(4.0));
     }
 
-    section(&mut cursor, "Experience");
-    for role in &cv.roles {
-        cursor.place_together(&entry(
+    let role_block = |role: &crate::cv::Role| {
+        entry(
             &format!("{} \u{b7} {}", role.title, role.company),
             &meta(&role.start_label(), role.end_label(), &role.location),
             Some(&role.summary),
             &role.achievements,
-        ));
+        )
+    };
+    let heading_lines = section_heading(&mut cursor, "Experience");
+    let mut roles = cv.roles.iter();
+    match roles.next() {
+        Some(first) => {
+            cursor.place_together(&keep_with_heading(
+                heading_lines,
+                pt(3.0),
+                role_block(first),
+            ));
+            cursor.gap(pt(6.0));
+        }
+        None => cursor.place(&heading_lines),
+    }
+    for role in roles {
+        cursor.place_together(&role_block(role));
         cursor.gap(pt(6.0));
     }
 
-    section(&mut cursor, "Skills");
-    for skill in &cv.skills {
-        cursor.place(&lines(
+    let skill_block = |skill: &crate::cv::Skill| {
+        lines(
             &format!("\u{2022}  {}", skill.name),
             Font::Helvetica,
             10.0,
             14.0,
             BULLET_INDENT_MM,
             BULLET_INDENT_MM,
-        ));
+        )
+    };
+    let heading_lines = section_heading(&mut cursor, "Skills");
+    let mut skills = cv.skills.iter();
+    match skills.next() {
+        Some(first) => cursor.place_together(&keep_with_heading(
+            heading_lines,
+            pt(3.0),
+            skill_block(first),
+        )),
+        None => cursor.place(&heading_lines),
+    }
+    for skill in skills {
+        cursor.place(&skill_block(skill));
     }
 
-    section(&mut cursor, "Education");
-    if let Some(note) = &cv.education_note {
-        cursor.place(&lines(note, Font::Helvetica, 10.0, 14.0, 0.0, 0.0));
-        cursor.gap(pt(4.0));
-    }
-    for education in &cv.education {
-        cursor.place_together(&entry(
+    let edu_block = |education: &crate::cv::Education| {
+        entry(
             &format!("{} \u{b7} {}", education.title, education.school),
             &meta(
                 &education.start_label(),
@@ -265,8 +312,30 @@ fn layout(cv: &Cv) -> Vec<Page> {
             ),
             education.note.as_deref(),
             &[],
-        ));
-        cursor.gap(pt(6.0));
+        )
+    };
+    let heading_lines = section_heading(&mut cursor, "Education");
+    if let Some(note) = &cv.education_note {
+        let note_block = lines(note, Font::Helvetica, 10.0, 14.0, 0.0, 0.0);
+        cursor.place_together(&keep_with_heading(heading_lines, pt(3.0), note_block));
+        cursor.gap(pt(4.0));
+        for education in &cv.education {
+            cursor.place_together(&edu_block(education));
+            cursor.gap(pt(6.0));
+        }
+    } else {
+        let mut educations = cv.education.iter();
+        match educations.next() {
+            Some(first) => {
+                cursor.place_together(&keep_with_heading(heading_lines, pt(3.0), edu_block(first)));
+                cursor.gap(pt(6.0));
+            }
+            None => cursor.place(&heading_lines),
+        }
+        for education in educations {
+            cursor.place_together(&edu_block(education));
+            cursor.gap(pt(6.0));
+        }
     }
 
     cursor.finish()
@@ -276,27 +345,6 @@ fn layout(cv: &Cv) -> Vec<Page> {
 pub fn render(cv: &Cv) -> Vec<u8> {
     let title = format!("{} \u{2014} CV", cv.site.name);
     write_pdf(&title, PAGE_W_MM, PAGE_H_MM, &layout(cv))
-}
-
-/// A section heading. `break-after: avoid` from the print stylesheet, done by
-/// reserving room for the heading plus a first line of content: a heading
-/// stranded alone at the foot of a page reads as a section with nothing in it.
-///
-/// This breaks the page directly rather than delegating to
-/// `Cursor::place_together`: `place_together` measures only the heading's own
-/// height, so when the room left is between that height and `needed` it
-/// declines to break, the heading lands on the old page, and the first
-/// content line then overflows onto a new one -- the exact orphan this
-/// function exists to prevent.
-fn section(cursor: &mut Cursor, title: &str) {
-    cursor.gap(pt(10.0));
-    let heading = lines(title, Font::HelveticaBold, 11.0, 16.0, 0.0, 0.0);
-    let needed: f32 = heading.iter().map(|l| l.leading_mm).sum::<f32>() + pt(14.0) * 2.0;
-    if cursor.remaining_mm() < needed {
-        cursor.break_page();
-    }
-    cursor.place(&heading);
-    cursor.gap(pt(3.0));
 }
 
 #[cfg(test)]
@@ -482,22 +530,78 @@ mod tests {
         }
     }
 
-    #[test]
-    fn the_pdf_carries_the_name_and_contact_details() {
-        let cv = real_cv();
-        let text = rendered_text(&cv);
-        assert!(text.contains(&cv.site.name));
-        assert!(text.contains(&cv.contact.town));
-        assert!(text.contains(&cv.contact.email));
+    /// The placements `layout` produces, joined with a separator that a
+    /// wrapped fragment can never straddle -- each `Placement` is already one
+    /// wrapped line, so joining them the way the two-word boundary between
+    /// lines already works (a hard break, never a space) keeps a short opening
+    /// fragment from false-matching across two unrelated lines.
+    fn placement_text(cv: &Cv) -> String {
+        layout(cv)
+            .into_iter()
+            .flat_map(|page| page.placements.into_iter().map(|p| p.text))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
-    /// Wrapping breaks achievements across lines, so a whole sentence will not
-    /// appear contiguously. Checking the first few words of each is enough to
-    /// prove no entry was dropped.
+    /// The opening `words` words of `text`, exactly as `the_pdf_carries_every_role_and_achievement`'s
+    /// predecessor checked achievements: short enough to survive wrapping onto
+    /// one line, long enough that a coincidence elsewhere in the CV is
+    /// implausible.
+    fn opening(text: &str, words: usize) -> String {
+        text.split_whitespace()
+            .take(words)
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// Every field that reaches the page must actually be there -- not a
+    /// sample of them. Built from `layout()`, not from rendered PDF bytes:
+    /// `education.title` ("Strøm, styring & IT") and `role.location`
+    /// ("Næstved", "Høng") carry Danish letters that `write_pdf` encodes as
+    /// single WinAnsi/latin-1 bytes (0xF8 for 'ø', for instance), and
+    /// `String::from_utf8_lossy` turns an isolated byte like that into
+    /// U+FFFD -- a byte-search over rendered PDF text would fail on those
+    /// fields for the wrong reason.
+    ///
+    /// Contact and links are checked against the exact composed line
+    /// `layout` builds, not a bare substring of one field: `cv.contact.town`
+    /// ("Slagelse") and `cv.site.title` ("Software developer") each recur
+    /// elsewhere in the CV (a role's location, a role's title), so a bare
+    /// substring check still passes even if the contact line itself were
+    /// dropped from the layout entirely. Role and education entries are
+    /// checked the same way, against their full `meta()` line, for the same
+    /// reason: "Copenhagen" and "Slagelse" each appear as more than one
+    /// entry's location.
     #[test]
-    fn the_pdf_carries_every_role_and_achievement() {
+    fn the_pdf_carries_every_field_that_layout_places() {
         let cv = real_cv();
-        let text = rendered_text(&cv);
+        let text = placement_text(&cv);
+
+        assert!(
+            text.contains(&cv.site.name),
+            "missing name: {}",
+            cv.site.name
+        );
+        assert!(
+            text.contains(&cv.site.title),
+            "missing site title: {}",
+            cv.site.title
+        );
+
+        let contact = format!(
+            "{}, {} \u{b7} {} \u{b7} {}",
+            cv.contact.town, cv.contact.postcode, cv.contact.phone, cv.contact.email
+        );
+        assert!(text.contains(&contact), "missing contact line: {contact}");
+
+        let links = format!("{} \u{b7} {}", cv.site.links.github, cv.site.links.linkedin);
+        assert!(text.contains(&links), "missing links line: {links}");
+
+        for paragraph in &cv.intro {
+            let frag = opening(paragraph, 5);
+            assert!(text.contains(&frag), "missing intro paragraph: {frag}");
+        }
+
         for role in &cv.roles {
             assert!(
                 text.contains(&role.company),
@@ -505,30 +609,53 @@ mod tests {
                 role.company
             );
             assert!(text.contains(&role.title), "missing title: {}", role.title);
+            let meta_line = meta(&role.start_label(), role.end_label(), &role.location);
+            assert!(
+                text.contains(&meta_line),
+                "missing role meta line: {meta_line}"
+            );
+            let summary = opening(&role.summary, 4);
+            assert!(text.contains(&summary), "missing role summary: {summary}");
             for achievement in &role.achievements {
-                let opening: String = achievement
-                    .split_whitespace()
-                    .take(4)
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                assert!(text.contains(&opening), "missing achievement: {opening}");
+                let frag = opening(achievement, 4);
+                assert!(text.contains(&frag), "missing achievement: {frag}");
             }
         }
+
+        for skill in &cv.skills {
+            let frag = opening(&skill.name, 3);
+            assert!(text.contains(&frag), "missing skill: {frag}");
+        }
+
         for education in &cv.education {
+            assert!(
+                text.contains(&education.title),
+                "missing education title: {}",
+                education.title
+            );
             assert!(
                 text.contains(&education.school),
                 "missing school: {}",
                 education.school
             );
+            let meta_line = meta(
+                &education.start_label(),
+                education.end_label(),
+                &education.location,
+            );
+            assert!(
+                text.contains(&meta_line),
+                "missing education meta line: {meta_line}"
+            );
+            if let Some(note) = &education.note {
+                let frag = opening(note, 4);
+                assert!(text.contains(&frag), "missing education note: {frag}");
+            }
         }
-        for skill in &cv.skills {
-            let opening: String = skill
-                .name
-                .split_whitespace()
-                .take(3)
-                .collect::<Vec<_>>()
-                .join(" ");
-            assert!(text.contains(&opening), "missing skill: {opening}");
+
+        if let Some(note) = &cv.education_note {
+            let frag = opening(note, 4);
+            assert!(text.contains(&frag), "missing education_note: {frag}");
         }
     }
 
@@ -544,48 +671,21 @@ mod tests {
     /// becomes '?' on a document sent to employers. An em dash or a curly
     /// apostrophe pasted into content/cv.toml must fail here, not in someone's
     /// inbox.
+    ///
+    /// Driven off `layout()`'s placements rather than an enumerated field
+    /// list: a field list drifts the moment a new one starts reaching the
+    /// page (`site.links.github`/`linkedin` and `education_note` were both
+    /// rendered without ever being checked here), while every placement is,
+    /// by construction, every character that ships.
     #[test]
     fn every_character_in_the_real_cv_is_representable() {
-        let src = std::fs::read_to_string("content/cv.toml").expect("content/cv.toml");
-        let cv: Cv = toml::from_str(&src).expect("content/cv.toml must parse");
-        let mut strings: Vec<&str> = vec![
-            &cv.site.name,
-            &cv.site.title,
-            &cv.contact.town,
-            &cv.contact.postcode,
-            &cv.contact.phone,
-            &cv.contact.email,
-        ];
-        strings.extend(cv.intro.iter().map(String::as_str));
-        for role in &cv.roles {
-            strings.extend([
-                role.title.as_str(),
-                role.company.as_str(),
-                role.location.as_str(),
-                role.summary.as_str(),
-            ]);
-            strings.extend(role.achievements.iter().map(String::as_str));
-        }
-        for education in &cv.education {
-            strings.extend([
-                education.title.as_str(),
-                education.school.as_str(),
-                education.location.as_str(),
-            ]);
-            if let Some(note) = &education.note {
-                strings.push(note);
-            }
-        }
-        for skill in &cv.skills {
-            strings.push(&skill.name);
-        }
-
-        for s in strings {
-            for c in s.chars() {
+        for placement in layout(&real_cv()).iter().flat_map(|page| &page.placements) {
+            for c in placement.text.chars() {
                 assert!(
                     crate::pdf::winansi_byte(c).is_some(),
-                    "{c:?} (U+{:04X}) in {s:?} has no WinAnsi form and would ship as '?'",
-                    c as u32
+                    "{c:?} (U+{:04X}) in {:?} has no WinAnsi form and would ship as '?'",
+                    c as u32,
+                    placement.text
                 );
             }
         }
