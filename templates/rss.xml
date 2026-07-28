@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>{{ cv.site.name }}</title>
     <link>{{ base }}</link>
     <description>{{ cv.site.title }}</description>
+    <language>en</language>
+    <lastBuildDate>{{ last_build_date }}</lastBuildDate>
+    <atom:link href="{{ base }}/rss.xml" rel="self" type="application/rss+xml" />
 {%- for post in posts %}
     <item>
       <title>{{ post.title }}</title>

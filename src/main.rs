@@ -97,6 +97,10 @@ struct Feed<'a> {
     cv: &'a Cv,
     posts: &'a [Post],
     base: &'a str,
+    /// The newest post's date, RFC 2822. Deliberately not the wall clock at
+    /// build time — that would make output non-deterministic and defeat the
+    /// stable post ordering in `content::load_posts`.
+    last_build_date: &'a str,
 }
 
 #[derive(Template)]
@@ -201,12 +205,14 @@ fn main() -> Result<()> {
         )?;
     }
 
+    let last_build_date = posts.first().map(|p| p.date_rfc2822()).unwrap_or_default();
     write(
         format!("{OUT}/rss.xml"),
         &Feed {
             cv: &cv,
             posts: &posts,
             base: BASE_URL,
+            last_build_date: &last_build_date,
         }
         .render()?,
     )?;
