@@ -712,21 +712,31 @@ The audit measured dark diagram panels at 16.6:1 against the page and solarized 
 
 - [ ] **Step 1: Give code blocks a region in light mode**
 
+**Read `static/site.css` before editing.** `.codeblock` (around line 292)
+already declares `border`, `border-radius` and `overflow`, and
+`.codeblock pre.hl-code` (around line 304) already exists. Do not re-declare
+either — amend them in place. Only the *unwrapped* block is missing a border,
+because a titled block gets one from its wrapper.
+
+Add a border to the bare `pre.hl-code` rule that already exists:
+
 ```css
-/* The code block must read as an object. Solarized cream on a near-white page
-   is 1.06:1 on its own, which is not a region at all. */
+/* Solarized cream on a near-white page is 1.06:1, so an unwrapped block does
+   not read as an object at all. A titled block gets its border from
+   .codeblock instead. */
 pre.hl-code {
+  /* ...existing declarations... */
   border: 1px solid var(--rule);
 }
+```
 
-.codeblock {
-  border: 1px solid var(--rule);
-  border-radius: 7px;
-  overflow: hidden;
-}
+And add one declaration to the existing `.codeblock pre.hl-code` rule, so a
+framed block does not draw two borders:
 
-/* Inside a frame the pre already has the wrapper's border. */
+```css
 .codeblock pre.hl-code {
+  margin: 0;
+  border-radius: 0;
   border: none;
 }
 ```
@@ -735,11 +745,17 @@ pre.hl-code {
 
 The Trongate logo is a near-white artwork that vanishes on the light page. Give it the same treatment as the diagrams so dark-designed media reads as one deliberate family:
 
+Note `.prose img` already sets `border-radius: 6px` while the diagram frame
+uses `7px`. Unify them on `7px` so framed media matches.
+
 ```css
+/* The Trongate logo is a near-white artwork that disappears on the light page.
+   Giving raster media the same frame as the diagrams makes dark-designed
+   media read as one deliberate family. Inlined SVGs are not <img> and are
+   handled by .diagram. */
 .prose img[src$=".png"],
 .prose img[src$=".webp"] {
   border: 1px solid var(--rule);
-  border-radius: 7px;
   background: var(--diagram-bg);
 }
 ```
