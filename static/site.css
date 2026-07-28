@@ -373,3 +373,34 @@ pre.hl-code code {
 math {
   font-size: 1.05em;
 }
+
+/* ---- focus ----
+   The audit found no focus styles at all: keyboard users got only the browser
+   default, which `text-decoration: none` on nav links made worse. */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Only suppress the ring for pointer users, never for keyboard. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  padding: 0.6rem 1rem;
+  background: var(--bg);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 0 0 5px 0;
+  z-index: 10;
+}
+
+.skip-link:focus {
+  left: 0;
+}
