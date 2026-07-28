@@ -65,8 +65,17 @@ impl Highlighter {
              @media (prefers-color-scheme: dark) {{\n\
              :root:not([data-theme=\"light\"]) {{\n{}\n}}\n\
              }}\n\
-             /* An explicit dark choice, whatever the OS says. */\n\
-             :root[data-theme=\"dark\"] {{\n{}\n}}\n",
+             /* An explicit dark choice, whatever the OS says -- but only on\n\
+                screen. site.css forces `color-scheme: light !important` in\n\
+                its print block so a saved dark theme still prints light, but\n\
+                `color-scheme` cannot reach syntax highlighting: this rule is\n\
+                an attribute selector, not something routed through\n\
+                light-dark(), so without the @media screen guard it would\n\
+                keep outranking print's :root and put a near-black code\n\
+                background on a printed page. */\n\
+             @media screen {{\n\
+             :root[data-theme=\"dark\"] {{\n{}\n}}\n\
+             }}\n",
             css_for_theme_with_class_style(light, STYLE)?,
             dark_css,
             dark_css,
@@ -138,5 +147,28 @@ mod tests {
 
         // The explicit dark choice, independent of the OS.
         assert!(css.contains("[data-theme=\"dark\"]"), "got: {css}");
+    }
+
+    #[test]
+    fn the_explicit_dark_override_is_scoped_to_screen_so_print_can_win() {
+        // color-scheme (site.css's print block) cannot influence this
+        // attribute selector, so it must be confined to @media screen
+        // instead -- otherwise a printed page still gets the dark code
+        // background even though every other surface printed light.
+        let hl = Highlighter::new();
+        let css = hl
+            .stylesheet("Solarized (light)", "base16-ocean.dark")
+            .unwrap();
+
+        let screen_start = css
+            .find("@media screen")
+            .expect("dark override must live inside an @media screen block");
+        let dark_selector = css
+            .find(":root[data-theme=\"dark\"]")
+            .expect("dark override selector missing");
+        assert!(
+            dark_selector > screen_start,
+            "[data-theme=\"dark\"] must be nested inside @media screen, got: {css}"
+        );
     }
 }
