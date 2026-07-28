@@ -1,5 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 330" width="1200" height="330" role="img" aria-label="Timeline of a rolling deploy: green is stopped and restarted in the first two seconds while blue keeps serving, then blue is rolled while green serves. Five seconds total, never zero healthy backends.">
   <defs>
+    <!-- Standalone only, see architecture.svg for why svg:root, not
+         :root, and why it must stay scoped this way. -->
+    <style>svg:root { color-scheme: dark; }</style>
     <linearGradient id="d-panel" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
       <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>

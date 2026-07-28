@@ -1,5 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 470" width="1200" height="470" role="img" aria-label="One FreeBSD box: Caddy terminating TLS in front of two always-running jails, blue and green, with Postgres on the host outside the release cycle">
   <defs>
+    <!-- Standalone only: when this SVG is the document root (opened via
+         file://, not inlined), `svg:root` matches and forces color-scheme
+         to dark so the bare light-dark() calls on the data marks resolve
+         to the same half as the var() chrome fallbacks above, both sides
+         of the original dark design, together. `svg:root` never matches
+         once this file is inlined into a page (there `:root` is <html>),
+         so this has zero effect there; an unscoped `:root` selector would
+         have matched <html> too and forced the whole site dark. -->
+    <style>svg:root { color-scheme: dark; }</style>
     <linearGradient id="a-panel" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
       <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>

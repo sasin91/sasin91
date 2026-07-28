@@ -1,5 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400" role="img" aria-label="Memory use on a 3.86 GB box with everything running: about 1.67 GB in use across ARC, Postgres, two SvelteKit processes, Caddy and two API processes, leaving 2.19 GB free.">
   <defs>
+    <!-- Standalone only, see architecture.svg for why svg:root, not
+         :root, and why it must stay scoped this way. -->
+    <style>svg:root { color-scheme: dark; }</style>
     <linearGradient id="f-panel" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/><stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
     </linearGradient>
