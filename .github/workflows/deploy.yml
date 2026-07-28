@@ -58,11 +58,37 @@ jobs:
             http://127.0.0.1:8123/cv/
           test -s public/cv.pdf
 
-      - name: Fail if any JavaScript slipped in
+      # The rule is "no JavaScript is REQUIRED to read anything", not "no
+      # JavaScript". The theme toggle is the one exception: two inline scripts
+      # per page, a pre-paint snippet and a click handler. This guard used to
+      # demand zero <script> tags and started failing the moment the toggle
+      # landed, blocking every deploy — so it now enforces the actual rule.
+      - name: Fail if unexpected JavaScript slipped in
         run: |
-          count=$(grep -ro '<script' public --include=*.html | wc -l)
-          echo "script tags: $count"
-          test "$count" -eq 0
+          set -euo pipefail
+
+          # An external script is the thing that would genuinely gate reading:
+          # a CDN that is slow, blocked or gone takes the page with it.
+          external=$(grep -ro '<script[^>]*src=' public --include=*.html | wc -l)
+          echo "external scripts: $external"
+          if [ "$external" -ne 0 ]; then
+            grep -ro '<script[^>]*src=[^>]*>' public --include=*.html
+            echo "no external scripts are allowed"
+            exit 1
+          fi
+
+          # Every HTML page should carry exactly the two toggle scripts.
+          # More means something new arrived without anyone deciding to add it.
+          fail=0
+          while IFS= read -r page; do
+            n=$(grep -o '<script' "$page" | wc -l)
+            if [ "$n" -ne 2 ]; then
+              echo "$page has $n inline scripts, expected 2"
+              fail=1
+            fi
+          done < <(find public -name '*.html')
+          test "$fail" -eq 0
+          echo "every page carries exactly the two theme-toggle scripts"
 
       - name: Fail if a required URL is missing
         run: |
