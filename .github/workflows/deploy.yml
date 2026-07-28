@@ -69,7 +69,14 @@ jobs:
 
           # An external script is the thing that would genuinely gate reading:
           # a CDN that is slow, blocked or gone takes the page with it.
-          external=$(grep -ro '<script[^>]*src=' public --include=*.html | wc -l)
+          #
+          # grep exits 1 when it finds no matches -- which is the PASSING case
+          # here (zero external scripts). Under `set -o pipefail` that exit
+          # code propagates through the pipe to `wc -l`, and `set -e` then
+          # kills the step before the echo below ever runs, so the guard
+          # aborted silently on every green build. `|| true` neutralises that
+          # so a real match count (including zero) reaches `wc -l`.
+          external=$({ grep -ro '<script[^>]*src=' public --include=*.html || true; } | wc -l)
           echo "external scripts: $external"
           if [ "$external" -ne 0 ]; then
             grep -ro '<script[^>]*src=[^>]*>' public --include=*.html
@@ -81,7 +88,11 @@ jobs:
           # More means something new arrived without anyone deciding to add it.
           fail=0
           while IFS= read -r page; do
-            n=$(grep -o '<script' "$page" | wc -l)
+            # Same grep-exits-1-on-no-match trap as above: a page that lost
+            # both its toggle scripts (n=0) is exactly the failure this loop
+            # exists to catch, and without `|| true` it would abort here
+            # before ever reporting that.
+            n=$({ grep -o '<script' "$page" || true; } | wc -l)
             if [ "$n" -ne 2 ]; then
               echo "$page has $n inline scripts, expected 2"
               fail=1
