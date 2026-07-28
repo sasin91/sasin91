@@ -94,7 +94,8 @@ pub fn split_frontmatter(source: &str) -> Result<(FrontMatter, &str)> {
 pub fn load_posts(dir: &Path, render: impl Fn(&str) -> Result<String>) -> Result<Vec<Post>> {
     let mut posts = Vec::new();
 
-    for entry in WalkDir::new(dir).into_iter().filter_map(Result::ok) {
+    for entry in WalkDir::new(dir) {
+        let entry = entry.with_context(|| format!("walking {}", dir.display()))?;
         if entry.path().extension().is_none_or(|e| e != "dj") {
             continue;
         }

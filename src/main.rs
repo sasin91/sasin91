@@ -115,7 +115,10 @@ fn write(path: impl AsRef<Path>, contents: &str) -> Result<()> {
 }
 
 fn copy_static() -> Result<()> {
-    for entry in WalkDir::new("static").into_iter().filter_map(Result::ok) {
+    let mut copied = 0usize;
+
+    for entry in WalkDir::new("static") {
+        let entry = entry.context("walking static/ (is it missing or unreadable?)")?;
         if !entry.file_type().is_file() {
             continue;
         }
@@ -127,7 +130,15 @@ fn copy_static() -> Result<()> {
         }
         fs::copy(entry.path(), &dest)
             .with_context(|| format!("copying {} to {}", entry.path().display(), dest.display()))?;
+        copied += 1;
     }
+
+    anyhow::ensure!(
+        copied > 0,
+        "static/ produced zero files — refusing to build with an empty asset set \
+         (a deploy would delete every live asset)"
+    );
+
     Ok(())
 }
 

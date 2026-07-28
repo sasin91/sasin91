@@ -13,9 +13,30 @@ permissions:
   contents: read
 
 jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+      - name: Test
+        run: cargo test
+
   deploy:
     name: Build and deploy
+    needs: check
     runs-on: ubuntu-latest
+    # workflow_dispatch can be run against any ref from the Actions UI; without
+    # this guard a manual run on a feature branch would still rsync --delete
+    # that branch's public/ over the live site.
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable

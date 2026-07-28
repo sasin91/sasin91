@@ -5,9 +5,12 @@ CI builds the site on Linux and rsyncs `public/` to
 The site builder binary never runs on the server.
 
 The workflow lives at `.github/workflows/deploy.yml`. It runs on every push
-to `main` (and on demand via `workflow_dispatch`), and refuses to deploy if
-either guard fails: any `<script` tag found under `public/`, or any of the
-seven required URLs missing from the build output.
+to `main` (and on demand via `workflow_dispatch`, restricted to the `main`
+ref), and the `deploy` job `needs:` a `check` job that runs `cargo fmt
+--check`, `cargo clippy -- -D warnings` and `cargo test` first — none of
+those may fail. It also refuses to deploy if either build-time guard fails:
+any `<script` tag found under `public/`, or any of the seven required URLs
+missing from the build output.
 
 ## Repository secrets
 
@@ -62,5 +65,19 @@ for u in / /about/ /blog /blog/trongate /blog/trongate/mx-transition \
 done
 ```
 
-Expected: `200` for every line. A `404` on `/blog/trongate` means the
+Expected: `200` for every line, except `/blog` and `/blog/trongate` — those
+two are deliberately requested *without* their trailing slash, and
+`try_files {path} {path}/ {path}/index.html` matches them on the `{path}/`
+candidate, i.e. as a directory. Caddy's `file_server` canonicalizes a
+directory match by redirecting to the trailing-slash URL, so `308` is the
+expected response there too (this follows from Caddy's documented
+directory-canonicalization behaviour; it has not been exercised against a
+running Caddy instance, so treat it as expected, not confirmed). A `308` is
+fine to accept as a pass: browsers and search engines follow it
+automatically, and the site's own internal links, RSS and sitemap all
+already use trailing slashes, so only inbound legacy links (old bookmarks,
+stale search results) ever hit the redirect. If a redirect-free response is
+wanted instead, reorder the directive to
+`try_files {path}/index.html {path} {path}/` so the index file is served
+directly before the bare path is tried. A `404` on any line still means the
 `try_files` directive is wrong or missing.
