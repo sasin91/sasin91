@@ -1,3 +1,10 @@
+intro = [
+  "I have been working with PHP and Laravel since 2015 and since then I have helped develop a ticketing agency, a video streaming platform and a recruitment platform.",
+  "I enjoy designing and delivering customized and solid solutions, but also takes support and listening to user requests and issues with a smile.",
+]
+
+education_note = "Two short-cycle higher educations."
+
 [site]
 name = "Jonas Hansen"
 title = "Software developer"
@@ -103,3 +110,4 @@ end = "2013-08"
 title = "Strøm, styring & IT"
 school = "Selandia CEU"
 location = "Slagelse"
+note = "Including Cisco CCNA and IP based network management."

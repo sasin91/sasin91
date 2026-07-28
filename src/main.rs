@@ -26,9 +26,14 @@ const BASE_URL: &str = "https://sasin91.xyz";
 pub struct Cv {
     pub site: Profile,
     pub contact: Contact,
+    pub intro: Vec<String>,
     pub roles: Vec<Role>,
     pub skills: Vec<Skill>,
     pub education: Vec<Education>,
+    /// Descriptor for the education section as a whole (e.g. "Two
+    /// short-cycle higher educations."), not tied to any single entry.
+    #[serde(default)]
+    pub education_note: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -97,6 +102,8 @@ pub struct Education {
     pub title: String,
     pub school: String,
     pub location: String,
+    #[serde(default)]
+    pub note: Option<String>,
 }
 
 impl Education {
