@@ -15,15 +15,20 @@ cargo run --release      # writes ./public
 ```sh
 cargo install watchexec-cli                    # once
 watchexec -e dj,html,css,rs,toml -- cargo run  # rebuild on change
-python -m http.server 8000                     # serve, in another shell
+python -m http.server 8000 --directory public  # serve, in another shell
 ```
 
-Serve from the repo root, not from inside `public/`. Every build removes and
-recreates `public/`, and a server whose working directory is `public/` holds
-that directory open — on Windows this blocks the removal outright ("os error
-32: file in use by another process"). Serving from the repo root avoids the
-collision; pages are then at `http://localhost:8000/public/...` instead of
-`http://localhost:8000/...`.
+Note `--directory public` rather than `cd public`. Two problems it solves at
+once:
+
+- Every build removes and recreates `public/`, and a server whose *working
+  directory* is `public/` holds it open — on Windows that blocks the removal
+  outright ("os error 32: file in use by another process"). With `--directory`
+  the process stays in the repo root, so the build is free to wipe the output.
+- Pages link their assets root-absolutely (`/site.css`). Serving the repo root
+  and browsing `/public/index.html` therefore renders the page **unstyled**,
+  because `/site.css` does not exist at that level. `--directory public` makes
+  `public/` the document root, so those links resolve.
 
 A post is one `.dj` file under `content/blog/` with a `+++` TOML header. The
 `path` key is the URL, and is deliberately not derived from the filename — this
