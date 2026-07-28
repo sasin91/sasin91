@@ -62,7 +62,7 @@ pub fn render_with_assets(source: &str, hl: &Highlighter, assets: &Path) -> Resu
                 buffer.clear();
             }
 
-            // A local `.svg` image: capture its alt text (the `Str` events
+            // A local `.svg` image: capture its alt text (every event
             // between here and the matching `End`) instead of emitting the
             // usual `<img>` Start/End pair.
             Event::Start(Container::Image(ref dst, _), _) if is_local_svg(dst) => {
@@ -82,8 +82,16 @@ pub fn render_with_assets(source: &str, hl: &Highlighter, assets: &Path) -> Resu
                 buffer.clear();
             }
 
+            // Everything else while we are inside an image being inlined
+            // belongs to its alt text and must be captured or discarded here
+            // -- never emitted -- or smart-typography atoms (quotes, dashes,
+            // ellipsis, ...), which jotdown represents as their own event
+            // variants rather than `Str`, leak as loose characters into the
+            // page and vanish from the accessible name.
+            event if inlining_svg => push_alt_text(&mut buffer, event),
+
             // Text belonging to a block we are capturing, rather than prose.
-            Event::Str(text) if code.is_some() || display_math.is_some() || inlining_svg => {
+            Event::Str(text) if code.is_some() || display_math.is_some() => {
                 buffer.push_str(&text);
             }
 
@@ -101,6 +109,50 @@ pub fn render_with_assets(source: &str, hl: &Highlighter, assets: &Path) -> Resu
 /// `<img>` rendering.
 fn is_local_svg(dst: &str) -> bool {
     dst.starts_with('/') && dst.ends_with(".svg")
+}
+
+/// Flatten one event from inside an inlined image's alt text into plain
+/// text. jotdown represents smart-typography output (curly quotes, dashes,
+/// ellipsis, non-breaking space) as their own zero-payload event variants
+/// rather than `Event::Str`, so they need mapping to the literal characters
+/// jotdown's own HTML renderer would produce for them (verified against the
+/// examples in jotdown's doc comments). Nested containers (emphasis, spans,
+/// ...) contribute no text of their own -- their contents arrive as
+/// separate `Str` events -- so their `Start`/`End` are dropped here, along
+/// with anything else with no sensible flat-text meaning. Every variant is
+/// matched explicitly, plus a defensive wildcard, so a future jotdown
+/// variant this code does not know about is dropped rather than leaked into
+/// the page as an unescaped `other` event.
+fn push_alt_text(buffer: &mut String, event: Event) {
+    match event {
+        Event::Str(text) => buffer.push_str(&text),
+        Event::Symbol(name) => {
+            buffer.push(':');
+            buffer.push_str(&name);
+            buffer.push(':');
+        }
+        Event::LeftSingleQuote => buffer.push('\u{2018}'),
+        Event::RightSingleQuote => buffer.push('\u{2019}'),
+        Event::LeftDoubleQuote => buffer.push('\u{201c}'),
+        Event::RightDoubleQuote => buffer.push('\u{201d}'),
+        Event::Ellipsis => buffer.push('\u{2026}'),
+        Event::EnDash => buffer.push('\u{2013}'),
+        Event::EmDash => buffer.push('\u{2014}'),
+        Event::NonBreakingSpace => buffer.push('\u{00a0}'),
+        Event::Softbreak | Event::Hardbreak => buffer.push(' '),
+        // Zero-width, structural, or otherwise contributing no flat text.
+        Event::Escape
+        | Event::Start(..)
+        | Event::End(..)
+        | Event::FootnoteReference(_)
+        | Event::Blankline
+        | Event::ThematicBreak(_)
+        | Event::Attributes(_) => {}
+        // Defensive: a jotdown variant added later that this match has not
+        // been taught about must be dropped, not leaked into the page.
+        #[allow(unreachable_patterns)]
+        _ => {}
+    }
 }
 
 /// Splice pre-rendered HTML back into the event stream.
@@ -278,6 +330,69 @@ mod tests {
 
         let result = render_with_assets("![gone](/images/nope.svg)\n", &Highlighter::new(), &dir);
         assert!(result.is_err(), "a broken diagram must not ship silently");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    fn write_test_svg(dir: &std::path::Path) {
+        std::fs::create_dir_all(dir.join("images")).unwrap();
+        std::fs::write(
+            dir.join("images/diagram.svg"),
+            r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>"#,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn preserves_an_apostrophe_in_alt_text_without_leaking_a_stray_quote() {
+        let dir = std::env::temp_dir().join(format!("djot-svg-apos-{}", std::process::id()));
+        write_test_svg(&dir);
+
+        let html = render_with_assets(
+            "![the deploy's timeline](/images/diagram.svg)\n",
+            &Highlighter::new(),
+            &dir,
+        )
+        .unwrap();
+
+        let expected_label = "aria-label=\"the deploy\u{2019}s timeline\"";
+        assert!(
+            html.contains(expected_label),
+            "apostrophe must survive as part of the accessible name: {html}"
+        );
+
+        let outside_label = html.replacen(expected_label, "", 1);
+        assert!(
+            !outside_label.contains('\u{2019}'),
+            "no stray quote glyph should leak outside the aria-label: {html}"
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn preserves_double_quotes_in_alt_text_without_leaking_stray_quotes() {
+        let dir = std::env::temp_dir().join(format!("djot-svg-quotes-{}", std::process::id()));
+        write_test_svg(&dir);
+
+        let html = render_with_assets(
+            "![just \"quoted\" text](/images/diagram.svg)\n",
+            &Highlighter::new(),
+            &dir,
+        )
+        .unwrap();
+
+        let expected_label = "aria-label=\"just \u{201c}quoted\u{201d} text\"";
+        assert!(
+            html.contains(expected_label),
+            "smart double quotes must survive as part of the accessible name: {html}"
+        );
+
+        let outside_label = html.replacen(expected_label, "", 1);
+        assert!(
+            !outside_label.contains('\u{201c}') && !outside_label.contains('\u{201d}'),
+            "no stray quote glyphs should leak outside the aria-label: {html}"
+        );
 
         std::fs::remove_dir_all(&dir).ok();
     }
