@@ -45,43 +45,12 @@ jobs:
       - name: Build the site
         run: cargo run --release
 
-      # /cv/ is the source of truth (rendered from content/cv.toml); this
-      # generates public/cv.pdf from the same HTML and print stylesheet, so
-      # there is one layout to maintain, not two. Runs before the guards
-      # below so a broken render fails the build instead of shipping.
-      # `npx serve -s` is SPA mode: it rewrites every unmatched route to
-      # /index.html. /cv/ therefore returned the HOMEPAGE, and cv.pdf shipped
-      # as a snapshot of the landing page for several deploys. `test -s` could
-      # not catch it (the file existed and was non-empty) and neither could
-      # `test -f public/cv/index.html` (that checks disk, not what the server
-      # answered). python3's http.server resolves directories honestly, and
-      # the assertions below check the bytes rather than trusting the plumbing.
-      - name: Render the CV to PDF
-        run: |
-          set -euo pipefail
-          sudo apt-get install -qq -y poppler-utils >/dev/null
-
-          python3 -m http.server 8123 --directory public &
-          for _ in $(seq 1 30); do
-            curl -sf http://127.0.0.1:8123/cv/ >/dev/null && break
-            sleep 1
-          done
-
-          # Prove the server is serving the CV, not falling back to something.
-          curl -sf http://127.0.0.1:8123/cv/ | grep -q 'Experience'             || { echo "/cv/ did not serve the CV page"; exit 1; }
-
-          google-chrome --headless --disable-gpu --no-sandbox             --print-to-pdf=public/cv.pdf --no-pdf-header-footer             http://127.0.0.1:8123/cv/
-
-          test -s public/cv.pdf
-
-          # And prove the PDF is the CV. This is the check that was missing.
-          pdftotext public/cv.pdf - > /tmp/cv.txt
-          for needle in Experience Skills Education; do
-            grep -q "$needle" /tmp/cv.txt               || { echo "cv.pdf is missing '$needle' - it is not the CV"; exit 1; }
-          done
-          grep -q 'Trongate PHP' /tmp/cv.txt             && { echo "cv.pdf contains blog posts - it rendered the homepage"; exit 1; }
-          echo "cv.pdf verified as the CV ($(wc -c < public/cv.pdf) bytes)"
-
+      # cv.pdf is now written by `cargo run --release` itself (same
+      # content/cv.toml, same layout code as /cv/), so there is nothing to
+      # render or verify here anymore. It would otherwise be surprising for a
+      # deploy workflow shipping a PDF to have no step that touches it; the
+      # guards below (required-URL check, and the live curl in "Verify the
+      # deployed site") are what stand in for the old render-and-assert step.
       - name: Fail if unexpected JavaScript slipped in
         run: |
           set -euo pipefail
@@ -133,6 +102,7 @@ jobs:
                    blog/freebsd-on-hetzner/index blog/athletos-freebsd/index; do
             test -f "public/$u.html" || { echo "missing: $u"; exit 1; }
           done
+          test -f public/cv.pdf || { echo "missing: cv.pdf"; exit 1; }
           echo "all required URLs present"
 
       # Until the box is provisioned there is nowhere to send this. Skipping
