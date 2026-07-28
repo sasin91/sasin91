@@ -650,6 +650,33 @@ git commit -m "feat(djot): inline local SVGs so diagrams inherit the page theme"
 - Consumes: inlining from Task 6, colour tokens from Task 3
 - Produces: diagrams that follow the toggle
 
+- [ ] **Step 0: Inline the hero images too**
+
+Task 6 inlines SVGs that appear in a post's **body**, because those pass through
+`djot::render`. A post's **hero** does not: it comes from frontmatter and is
+rendered straight to an `<img>` by `templates/post.html`. So two of the four
+diagrams — `athletos-freebsd/architecture.svg` and
+`freebsd-on-hetzner/header.svg`, the most prominent image on each post — would
+still not follow the theme toggle. This was missed when the plan was written.
+
+Resolve it where the post is loaded rather than in the template, because a
+template cannot read files. In `src/main.rs`, after `load_posts` returns, replace
+each post's `hero` path with pre-rendered HTML when it points at a local `.svg`:
+read the file, wrap it exactly as `djot.rs` does — `<figure class="diagram"
+role="img" aria-label="…">` carrying the escaped `hero_alt` — and expose it to
+the template as a new field. Reuse the helper `djot.rs` already has rather than
+writing a second copy; make it `pub(crate)` if it is private.
+
+Then change `templates/post.html` to emit that pre-rendered markup when present
+and fall back to the existing `<img>` otherwise, so raster heroes still work.
+
+A missing hero file must fail the build with the path in the error, matching the
+body behaviour.
+
+Verify: after building, `grep -c '<img src="[^"]*\.svg"' public/blog/*/index.html`
+must be **0** across every post, and both hero diagrams must change with the
+theme toggle.
+
 - [ ] **Step 1: Identify chrome versus data in each file**
 
 For each SVG, list its colours and classify each as **chrome** (panel background, gridlines, axis rules, label and caption text) or **data** (the coloured bars and nodes that encode a category — ARC orange, Postgres blue, SvelteKit purple, Caddy pink, API green).
