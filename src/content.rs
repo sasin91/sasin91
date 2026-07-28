@@ -84,6 +84,21 @@ impl Post {
     pub fn alt(&self) -> &str {
         self.hero_alt.as_deref().unwrap_or_default()
     }
+
+    /// Whether this post renders at least one inlined diagram, and so needs
+    /// the lightbox dialog and its script. A post without one ships neither:
+    /// the script would bind nothing and return immediately, but it would
+    /// still be bytes every reader downloads for no reason.
+    ///
+    /// Matches the opening tag [`crate::djot::svg_figure`] emits, which is the
+    /// only thing that produces this class.
+    pub fn has_diagrams(&self) -> bool {
+        const FIGURE: &str = "<figure class=\"diagram\"";
+        self.hero_html
+            .as_deref()
+            .is_some_and(|h| h.contains(FIGURE))
+            || self.body.contains(FIGURE)
+    }
 }
 
 /// `+++ toml +++` frontmatter, then the body.
@@ -175,6 +190,40 @@ Body text here.
         // The bug this guards: deriving the slug from a filename would
         // flatten this to /blog/mx-transition and break a live URL.
         assert_eq!(post.url(), "/blog/trongate/mx-transition/");
+    }
+
+    /// A `Post` with the diagram-bearing fields set as given, everything else
+    /// empty. Only `hero_html` and `body` matter to `has_diagrams`.
+    fn post_with(hero_html: Option<&str>, body: &str) -> Post {
+        Post {
+            path: "blog/x".into(),
+            title: "x".into(),
+            date: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+            description: "x".into(),
+            hero: None,
+            hero_alt: None,
+            body: body.into(),
+            hero_html: hero_html.map(Into::into),
+        }
+    }
+
+    #[test]
+    fn detects_a_diagram_in_the_hero_or_the_body() {
+        // The exact markup svg_figure emits, so the two stay in step.
+        let figure = crate::djot::svg_figure("a diagram", "<svg></svg>");
+
+        assert!(post_with(Some(&figure), "").has_diagrams());
+        assert!(post_with(None, &format!("<p>text</p>{figure}")).has_diagrams());
+        assert!(post_with(Some(&figure), &figure).has_diagrams());
+    }
+
+    #[test]
+    fn a_post_without_a_diagram_ships_no_lightbox() {
+        // A raster hero renders as a plain <img> and gets no figure, so these
+        // posts must not pull in the lightbox dialog or its script.
+        assert!(!post_with(None, "<p>text</p>").has_diagrams());
+        assert!(!post_with(None, "<img src=\"/hero.png\" alt=\"x\" />").has_diagrams());
+        assert!(!post_with(None, "<figure class=\"photo\"><svg></svg></figure>").has_diagrams());
     }
 
     #[test]

@@ -129,8 +129,6 @@ does not need, and it shows up later looking like a database problem. Put
 `vfs.zfs.arc_max="512M"` in `loader.conf`, on day one.
 :::
 
-Raw HTML is available whenever an element is easier written directly:
-
 ``` =html
 <p class="colophon">Every number above was measured on the box, not estimated.</p>
 ```

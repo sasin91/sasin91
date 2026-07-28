@@ -18,4 +18,83 @@
 
     {{ post.body|safe }}
   </article>
+
+  {# Diagram lightbox, on posts that actually have a diagram — see
+     `Post::has_diagrams`. The trigger buttons are created by the script below
+     rather than rendered here, so a reader without JavaScript is never
+     offered an affordance that cannot work. #}
+  {% if post.has_diagrams() %}
+  <dialog id="lightbox" class="lightbox" data-lightbox>
+    <button type="button" class="lightbox-close" aria-label="Close diagram">
+      {# Heroicons v2, 24/outline: x-mark (MIT). #}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+           focusable="false" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+      </svg>
+    </button>
+    <div class="lightbox-stage"></div>
+  </dialog>
+
+  <script>
+    (function () {
+      var dialog = document.getElementById('lightbox');
+      var figures = document.querySelectorAll('.prose figure.diagram');
+      if (!dialog || !dialog.showModal || !figures.length) return;
+
+      var stage = dialog.querySelector('.lightbox-stage');
+      var origin = null;
+      var moved = null;
+
+      figures.forEach(function (figure) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'lightbox-trigger';
+        // The figure carries role="img" and the diagram's alt text as its
+        // aria-label; reuse it so the trigger says what it will enlarge.
+        //
+        // The button sits inside that role="img" element on purpose. ARIA
+        // makes an img role's children presentational, but that rule exempts
+        // focusable descendants, so the button stays in the accessibility
+        // tree — checked against Chrome's own tree, where all three triggers
+        // come back with their names and ignored=false.
+        button.setAttribute(
+          'aria-label',
+          'Enlarge diagram: ' + (figure.getAttribute('aria-label') || 'diagram')
+        );
+        figure.classList.add('is-zoomable');
+        figure.appendChild(button);
+
+        button.addEventListener('click', function () {
+          var svg = figure.querySelector('svg');
+          if (!svg) return;
+
+          // Moved, not cloned. These diagrams define gradients and clip paths
+          // in <defs> and reference them by id; a copy would duplicate every
+          // one of those ids, and the copy's url(#...) references would
+          // resolve to the original still sitting in the article.
+          origin = figure;
+          moved = svg;
+          stage.appendChild(svg);
+          dialog.showModal();
+        });
+      });
+
+      // Fires for the close button, Escape and a backdrop click alike, so the
+      // diagram goes home by exactly one path.
+      dialog.addEventListener('close', function () {
+        if (moved && origin) origin.insertBefore(moved, origin.firstChild);
+        origin = moved = null;
+      });
+
+      dialog.querySelector('.lightbox-close')
+        .addEventListener('click', function () { dialog.close(); });
+
+      // A click that lands on the dialog itself is a click on the backdrop:
+      // the stage and the close button both sit inside it.
+      dialog.addEventListener('click', function (event) {
+        if (event.target === dialog) dialog.close();
+      });
+    })();
+  </script>
+  {% endif %}
 {% endblock %}

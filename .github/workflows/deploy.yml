@@ -49,20 +49,39 @@ jobs:
       # generates public/cv.pdf from the same HTML and print stylesheet, so
       # there is one layout to maintain, not two. Runs before the guards
       # below so a broken render fails the build instead of shipping.
+      # `npx serve -s` is SPA mode: it rewrites every unmatched route to
+      # /index.html. /cv/ therefore returned the HOMEPAGE, and cv.pdf shipped
+      # as a snapshot of the landing page for several deploys. `test -s` could
+      # not catch it (the file existed and was non-empty) and neither could
+      # `test -f public/cv/index.html` (that checks disk, not what the server
+      # answered). python3's http.server resolves directories honestly, and
+      # the assertions below check the bytes rather than trusting the plumbing.
       - name: Render the CV to PDF
         run: |
-          npx --yes serve -s public -l 8123 &
-          npx --yes wait-on http://127.0.0.1:8123/cv/
-          google-chrome --headless --disable-gpu --no-sandbox \
-            --print-to-pdf=public/cv.pdf --no-pdf-header-footer \
-            http://127.0.0.1:8123/cv/
+          set -euo pipefail
+          sudo apt-get install -qq -y poppler-utils >/dev/null
+
+          python3 -m http.server 8123 --directory public &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8123/cv/ >/dev/null && break
+            sleep 1
+          done
+
+          # Prove the server is serving the CV, not falling back to something.
+          curl -sf http://127.0.0.1:8123/cv/ | grep -q 'Experience'             || { echo "/cv/ did not serve the CV page"; exit 1; }
+
+          google-chrome --headless --disable-gpu --no-sandbox             --print-to-pdf=public/cv.pdf --no-pdf-header-footer             http://127.0.0.1:8123/cv/
+
           test -s public/cv.pdf
 
-      # The rule is "no JavaScript is REQUIRED to read anything", not "no
-      # JavaScript". The theme toggle is the one exception: two inline scripts
-      # per page, a pre-paint snippet and a click handler. This guard used to
-      # demand zero <script> tags and started failing the moment the toggle
-      # landed, blocking every deploy — so it now enforces the actual rule.
+          # And prove the PDF is the CV. This is the check that was missing.
+          pdftotext public/cv.pdf - > /tmp/cv.txt
+          for needle in Experience Skills Education; do
+            grep -q "$needle" /tmp/cv.txt               || { echo "cv.pdf is missing '$needle' - it is not the CV"; exit 1; }
+          done
+          grep -q 'Trongate PHP' /tmp/cv.txt             && { echo "cv.pdf contains blog posts - it rendered the homepage"; exit 1; }
+          echo "cv.pdf verified as the CV ($(wc -c < public/cv.pdf) bytes)"
+
       - name: Fail if unexpected JavaScript slipped in
         run: |
           set -euo pipefail
@@ -84,8 +103,9 @@ jobs:
             exit 1
           fi
 
-          # Every HTML page should carry exactly the two toggle scripts.
-          # More means something new arrived without anyone deciding to add it.
+          # Every page carries the two theme scripts; a post page carries a
+          # third for the diagram lightbox. Anything else means a script
+          # arrived without anyone deciding to add it.
           fail=0
           while IFS= read -r page; do
             # Same grep-exits-1-on-no-match trap as above: a page that lost
@@ -93,13 +113,18 @@ jobs:
             # exists to catch, and without `|| true` it would abort here
             # before ever reporting that.
             n=$({ grep -o '<script' "$page" || true; } | wc -l)
-            if [ "$n" -ne 2 ]; then
-              echo "$page has $n inline scripts, expected 2"
+            if grep -q 'data-lightbox' "$page"; then
+              want=3
+            else
+              want=2
+            fi
+            if [ "$n" -ne "$want" ]; then
+              echo "$page has $n inline scripts, expected $want"
               fail=1
             fi
           done < <(find public -name '*.html')
           test "$fail" -eq 0
-          echo "every page carries exactly the two theme-toggle scripts"
+          echo "every page carries its expected inline scripts, and no others"
 
       - name: Fail if a required URL is missing
         run: |
