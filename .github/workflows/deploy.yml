@@ -82,8 +82,77 @@ jobs:
           echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-      - name: Rsync to the box
+      # Deploys land in a new release directory and go live by moving a symlink,
+      # rather than by mutating the tree Caddy is serving. Two reasons:
+      #
+      #   * Atomic. `rsync --delete` straight into the live root leaves a window
+      #     where a visitor gets new HTML referencing a stylesheet that has not
+      #     landed yet. A symlink swap has no such window.
+      #   * Reversible. Rolling back is re-pointing the symlink at the previous
+      #     release, not rebuilding and re-pushing an old commit.
+      #
+      # --link-dest hardlinks unchanged files from the previous release, so the
+      # 2.4 MB video costs nothing on the wire or on disk after the first deploy.
+      - name: Deploy a new release
+        if: steps.target.outputs.configured == 'true'
+        env:
+          HOST: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+          ROOT: /usr/local/www/sasin91.xyz
+        run: |
+          set -euo pipefail
+          REL="r$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA:0:7}"
+          echo "release: $REL"
+
+          PREV=$(ssh -o BatchMode=yes "$HOST" "readlink $ROOT/current 2>/dev/null || true")
+          LINK_DEST=""
+          if [ -n "$PREV" ]; then
+            echo "hardlinking unchanged files from $PREV"
+            LINK_DEST="--link-dest=$ROOT/$PREV"
+          fi
+
+          rsync -az --delete $LINK_DEST \
+            -e "ssh -o BatchMode=yes" \
+            public/ "$HOST:$ROOT/releases/$REL/"
+
+          # ln -sfn is not atomic — it unlinks before it links. Creating the new
+          # link under a temporary name and renaming it over the old one is, and
+          # `mv -h` moves the symlink itself rather than following it.
+          ssh -o BatchMode=yes "$HOST" "
+            set -e
+            ln -sfn 'releases/$REL' '$ROOT/current.tmp'
+            mv -h '$ROOT/current.tmp' '$ROOT/current'
+            echo \"current -> \$(readlink '$ROOT/current')\"
+          "
+
+      - name: Prune old releases, keeping the last three
+        if: steps.target.outputs.configured == 'true'
+        env:
+          HOST: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+          ROOT: /usr/local/www/sasin91.xyz
+        run: |
+          # Release names sort chronologically, so a reverse sort is newest
+          # first. FreeBSD's head has no negative count and its xargs has no -r,
+          # hence the loop.
+          ssh -o BatchMode=yes "$HOST" "
+            cd '$ROOT/releases'
+            ls -1 | sort -r | tail -n +4 | while read -r old; do
+              echo \"pruning \$old\"
+              rm -rf \"\$old\"
+            done
+            echo 'kept:'; ls -1 | sort -r
+          "
+
+      - name: Verify the deployed site
         if: steps.target.outputs.configured == 'true'
         run: |
-          rsync -az --delete public/ \
-            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/usr/local/www/sasin91.xyz/"
+          set -euo pipefail
+          fail=0
+          for path in / /blog /blog/trongate /blog/trongate/mx-transition \
+                      /blog/freebsd-on-hetzner /blog/athletos-freebsd /about/ /rss.xml; do
+            # 308 is expected on the extensionless paths: Caddy canonicalises to
+            # the trailing-slash form, which browsers and crawlers follow.
+            code=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 20 "https://sasin91.xyz$path")
+            printf '%-40s %s\n' "$path" "$code"
+            [ "$code" = "200" ] || fail=1
+          done
+          exit $fail

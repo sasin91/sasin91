@@ -1,8 +1,54 @@
 # Deploying sasin91.xyz
 
-CI builds the site on Linux and rsyncs `public/` to
-`/usr/local/www/sasin91.xyz/` on the FreeBSD box that also runs athletos.app.
-The site builder binary never runs on the server.
+CI builds the site on Linux and ships it to the FreeBSD box that also runs
+athletos.app. The site builder binary never runs on the server.
+
+## How a deploy lands
+
+Deploys do not mutate the directory Caddy is serving. Each one goes into a new
+release directory and becomes live by moving a symlink:
+
+```
+/usr/local/www/sasin91.xyz/          <- zroot/www, its own dataset
+  releases/r20260728-102606-931db83/
+  releases/r20260727-181422-a1b2c3d/
+  current -> releases/r20260728-102606-931db83
+```
+
+Caddy's `root` points at `current`. The swap is a rename, so there is no window
+in which a visitor sees new HTML referencing a stylesheet that has not arrived
+yet, and no reload is needed — verified: the swap takes effect within a second.
+
+`rsync --link-dest` hardlinks unchanged files from the previous release, so the
+2.4 MB demo video costs nothing on the wire or on disk after the first deploy.
+Three releases are kept.
+
+**Rolling back** is re-pointing the symlink, and needs no rebuild:
+
+```sh
+ssh deploy@athletos.app
+cd /usr/local/www/sasin91.xyz
+ls releases                       # pick the one you want
+ln -sfn releases/<name> current.tmp && mv -h current.tmp current
+```
+
+`ln -sfn` alone is not atomic — it unlinks before it links. The temporary name
+plus `mv -h` is, and `-h` moves the symlink rather than following it.
+
+## Why not a jail
+
+The site is static: no code runs to isolate. Caddy serves it from the host and
+already serves athletos.app from there. A jail would either isolate nothing
+(host Caddy still reads the files) or require a second web server and a proxy
+hop for four HTML files. The AthletOS jails exist because they run application
+code and need blue/green rollout; neither applies here.
+
+## Why its own ZFS dataset
+
+`/usr/local/www` is `zroot/www`, not part of `zroot/ROOT/default`. Web content
+should not live inside a boot environment — a BE rollback to fix an OS problem
+would otherwise rewind the site too. This matches how `pgdata`, `backups` and
+`jails` are already separated. Compression is lz4, as elsewhere.
 
 The workflow lives at `.github/workflows/deploy.yml`. It runs on every push
 to `main` (and on demand via `workflow_dispatch`, restricted to the `main`
