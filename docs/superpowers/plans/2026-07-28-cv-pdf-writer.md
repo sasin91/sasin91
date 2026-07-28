@@ -53,9 +53,30 @@ Two background investigations feed this plan. Both write to the session scratchp
   WinAnsi positions — every accented Latin-1 letter among them. Indexing by `C`
   drops `æ`, `ø` and `å`, i.e. `Næstved`, `Høng` and `Strøm`. The generator is
   at `scratchpad/build.py` if the tables ever need regenerating.
-- A written review of the reference writer against ISO 32000-1. **Any finding it raises is folded into Task 2** before that task is considered done.
+The reference writer this work starts from is at `scratchpad/pdf_sample.rs`. It
+has been reviewed against ISO 32000-1 by porting it to Python and attacking the
+generated files with pypdf (strict mode) and pdfminer.six. **The findings are
+inlined into Task 2 below** — there is nothing further to read.
 
-The reference writer this work starts from is at `scratchpad/pdf_sample.rs`.
+Two of that review's findings are already designed out by Task 1 and need no
+work in Task 2:
+
+- The sample's `winansi()` handles only 6 of the 27 assigned CP-1252 code
+  points in 0x80–0x9F. The other 21 — including **bullet**, the *opening* curly
+  quotes, the OE ligature and the trademark sign — fall through to `?`. Every
+  bullet in the CV would render as a literal question mark. Task 1's
+  `winansi_byte` carries all 27.
+- The sample's `c if (c as u32) < 0x100 => c as u8` arm is Latin-1, not
+  WinAnsi. It emits raw C1 control bytes that a viewer then reads back as
+  typographic characters (U+0085 becomes `…`, U+0092 becomes `’`), and five of
+  them have no glyph at all. Task 1 passes through only 0x20–0x7E and
+  0xA0–0xFF, and returns `None` for everything else — which is also why C0
+  control characters cannot reach a content stream raw.
+
+One deliberate imprecision, noted so nobody "fixes" it later: U+00A0 maps to
+0xA0, which WinAnsi defines as `space` rather than a non-breaking space, and
+U+00AD maps to 0xAD, which WinAnsi defines as `hyphen` rather than a soft
+hyphen. Neither appears in `content/cv.toml`, and both degrade sensibly.
 
 ---
 
@@ -354,7 +375,7 @@ Turns positioned strings into a valid file. Structural correctness only — no l
 
 **Files:**
 - Modify: `src/pdf.rs`
-- Reference: `scratchpad/pdf_sample.rs` (the starting point), plus the ISO 32000-1 review noted under Prerequisites
+- Reference: `scratchpad/pdf_sample.rs` (the starting point)
 
 **Interfaces:**
 - Consumes: `Font`, `winansi_byte`, `POINTS_PER_MM` from Task 1.
@@ -363,11 +384,27 @@ Turns positioned strings into a valid file. Structural correctness only — no l
   - `pdf::Page { placements: Vec<Placement> }`, deriving `Default`
   - `pdf::write_pdf(title: &str, width_mm: f32, height_mm: f32, pages: &[Page]) -> Vec<u8>`
 
-- [ ] **Step 1: Read the writer review**
+**Defects to fix while porting.** The sample is structurally sound — its xref
+table, free list, 20-byte entry format, `/Length` accounting, paren escaping,
+binary header comment and `BT…Tf…Tm…Tj…ET` sequence were all verified correct
+against ISO 32000-1, and `/ProcSet` is correctly *absent* (the spec marks it
+obsolescent). Do not "fix" any of those. These six are real:
 
-Read the ISO 32000-1 review of `scratchpad/pdf_sample.rs` produced under Prerequisites. Every finding at severity *breaks-in-viewers*, *breaks-text-extraction*, or *spec-violation-but-tolerated* must be fixed in Step 3 and covered by a test in Step 2. Findings marked cosmetic are optional; note in the commit message which you took.
+| # | Defect | Consequence |
+|---|---|---|
+| 1 | `{:.2}` on a non-finite float emits `NaN` / `inf`, which are not valid PDF numbers (7.3.3) | A NaN in `/MediaBox` is a **hard open failure** — pypdf raises `PdfReadError`, pdfminer raises `TypeError`. A NaN in `Tf` selects no font and the page extracts as replacement characters. |
+| 2 | `offsets` is sized `objects.len() + 1` and indexed by object *number*; `/Size` is `objects.len() + 1` | Correct today **only** because numbering happens to be dense, 1-based and gapless. Nothing asserts it. Add one object out of sequence and this panics with index-out-of-bounds or writes a wrong `/Size`. |
+| 3 | `escape_text` filters `/Title` on `c.is_ascii()` | `"Jonas Hansen — CV"` ships as `"Jonas Hansen  CV"`. The em dash is dropped from the browser tab and from ATS metadata. 7.9.2.2 provides for this: UTF-16BE with a U+FEFF BOM. |
+| 4 | No trailer `/ID` | Table 15: *"strongly recommended"*. Tolerated by every viewer; matters to document-management intake. |
+| 5 | No `/Lang` on the Catalog | Acrobat's accessibility checker reports "document language not set". One token. |
+| 6 | `%%EOF` has no trailing EOL, and zero pages yields `/Kids []` | 7.5.5 wants `%%EOF` on a line of its own. Acrobat refuses a page-less document outright. |
 
-- [ ] **Step 2: Write the failing tests**
+Not acted on, recorded so it is a decision rather than an oversight: `/Widths`
+is omitted, which the standard-14 exemption permits in PDF 1.x but which PDF
+2.0 deprecates. Every target viewer ships Helvetica metrics. Revisit if the
+document ever needs a non-standard face.
+
+- [ ] **Step 1: Write the failing tests**
 
 Add to the `tests` module in `src/pdf.rs`:
 
@@ -499,20 +536,81 @@ fn identical_input_produces_identical_bytes() {
     assert_eq!(one_page_document(), one_page_document());
 }
 
+/// Acrobat refuses a document with no pages outright. A caller asking for
+/// nothing gets one blank page rather than a file that will not open.
 #[test]
-fn a_document_with_no_pages_does_not_panic() {
+fn a_document_with_no_pages_still_has_one() {
     let bytes = write_pdf("empty", 210.0, 297.0, &[]);
-    assert!(bytes.starts_with(b"%PDF-1.4"));
-    assert!(bytes.ends_with(b"%%EOF"));
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(text.contains("/Count 1"));
+    assert_eq!(text.matches("/Type /Page ").count(), 1);
+}
+
+/// `{:.2}` on a non-finite f32 emits `NaN` or `inf`, neither of which is a
+/// valid PDF number (7.3.3). A NaN reaching /MediaBox is not a cosmetic fault:
+/// the document fails to open at all. Cheap insurance against a layout bug
+/// that divides by a zero column width.
+#[test]
+fn non_finite_coordinates_do_not_reach_the_output() {
+    let pages = vec![Page {
+        placements: vec![Placement {
+            x_mm: f32::NAN,
+            y_mm: f32::INFINITY,
+            size_pt: f32::NAN,
+            font: Font::Helvetica,
+            text: "hello".into(),
+        }],
+    }];
+    let bytes = write_pdf("x", f32::NAN, 297.0, &pages);
+    let text = String::from_utf8_lossy(&bytes);
+    for token in ["NaN", "inf", "NAN", "Infinity"] {
+        assert!(!text.contains(token), "{token} reached the output");
+    }
+}
+
+/// 7.9.2.2: a text string is PDFDocEncoded, or UTF-16BE behind a U+FEFF BOM.
+/// Filtering to ASCII instead -- which the reference writer did -- silently
+/// drops the em dash from "Jonas Hansen — CV" in the browser tab and in the
+/// metadata an applicant tracking system reads.
+#[test]
+fn a_non_ascii_title_survives_as_utf16() {
+    let bytes = write_pdf("Jonas Hansen \u{2014} CV", 210.0, 297.0, &[Page::default()]);
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(text.contains("/Title <FEFF"), "title is not UTF-16BE: {text:.400}");
+    // "CV" as UTF-16BE big-endian hex.
+    assert!(text.contains("00430056"));
+}
+
+#[test]
+fn an_ascii_title_stays_a_readable_literal_string() {
+    let bytes = write_pdf("Jonas Hansen CV", 210.0, 297.0, &[Page::default()]);
+    assert!(String::from_utf8_lossy(&bytes).contains("/Title (Jonas Hansen CV)"));
+}
+
+#[test]
+fn the_document_declares_its_language_and_an_id() {
+    let bytes = one_page_document();
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(text.contains("/Lang (en)"));
+    assert!(text.contains("/ID ["));
+}
+
+/// 7.5.5 wants %%EOF on a line of its own.
+#[test]
+fn the_file_ends_with_a_terminated_eof_marker() {
+    assert!(one_page_document().ends_with(b"%%EOF\n"));
 }
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+Note the `a_minimal_document_is_structurally_sound` test above asserts
+`bytes.ends_with(b"%%EOF")` — update it to `b"%%EOF\n"` to match.
+
+- [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `cargo test pdf::`
 Expected: compile errors — `Placement`, `Page`, `write_pdf` not found.
 
-- [ ] **Step 4: Implement the writer**
+- [ ] **Step 3: Implement the writer**
 
 Port `scratchpad/pdf_sample.rs` into `src/pdf.rs`, with these changes:
 
@@ -539,18 +637,112 @@ fn encode(value: &str) -> Vec<u8> {
 
 2. Set `/Producer (sasin91.xyz)` in the Info dictionary, not the sample's `123platform`.
 
-3. Apply every non-cosmetic fix from the writer review read in Step 1.
+3. Clamp every float before it is formatted, fixing defect 1:
 
-Keep the sample's object-numbering scheme, byte-accurate xref construction, and `{:.2}` coordinate formatting — Rust's float formatting is locale-independent, so it stays reproducible.
+```rust
+/// PDF numbers have no NaN and no infinity (7.3.3). A non-finite value reaching
+/// /MediaBox does not degrade the page, it stops the document opening: pypdf
+/// raises PdfReadError and pdfminer raises TypeError on the bare `NaN` token.
+/// Substituting zero keeps a layout bug survivable and visible.
+fn num(value: f32) -> f32 {
+    if value.is_finite() { value } else { 0.0 }
+}
+```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+   Apply it to `width`, `height`, and each placement's `x_mm`, `y_mm` and `size_pt`. Format `size_pt` with `{:.2}` as well, so no path uses bare `{}`.
+
+4. Derive the xref size from the objects rather than their count, fixing defect 2:
+
+```rust
+// Sized from the highest object number actually present, not from how many
+// objects there happen to be. Those agree only while numbering is dense,
+// 1-based and gapless -- which nothing enforces, and which the next object
+// anyone adds may quietly break.
+let size = objects.iter().map(|(number, _)| *number).max().unwrap_or(0) + 1;
+let mut offsets = vec![0usize; size];
+```
+
+   Then use `size` for the `xref` subsection header and for `/Size` in the trailer.
+
+5. Emit `/Title` as UTF-16BE when it is not pure ASCII, fixing defect 3:
+
+```rust
+/// A PDF text string: a readable literal when it is ASCII, UTF-16BE behind a
+/// U+FEFF byte order mark when it is not (7.9.2.2). The reference writer
+/// filtered non-ASCII away instead, which drops the em dash out of
+/// "Jonas Hansen — CV" everywhere the title is displayed.
+fn text_string(value: &str) -> String {
+    if value.is_ascii() {
+        let escaped: String = value
+            .chars()
+            .filter(|c| !c.is_control())
+            .flat_map(|c| {
+                match c {
+                    '(' | ')' | '\\' => Some('\\'),
+                    _ => None,
+                }
+                .into_iter()
+                .chain(std::iter::once(c))
+            })
+            .collect();
+        format!("({escaped})")
+    } else {
+        let mut hex = String::from("<FEFF");
+        for unit in value.encode_utf16() {
+            hex.push_str(&format!("{unit:04X}"));
+        }
+        hex.push('>');
+        hex
+    }
+}
+```
+
+   The Info object becomes `format!("<< /Title {} /Producer (sasin91.xyz) >>", text_string(title))`. `escape_text` from the sample is deleted — `text_string` replaces it.
+
+6. Add `/Lang (en)` to the Catalog (defect 5) — the site declares `<html lang="en">` at `templates/base.html:2`, and the CV's content is English:
+
+```rust
+(1, b"<< /Type /Catalog /Pages 2 0 R /Lang (en) >>".to_vec()),
+```
+
+7. Add a trailer `/ID` (defect 4). It must be deterministic or the reproducibility test fails, so hash the document body rather than using a timestamp:
+
+```rust
+/// FNV-1a over the object section. /ID is "strongly recommended" (Table 15) and
+/// is what document-management systems use to tell two revisions of a file
+/// apart. Derived from the content so the same CV always produces the same ID
+/// -- a random or time-based one would make every build a changed file.
+fn fnv1a(bytes: &[u8]) -> u64 {
+    let mut hash = 0xcbf2_9ce4_8422_2325u64;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash
+}
+```
+
+   Compute it over `out` as it stands just before the `xref` keyword is written, and emit `/ID [<{hash:016X}> <{hash:016X}>]` in the trailer.
+
+8. Fix defect 6: substitute a single blank page when `pages` is empty, and terminate the file with `%%EOF\n`:
+
+```rust
+// Acrobat rejects a page-less document outright, so an empty request yields
+// one blank page rather than a file that will not open.
+let blank = [Page { placements: Vec::new() }];
+let pages = if pages.is_empty() { &blank[..] } else { pages };
+```
+
+Keep the sample's object-numbering scheme, byte-accurate xref construction, and `{:.2}` coordinate formatting — Rust's `core::fmt` has no locale support, so the output stays byte-identical across machines.
+
+- [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `cargo test pdf::`
 Expected: PASS.
 
 Then: `cargo fmt --check && cargo clippy -- -D warnings`
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/pdf.rs
@@ -1285,6 +1477,39 @@ fn the_cv_fits_in_a_sane_number_of_pages() {
 ```
 
 Replace the earlier version rather than keeping both.
+
+Add one more, which guards a trap this layout currently avoids by accident:
+
+```rust
+/// Two placements on the same baseline extract with no separator between
+/// them: a bold "Senior" at one x and a roman "Engineer" at the next comes
+/// back from pdfminer and pypdf as "SeniorEngineer", and an applicant
+/// tracking system matching "Senior Engineer" finds nothing.
+///
+/// This layout emits exactly one placement per baseline, so it cannot happen
+/// today. The test exists because the obvious future change -- setting a role
+/// title in bold and its company in roman on one line -- reintroduces it
+/// silently, and the PDF looks perfectly correct while doing so.
+#[test]
+fn no_two_placements_share_a_baseline() {
+    for (index, page) in layout(&real_cv()).into_iter().enumerate() {
+        let mut baselines: Vec<String> = page
+            .placements
+            .iter()
+            .map(|p| format!("{:.3}", p.y_mm))
+            .collect();
+        let before = baselines.len();
+        baselines.sort();
+        baselines.dedup();
+        assert_eq!(
+            baselines.len(),
+            before,
+            "page {index} has two placements on one baseline; they will \
+             extract as one run-together word"
+        );
+    }
+}
+```
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
