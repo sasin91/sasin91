@@ -30,7 +30,10 @@ impl Font {
     /// The kerning adjustment between two adjacent WinAnsi bytes, in 1/1000 em.
     /// Negative tightens. Zero when the pair has no entry, which is most pairs
     /// -- only 1283 of Helvetica's 2705 published pairs and 1162 of Bold's 2481
-    /// name a glyph WinAnsi can represent.
+    /// name a glyph WinAnsi can represent. (The tables hold 1302 and 1180
+    /// entries respectively, not 1283/1162: `space` and `hyphen` each occupy
+    /// two WinAnsi code points -- 0x20/0xA0 and 0x2D/0xAD -- so a surviving
+    /// pair naming either fans out to two `(left, right)` byte-key entries.)
     pub fn kern(self, left: u8, right: u8) -> i16 {
         let key = (u16::from(left) << 8) | u16::from(right);
         let table = self.kern_table();
@@ -583,46 +586,18 @@ mod tests {
         assert!(text.contains("/WinAnsiEncoding"));
     }
 
-    /// Concatenates every parenthesized chunk of a `TJ` array, in order,
-    /// unescaping `\(`, `\)` and `\\`, and dropping the numeric kern
-    /// adjustments between chunks. This is what lets a test assert on the
-    /// *rendered* text rather than on raw content-stream bytes: kerning
-    /// legitimately splits one placement's text across multiple chunks (there
-    /// is a real AFM pair between oslash and n, so "Søn" itself is split), and
-    /// a fixed contiguous byte window would fail on that split even though
-    /// nothing is wrong.
-    fn reconstruct_tj_text(array: &[u8]) -> Vec<u8> {
-        let mut out = Vec::new();
-        let mut in_string = false;
-        let mut i = 0;
-        while i < array.len() {
-            let byte = array[i];
-            if !in_string {
-                if byte == b'(' {
-                    in_string = true;
-                }
-                i += 1;
-                continue;
-            }
-            if byte == b'\\' && i + 1 < array.len() {
-                out.push(array[i + 1]);
-                i += 2;
-                continue;
-            }
-            if byte == b')' {
-                in_string = false;
-                i += 1;
-                continue;
-            }
-            out.push(byte);
-            i += 1;
-        }
-        out
-    }
-
-    /// The content stream is latin-1 bytes, not UTF-8: this asserts on the
-    /// rendered bytes that `(Søn)` reconstructs to, with the parens escaped in
-    /// the content stream and ø surviving as a single 0xF8, not two UTF-8 bytes.
+    /// The content stream is latin-1 bytes, not UTF-8, so this asserts on raw
+    /// stream bytes, not on a reconstruction of them: an escaped-`)` string
+    /// looks identical to an unescaped one once the escape has been undone,
+    /// which is precisely the corruption ("Lead dev (2019" truncating the rest
+    /// of the content stream in a strict parser) this test exists to catch.
+    ///
+    /// Kerning legitimately splits "Søn" into two `TJ` chunks -- there is a
+    /// real AFM pair between oslash and n -- but `kern('(', S)`, `kern(S,
+    /// oslash)` and `kern(n, ')')` are all zero, so the escaped opening paren
+    /// through oslash, and n through the escaped closing paren, each still
+    /// land contiguously in the stream regardless of where the chunk boundary
+    /// falls.
     #[test]
     fn parens_are_escaped_and_high_bytes_are_single_byte() {
         let bytes = one_page_document();
@@ -631,17 +606,22 @@ mod tests {
             .expect("an endstream keyword")
             + stream_start;
         let stream = &bytes[stream_start..stream_end];
-        let array_start = find(stream, b"[").expect("a TJ array");
-        let array_end =
-            find(&stream[array_start..], b"] TJ").expect("a TJ array end") + array_start;
-        let text = reconstruct_tj_text(&stream[array_start + 1..array_end]);
         assert!(
-            text.windows(4).any(|w| w == [b'(', b'S', 0xF8, b'n']),
-            "expected an escaped, latin-1 encoded (Søn: {text:?}"
+            stream.windows(4).any(|w| w == [b'\\', b'(', b'S', 0xF8]),
+            "expected an escaped opening paren before latin-1 encoded Sø"
         );
         assert!(
-            text.windows(2).any(|w| w == *b"n)"),
-            "expected an escaped, latin-1 encoded n): {text:?}"
+            stream.windows(3).any(|w| w == *b"n\\)"),
+            "expected an escaped closing paren right after n"
+        );
+        // Neither the old test nor this one otherwise exercises backslash
+        // escaping; a single logical `\` always lands inside one TJ chunk (a
+        // chunk boundary only ever falls between two distinct input bytes),
+        // so it always escapes to two contiguous backslash bytes regardless
+        // of kerning, which is what this checks.
+        assert!(
+            stream.windows(2).any(|w| w == *b"\\\\"),
+            "expected the literal backslash to be escaped"
         );
     }
 
