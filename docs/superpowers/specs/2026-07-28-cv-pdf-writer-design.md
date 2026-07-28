@@ -83,8 +83,9 @@ Knows nothing about CVs. You hand it positioned strings; it hands you bytes.
   serialization with byte-accurate xref offsets.
 - `winansi` encoding and PDF string escaping.
 
-Text measurement is the only addition to the sample this design starts from.
-Everything else is that sample unchanged.
+Text measurement was the first addition to the sample this design starts
+from; kerning and link annotations followed after the comparison gate below
+(see "Amended after the comparison gate").
 
 ### `src/cv_pdf.rs` — the layout
 
@@ -200,5 +201,25 @@ verification already curls `/cv.pdf` and needs no change.
    live `sasin91.xyz/cv.pdf` and look at both. The new layout is unproven until
    seen.
 5. Only after that holds up: edit `deploy.yml`.
+
+## Amended after the comparison gate
+
+The comparison gate judged the Chrome output better-looking but the
+generated output easier to read and easier for parsers and LLMs to match,
+and valued the parsing advantage more highly — conditional on closing the
+visual gap and adding one thing:
+
+- **Kerning.** The visual gap was pair kerning: Helvetica at these sizes
+  reads as typed rather than typeset without it. Closed using the same
+  published AFM data the width tables already come from — 1283 pairs for
+  Helvetica, 1162 for Helvetica-Bold, out of each face's larger published set
+  once pairs naming a glyph outside WinAnsi are dropped.
+- **A link to the online CV.** Added near the top of page 1, visible and
+  clickable, for a human who receives the file. It sits on its own line and
+  its own placement rather than being spliced into an existing line, because
+  two text runs sharing one baseline would extract as one run-together word.
+- **The bullet hanging indent.** Corrected from a guessed `5mm` to `3.2mm`,
+  the bullet prefix's actual measured advance, so continuation lines align
+  under the bullet text instead of past it.
 
 If the comparison fails, two new files are deleted and nothing has shipped.

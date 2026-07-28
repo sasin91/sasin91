@@ -392,8 +392,9 @@ pub fn render(cv: &Cv) -> Vec<u8> {
 mod tests {
     use super::*;
 
-    /// The longest single string in content/cv.toml. If anything overruns the
-    /// column it is this.
+    /// A representative long achievement, chosen because it wraps to more
+    /// than one line -- not the longest string in content/cv.toml (it isn't;
+    /// `intro[0]` is longer). That is all this test needs.
     const LONGEST_ACHIEVEMENT: &str = "Built a comprehensive ranking and sorting \
         engine, delivering a quick and efficient method of finding candidates \
         and sorting by relevancy";
@@ -569,6 +570,23 @@ mod tests {
         let text = rendered_text(&real_cv());
         for heading in ["Experience", "Skills", "Education"] {
             assert!(text.contains(heading), "missing section: {heading}");
+        }
+    }
+
+    /// The spec's headline layout guarantee, checked against what `layout()`
+    /// actually places rather than against a fixture. `wrap` deliberately lets a
+    /// single unbreakable word overrun rather than hyphenating, so one long URL
+    /// or email in content/cv.toml is all it takes to print past the margin --
+    /// and every other test would stay green.
+    #[test]
+    fn no_placement_overruns_the_right_margin() {
+        for p in layout(&real_cv()).iter().flat_map(|page| &page.placements) {
+            let right = p.x_mm + p.font.width(&p.text, p.size_pt) / POINTS_PER_MM;
+            assert!(
+                right <= PAGE_W_MM - MARGIN_X_MM,
+                "{:?} overruns to {right}mm",
+                p.text
+            );
         }
     }
 
