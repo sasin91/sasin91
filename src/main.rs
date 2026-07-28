@@ -109,7 +109,7 @@ struct Sitemap<'a> {
 fn write(path: impl AsRef<Path>, contents: &str) -> Result<()> {
     let path = path.as_ref();
     if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir)?;
+        fs::create_dir_all(dir).with_context(|| format!("creating directory {}", dir.display()))?;
     }
     fs::write(path, contents).with_context(|| format!("writing {}", path.display()))
 }
@@ -122,9 +122,11 @@ fn copy_static() -> Result<()> {
         let rel = entry.path().strip_prefix("static")?;
         let dest = Path::new(OUT).join(rel);
         if let Some(dir) = dest.parent() {
-            fs::create_dir_all(dir)?;
+            fs::create_dir_all(dir)
+                .with_context(|| format!("creating directory {}", dir.display()))?;
         }
-        fs::copy(entry.path(), &dest)?;
+        fs::copy(entry.path(), &dest)
+            .with_context(|| format!("copying {} to {}", entry.path().display(), dest.display()))?;
     }
     Ok(())
 }
@@ -139,7 +141,12 @@ fn main() -> Result<()> {
     let year = chrono::Local::now().year();
 
     if Path::new(OUT).exists() {
-        fs::remove_dir_all(OUT)?;
+        fs::remove_dir_all(OUT).with_context(|| {
+            format!(
+                "removing {OUT}/ (is a server still serving it? \
+                 stop anything with {OUT}/ as its working directory and retry)"
+            )
+        })?;
     }
     copy_static()?;
 

@@ -17,8 +17,15 @@ cargo run --release      # writes ./public
 ```sh
 cargo install watchexec-cli               # once
 watchexec -e dj,html,css,rs -- cargo run  # rebuild on change
-cd public && python -m http.server 8000   # serve, in another shell
+python -m http.server 8000                # serve, in another shell
 ```
+
+Serve from the repo root, not from inside `public/`. Every build removes and
+recreates `public/`, and a server whose working directory is `public/` holds
+that directory open — on Windows this blocks the removal outright ("os error
+32: file in use by another process"). Serving from the repo root avoids the
+collision; pages are then at `http://localhost:8000/public/...` instead of
+`http://localhost:8000/...`.
 
 A post is one `.dj` file under `content/blog/` with a `+++` TOML header. The
 `path` key is the URL, and is deliberately not derived from the filename.

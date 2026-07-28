@@ -1,0 +1,52 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build the site
+        run: cargo run --release
+
+      - name: Fail if any JavaScript slipped in
+        run: |
+          count=$(grep -ro '<script' public --include=*.html | wc -l)
+          echo "script tags: $count"
+          test "$count" -eq 0
+
+      - name: Fail if a required URL is missing
+        run: |
+          for u in index about/index blog/index blog/trongate/index \
+                   blog/trongate/mx-transition/index \
+                   blog/freebsd-on-hetzner/index blog/athletos-freebsd/index; do
+            test -f "public/$u.html" || { echo "missing: $u"; exit 1; }
+          done
+          echo "all required URLs present"
+
+      - name: Add the host key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Rsync to the box
+        run: |
+          rsync -az --delete public/ \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/usr/local/www/sasin91.xyz/"
