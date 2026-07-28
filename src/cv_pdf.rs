@@ -568,25 +568,25 @@ mod tests {
     /// ("Slagelse") and `cv.site.title` ("Software developer") each recur
     /// elsewhere in the CV (a role's location, a role's title), so a bare
     /// substring check still passes even if the contact line itself were
-    /// dropped from the layout entirely. Role and education entries are
-    /// checked the same way, against their full `meta()` line, for the same
-    /// reason: "Copenhagen" and "Slagelse" each appear as more than one
-    /// entry's location.
+    /// dropped from the layout entirely. The header, every role heading and
+    /// every education heading are checked the same way -- `cv.site.title`
+    /// alone would still false-pass via the Syncronet role's identical
+    /// title, and `role.title`/`role.company` alone would still false-pass
+    /// via "Web developer" (three roles) and "JUICE ApS" (two stints) -- and
+    /// role and education entries are additionally checked against their
+    /// full `meta()` line, for the same reason: "Copenhagen" and "Slagelse"
+    /// each appear as more than one entry's location.
     #[test]
     fn the_pdf_carries_every_field_that_layout_places() {
         let cv = real_cv();
         let text = placement_text(&cv);
 
-        assert!(
-            text.contains(&cv.site.name),
-            "missing name: {}",
-            cv.site.name
-        );
-        assert!(
-            text.contains(&cv.site.title),
-            "missing site title: {}",
-            cv.site.title
-        );
+        // `cv.site.name` and `cv.site.title` are adjacent placements, joined
+        // by `placement_text`'s "\n" exactly like any other two consecutive
+        // lines; composing them here is what makes a dropped title fail
+        // instead of quietly matching the Syncronet role's identical text.
+        let header = format!("{}\n{}", cv.site.name, cv.site.title);
+        assert!(text.contains(&header), "missing header: {header:?}");
 
         let contact = format!(
             "{}, {} \u{b7} {} \u{b7} {}",
@@ -603,12 +603,12 @@ mod tests {
         }
 
         for role in &cv.roles {
-            assert!(
-                text.contains(&role.company),
-                "missing company: {}",
-                role.company
-            );
-            assert!(text.contains(&role.title), "missing title: {}", role.title);
+            // The composed heading `layout` actually places, not the two
+            // fields separately: "Web developer" (three roles) and "JUICE
+            // ApS" (two stints) each recur, so checking `title` or `company`
+            // alone would still pass with one role's heading deleted.
+            let heading = format!("{} \u{b7} {}", role.title, role.company);
+            assert!(text.contains(&heading), "missing role heading: {heading}");
             let meta_line = meta(&role.start_label(), role.end_label(), &role.location);
             assert!(
                 text.contains(&meta_line),
@@ -628,15 +628,12 @@ mod tests {
         }
 
         for education in &cv.education {
+            // Same reasoning as the role heading above: the composed string
+            // `entry(...)` actually places, not `title`/`school` separately.
+            let heading = format!("{} \u{b7} {}", education.title, education.school);
             assert!(
-                text.contains(&education.title),
-                "missing education title: {}",
-                education.title
-            );
-            assert!(
-                text.contains(&education.school),
-                "missing school: {}",
-                education.school
+                text.contains(&heading),
+                "missing education heading: {heading}"
             );
             let meta_line = meta(
                 &education.start_label(),
