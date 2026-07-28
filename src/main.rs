@@ -25,7 +25,10 @@ const BASE_URL: &str = "https://sasin91.xyz";
 #[derive(Deserialize)]
 pub struct Cv {
     pub site: Profile,
-    pub timeline: Vec<Job>,
+    pub contact: Contact,
+    pub roles: Vec<Role>,
+    pub skills: Vec<Skill>,
+    pub education: Vec<Education>,
 }
 
 #[derive(Deserialize)]
@@ -33,7 +36,8 @@ pub struct Profile {
     pub name: String,
     pub title: String,
     pub stack: String,
-    pub since: String,
+    pub available: bool,
+    pub available_note: String,
     pub links: Links,
 }
 
@@ -45,18 +49,63 @@ pub struct Links {
 }
 
 #[derive(Deserialize)]
-pub struct Job {
-    pub date: String,
-    pub name: String,
-    pub description: String,
+pub struct Contact {
+    pub town: String,
+    pub postcode: String,
+    pub phone: String,
+    pub email: String,
 }
 
-impl Job {
-    /// "2024-09" -> "September 2024"
-    pub fn month(&self) -> String {
-        NaiveDate::parse_from_str(&format!("{}-01", self.date), "%Y-%m-%d")
-            .map(|d| d.format("%B %Y").to_string())
-            .unwrap_or_else(|_| self.date.clone())
+#[derive(Deserialize)]
+pub struct Role {
+    pub start: String,
+    pub end: Option<String>,
+    pub title: String,
+    pub company: String,
+    pub location: String,
+    pub summary: String,
+    #[serde(default)]
+    pub achievements: Vec<String>,
+}
+
+/// "2024-09" -> "September 2024"
+fn month(m: &str) -> String {
+    NaiveDate::parse_from_str(&format!("{m}-01"), "%Y-%m-%d")
+        .map(|d| d.format("%B %Y").to_string())
+        .unwrap_or_else(|_| m.to_string())
+}
+
+impl Role {
+    /// "September 2024 – February 2026", or "… – present" while open.
+    pub fn period(&self) -> String {
+        match &self.end {
+            Some(end) => format!("{} – {}", month(&self.start), month(end)),
+            None => format!("{} – present", month(&self.start)),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct Skill {
+    pub name: String,
+}
+
+#[derive(Deserialize)]
+pub struct Education {
+    pub start: String,
+    pub end: Option<String>,
+    pub title: String,
+    pub school: String,
+    pub location: String,
+}
+
+impl Education {
+    /// "February 2014 – August 2015", or "… – present" while open.
+    pub fn period(&self) -> String {
+        match &self.end {
+            Some(end) => format!("{} – {}", month(&self.start), month(end)),
+            None => format!("{} – present", month(&self.start)),
+        }
     }
 }
 

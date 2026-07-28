@@ -8,6 +8,9 @@
     <h1>{{ cv.site.name }}</h1>
     <p class="lede">{{ cv.site.title }}</p>
     <p class="stack">{{ cv.site.stack }}</p>
+    {% if cv.site.available %}
+      <p class="available"><a href="{{ cv.site.links.email }}">{{ cv.site.available_note }}</a></p>
+    {% endif %}
 
     <div class="social">
       <a href="{{ cv.site.links.github }}">GitHub</a>

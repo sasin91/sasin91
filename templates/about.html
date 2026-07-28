@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
 {% block title %}About — {{ cv.site.name }}{% endblock %}
-{% block description %}<meta name="description" content="{{ cv.site.title }}. {{ cv.site.since }}." />{% endblock %}
+{% block description %}<meta name="description" content="{{ cv.site.title }}. {{ cv.site.available_note }}." />{% endblock %}
 
 {% block content %}
   <h1>About</h1>
-  <p class="lede">{{ cv.site.title }}. {{ cv.site.since }}.</p>
+  <p class="lede">{{ cv.site.title }}. {{ cv.site.available_note }}.</p>
   <p class="stack">{{ cv.site.stack }}</p>
 
   <h2>Experience</h2>
   <ul class="timeline">
-    {% for job in cv.timeline %}
+    {% for role in cv.roles %}
       <li>
-        <div class="meta">{{ job.month() }}</div>
-        <div class="role">{{ job.name }}</div>
-        <p>{{ job.description }}</p>
+        <div class="meta">{{ role.period() }}</div>
+        <div class="role">{{ role.title }} at {{ role.company }}</div>
+        <p>{{ role.summary }}</p>
       </li>
     {% endfor %}
   </ul>

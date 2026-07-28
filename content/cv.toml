@@ -1,40 +1,105 @@
 [site]
 name = "Jonas Hansen"
-title = "Full-Stack Developer"
-stack = "PHP · Laravel · React · TypeScript · MySQL · Docker"
-since = "10+ years of experience (since 2015)"
+title = "Software developer"
+stack = "PHP · Laravel · Symfony · Go · Rust · Nuxt · React · Kubernetes · FreeBSD"
+available = true
+available_note = "Available for work"
 
 [site.links]
 github = "https://github.com/sasin91"
 linkedin = "https://www.linkedin.com/in/jonas-hansen-2b6828110"
 email = "mailto:jonas.kerwin.hansen@gmail.com"
 
-[[timeline]]
-date = "2024-09"
-name = "Web developer at JUICE"
-description = "Like a boomerang, I'm back at Juice again."
+[contact]
+town = "Slagelse"
+postcode = "4200"
+phone = "+45 50106917"
+email = "jonas.kerwin.hansen@gmail.com"
 
-[[timeline]]
-date = "2023-09"
-name = "Developer at Supeo"
-description = "Primarily Laravel and React, across several different domains in a changeable everyday life."
+[[roles]]
+start = "2024-09"
+end = "2026-02"
+title = "Web developer"
+company = "JUICE ApS"
+location = "Copenhagen"
+summary = "Job & candidate matchmaking platform"
+achievements = [
+  "Upgraded Symfony 6 to 7",
+  "Built a comprehensive ranking and sorting engine, delivering a quick and efficient method of finding candidates and sorting by relevancy",
+  "AI integration, making it a breeze to upload a job ad and receiving a SmartMatch job post",
+]
 
-[[timeline]]
-date = "2023-01"
-name = "Web developer at JUICE"
-description = "Helped develop a platform that turns the job market upside down."
+[[roles]]
+start = "2023-09"
+end = "2024-09"
+title = "Web developer"
+company = "Supeo"
+location = "Næstved"
+summary = "Web development agency"
+achievements = [
+  "Delivered multiple features on Supeo Flex, in React, Express.js & GraphQL",
+  "Gained sole responsibility of customer interactions and development of SamFocus in Laravel 9",
+]
 
-[[timeline]]
-date = "2020-02"
-name = "Developer at Syncronet"
-description = "Helped develop their video streaming platform. In broad strokes, I took most of it."
+[[roles]]
+start = "2023-01"
+end = "2023-08"
+title = "Web developer"
+company = "JUICE ApS"
+location = "Copenhagen"
+summary = "Job & candidate matchmaking platform"
+achievements = [
+  "Introduced CI/CD enabling efficient and fast delivery of Symfony 6",
+  "Contributed to multiple features in Symfony & Twig + Stimulus.js",
+]
 
-[[timeline]]
-date = "2017-02"
-name = "Web developer at GHC Travel"
-description = "Responsible for migrating and modernizing their existing website from pure PHP to Laravel 6."
+[[roles]]
+start = "2020-04"
+end = "2023-01"
+title = "Software developer"
+company = "Syncronet"
+location = "Slagelse"
+summary = "Live streaming social media platform"
+achievements = [
+  "Led migration from an expensive setup on Azure using media services to Linode with mux.com for video delivery",
+  "Architectured a Kubernetes cluster with Go services and Nginx endpoints wrapping FFmpeg for internal video processing and delivery",
+  "Led frontend development in Nuxt 3 and mobile development in React Native while maintaining Laravel backend",
+]
 
-[[timeline]]
-date = "2015-08"
-name = "Trained WebIntegrator"
-description = "Passed my training as a WebIntegrator with a 12."
+[[roles]]
+start = "2017-01"
+end = "2020-02"
+title = "IT & developer"
+company = "GHC Travel / Iraqi Airways"
+location = "Copenhagen"
+summary = "Airline booking platform"
+achievements = [
+  "Maintained and developed a basic PHP platform",
+  "Migrated from traditional PHP web host to VPS servers I setup, managed and monitored",
+  "Successfully migrated to Laravel 6 and maintained up version 8, including comprehensive PHPUnit test suite ensuring fast feedback loops on changes",
+  "Built 3 distinct frontends in Nuxt 2 consuming API hosted on Laravel backend, ensuring better scalability, user experience and content delivery via CDN",
+  "Greatly improved ticketing workflows by automating airport terminal interactions using UiPath RPA, improving ticket sales and customer satisfaction",
+]
+
+[[skills]]
+name = "Linux server management and maintenance"
+
+[[skills]]
+name = "Web & App development"
+
+[[skills]]
+name = "Database administration"
+
+[[education]]
+start = "2014-02"
+end = "2015-08"
+title = "Web integrator"
+school = "Roskilde Teknisk Skole"
+location = "Høng"
+
+[[education]]
+start = "2012-01"
+end = "2013-08"
+title = "Strøm, styring & IT"
+school = "Selandia CEU"
+location = "Slagelse"
