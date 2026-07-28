@@ -1617,6 +1617,363 @@ If approved, continue to Task 8.
 
 If rejected, the layout is adjustable — the type scale in Global Constraints and the gaps in `render` are the knobs, and no other task depends on their values. If rejected outright, `git checkout main` discards the branch and nothing shipped.
 
+**Verdict, 2026-07-28:** conditionally approved. Jonas judged the Chrome
+output better looking but the Rust output easier to read and easier for
+parsers and LLMs to match, and valued the parsing advantage more highly.
+Two defects to close before the deploy workflow changes: the writer does no
+kerning (Tasks 9), and the bullet hanging indent is wrong (Task 10). One
+addition requested: a link near the top of the PDF to the online CV, for a
+human who receives the file (Task 10). Task 8 waits on a second comparison.
+
+---
+
+### Task 9: Kerning
+
+The reason the Chrome output reads as typeset and this one reads as typed.
+Every glyph currently advances by its own width with no pair adjustment, so
+`AV`, `To`, `Yo` and `P,` sit visibly loose — worst in the 20pt name.
+
+**Files:**
+- Modify: `src/pdf_metrics.rs` (add the kern tables)
+- Modify: `src/pdf.rs` (`Font::width`, the content-stream writer)
+
+**Interfaces:**
+- Produces: `pdf_metrics::HELVETICA_KERN` and `HELVETICA_BOLD_KERN`, each a
+  `&'static [(u16, i16)]` sorted by key, where the key is
+  `(left_byte as u16) << 8 | right_byte as u16` and the value is the
+  adjustment in 1/1000 em (negative tightens).
+- `pdf::Font::kern(self, left: u8, right: u8) -> i16`
+- `Font::width` unchanged in signature, but now includes kerning.
+
+**Source data:** `scratchpad/pdfbox-Helvetica.afm` (2705 `KPX` lines) and
+`scratchpad/pdfbox-Helvetica-Bold.afm` (2481). `KPX <leftname> <rightname>
+<adjust>`. The names are glyph names, so the same WinAnsi-code-point-to-glyph-
+name map used to build the width tables applies — pairs naming a glyph outside
+WinAnsi are dropped. `scratchpad/build.py` already contains that map; extend it
+rather than rewriting it.
+
+- [ ] **Step 1: Generate the kern tables**
+
+Extend `scratchpad/build.py` to emit the two tables and write them into
+`src/pdf_metrics.rs` below the width tables. Sort by key so lookup can binary
+search. Report how many pairs survived the WinAnsi filter for each face.
+
+- [ ] **Step 2: Write the failing tests**
+
+```rust
+#[test]
+fn known_kern_pairs_match_the_published_metrics() {
+    // AFM: KPX A V -70, KPX T o -120, KPX P comma -180, KPX F comma -150.
+    assert_eq!(Font::Helvetica.kern(b'A', b'V'), -70);
+    assert_eq!(Font::Helvetica.kern(b'T', b'o'), -120);
+    assert_eq!(Font::Helvetica.kern(b'P', b','), -180);
+}
+
+#[test]
+fn unkerned_pairs_are_zero() {
+    assert_eq!(Font::Helvetica.kern(b'n', b'n'), 0);
+    assert_eq!(Font::Helvetica.kern(b'x', b'x'), 0);
+}
+
+/// The kern tables must be sorted, or the binary search silently misses pairs
+/// and the text renders unkerned while every other test still passes.
+#[test]
+fn the_kern_tables_are_sorted_by_key() {
+    for table in [crate::pdf_metrics::HELVETICA_KERN, crate::pdf_metrics::HELVETICA_BOLD_KERN] {
+        assert!(table.windows(2).all(|w| w[0].0 < w[1].0), "kern table is not sorted");
+    }
+}
+
+/// Measurement must agree with rendering. If width() ignores kerning while the
+/// content stream applies it, every wrapped line is measured too wide and the
+/// column fills short -- invisible in the tests, visible on the page.
+#[test]
+fn width_accounts_for_kerning() {
+    let unkerned = Font::Helvetica.width("nn", 10.0);
+    let kerned = Font::Helvetica.width("AV", 10.0);
+    let sum_of_advances = (667.0 + 667.0) / 1000.0 * 10.0;
+    assert!(kerned < sum_of_advances, "AV must be tightened");
+    assert!((kerned - (sum_of_advances - 0.70)).abs() < 1e-4);
+    // A pair with no kern entry is unaffected.
+    assert!((unkerned - (556.0 + 556.0) / 1000.0 * 10.0).abs() < 1e-4);
+}
+
+/// A TJ number is SUBTRACTED from the horizontal coordinate (PDF 32000-1
+/// 9.4.3), so tightening by 70/1000 em means emitting +70, not -70. Getting
+/// the sign backwards doubles every gap instead of closing it.
+#[test]
+fn the_content_stream_emits_the_negated_kern_as_a_tj_number() {
+    let pages = vec![Page {
+        placements: vec![Placement {
+            x_mm: 16.0,
+            y_mm: 279.0,
+            size_pt: 12.0,
+            font: Font::Helvetica,
+            text: "AV".into(),
+        }],
+    }];
+    let bytes = write_pdf("x", 210.0, 297.0, &pages);
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(text.contains("[(A) 70 (V)] TJ"), "expected a positive TJ adjustment: {text:.600}");
+}
+
+/// Text with no kern pairs must not pay for the machinery.
+#[test]
+fn unkerned_text_stays_a_single_show_operation() {
+    let pages = vec![Page {
+        placements: vec![Placement {
+            x_mm: 16.0,
+            y_mm: 279.0,
+            size_pt: 12.0,
+            font: Font::Helvetica,
+            text: "nnnn".into(),
+        }],
+    }];
+    let text = String::from_utf8_lossy(&write_pdf("x", 210.0, 297.0, &pages)).into_owned();
+    assert!(text.contains("[(nnnn)] TJ"));
+}
+```
+
+- [ ] **Step 3: Run the tests to verify they fail**
+
+Run: `cargo test pdf`. Expected: `kern` not found.
+
+- [ ] **Step 4: Implement**
+
+`Font::kern` binary searches the face's table:
+
+```rust
+/// The kerning adjustment between two adjacent WinAnsi bytes, in 1/1000 em.
+/// Negative tightens. Zero when the pair has no entry, which is most pairs.
+pub fn kern(self, left: u8, right: u8) -> i16 {
+    let key = (u16::from(left) << 8) | u16::from(right);
+    let table = self.kern_table();
+    match table.binary_search_by_key(&key, |(k, _)| *k) {
+        Ok(index) => table[index].1,
+        Err(_) => 0,
+    }
+}
+```
+
+`Font::width` adds the adjustments between adjacent bytes. Build the byte
+sequence once (via `winansi_byte(c).unwrap_or(b'?')`), then sum advances and
+kerns over it — do not iterate `chars()` twice.
+
+The content-stream writer replaces `(text) Tj` with a `TJ` array. Split the
+encoded bytes wherever the kern is non-zero:
+
+```
+[(A) 70 (V)] TJ
+```
+
+Emit `-kern` as the number, because a TJ number is subtracted from the
+horizontal coordinate. Text with no kern pairs must produce `[(text)] TJ` —
+one chunk, no numbers.
+
+- [ ] **Step 5: Run the tests, then fmt and clippy**
+
+Run: `cargo test && cargo fmt --check && cargo clippy -- -D warnings`
+
+Then `cargo run --release` and report whether the page count is still 2.
+Kerning tightens text, so lines may fit more words; a change from 2 pages is
+possible and is not a defect, but it must be reported.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/pdf.rs src/pdf_metrics.rs
+git commit -m "feat(pdf): kern text using the published AFM pair data"
+```
+
+---
+
+### Task 10: The online-CV link, and the bullet hanging indent
+
+**Files:**
+- Modify: `src/pdf.rs` (`Placement` gains a link, page objects gain `/Annots`)
+- Modify: `src/cv_pdf.rs` (`Line` gains a link, the header line, the bullet indent)
+
+**Interfaces:**
+- `pdf::Placement` gains `link: Option<String>`.
+- `cv_pdf::Line` gains `link: Option<String>`.
+
+**Two design constraints that are not negotiable:**
+
+1. **One placement per baseline stays true.** The link line is its own line, its
+   own placement, its own rectangle. Do not split an existing line into
+   separately-clickable segments — two runs on one baseline extract as one
+   run-together word and defeat ATS keyword matching, which
+   `no_two_placements_share_a_baseline` exists to prevent.
+2. **The URL stays visible as text.** A printed CV must show where the link
+   goes. The annotation sits on top of readable text, it does not replace it.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `src/pdf.rs`:
+
+```rust
+/// A link annotation must sit over the text it belongs to, with no visible
+/// border -- Acrobat draws a black box around a /Link annotation by default,
+/// which looks like a printing error on a CV.
+#[test]
+fn a_placement_with_a_link_emits_a_link_annotation() {
+    let pages = vec![Page {
+        placements: vec![Placement {
+            x_mm: 16.0,
+            y_mm: 279.0,
+            size_pt: 9.0,
+            font: Font::Helvetica,
+            text: "sasin91.xyz/cv".into(),
+            link: Some("https://sasin91.xyz/cv/".into()),
+        }],
+    }];
+    let text = String::from_utf8_lossy(&write_pdf("x", 210.0, 297.0, &pages)).into_owned();
+    assert!(text.contains("/Subtype /Link"));
+    assert!(text.contains("/URI (https://sasin91.xyz/cv/)"));
+    assert!(text.contains("/Border [0 0 0]"));
+}
+
+#[test]
+fn a_page_with_no_links_has_no_annots_entry() {
+    let pages = vec![Page {
+        placements: vec![Placement {
+            x_mm: 16.0, y_mm: 279.0, size_pt: 9.0,
+            font: Font::Helvetica, text: "plain".into(), link: None,
+        }],
+    }];
+    let text = String::from_utf8_lossy(&write_pdf("x", 210.0, 297.0, &pages)).into_owned();
+    assert!(!text.contains("/Annots"));
+}
+
+/// The clickable rectangle must actually cover the glyphs. A zero-width or
+/// inverted rect is a link nobody can click, and looks identical on the page.
+#[test]
+fn the_link_rectangle_covers_the_text() {
+    let placement = Placement {
+        x_mm: 16.0, y_mm: 279.0, size_pt: 9.0,
+        font: Font::Helvetica, text: "sasin91.xyz/cv".into(),
+        link: Some("https://sasin91.xyz/cv/".into()),
+    };
+    let expected_width = Font::Helvetica.width(&placement.text, 9.0);
+    let pages = vec![Page { placements: vec![placement] }];
+    let text = String::from_utf8_lossy(&write_pdf("x", 210.0, 297.0, &pages)).into_owned();
+    let rect = text.split("/Rect [").nth(1).and_then(|t| t.split(']').next()).expect("a /Rect");
+    let n: Vec<f32> = rect.split_whitespace().map(|v| v.parse().unwrap()).collect();
+    assert_eq!(n.len(), 4);
+    assert!(n[2] > n[0], "rect has no width");
+    assert!(n[3] > n[1], "rect has no height");
+    assert!((n[2] - n[0] - expected_width).abs() < 0.5, "rect width does not match the text");
+}
+```
+
+In `src/cv_pdf.rs`:
+
+```rust
+/// A human who receives the PDF should be able to reach the live CV in one
+/// click; a human who receives it on paper should be able to type it.
+#[test]
+fn the_header_carries_a_visible_clickable_link_to_the_online_cv() {
+    let pages = layout(&real_cv());
+    let linked: Vec<&Placement> = pages[0]
+        .placements
+        .iter()
+        .filter(|p| p.link.is_some())
+        .collect();
+    assert_eq!(linked.len(), 1, "expected exactly one linked placement");
+    assert_eq!(linked[0].link.as_deref(), Some("https://sasin91.xyz/cv/"));
+    assert!(linked[0].text.contains("sasin91.xyz/cv"), "the URL must be readable on paper");
+}
+
+/// It is no use to a reader who has to hunt for it.
+#[test]
+fn the_online_cv_link_is_near_the_top_of_the_first_page() {
+    let pages = layout(&real_cv());
+    let index = pages[0]
+        .placements
+        .iter()
+        .position(|p| p.link.is_some())
+        .expect("a linked placement");
+    assert!(index < 6, "the link is {index} placements down the page");
+}
+
+/// A bullet's continuation lines must align under its text, not past it. The
+/// hanging indent has to equal the actual advance of the bullet prefix.
+#[test]
+fn bullet_continuation_lines_align_under_the_bullet_text() {
+    let prefix_width_mm = Font::Helvetica.width("\u{2022}  ", 10.0) / POINTS_PER_MM;
+    assert!(
+        (BULLET_HANGING_MM - prefix_width_mm).abs() < 0.05,
+        "hanging indent {BULLET_HANGING_MM}mm does not match the prefix advance {prefix_width_mm}mm"
+    );
+}
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `cargo test`. Expected: `link` field not found, `BULLET_HANGING_MM` not found.
+
+- [ ] **Step 3: Implement the annotation support in `src/pdf.rs`**
+
+Add `pub link: Option<String>` to `Placement`. Update every construction site
+in the tests. When a page has at least one linked placement, emit an `/Annots`
+array of inline dictionaries on the page object — inline, not separate objects,
+so the object numbering stays dense and `/Size` stays simple:
+
+```
+/Annots [ << /Type /Annot /Subtype /Link /Rect [x0 y0 x1 y1] /Border [0 0 0]
+             /A << /S /URI /URI (uri) >> >> ]
+```
+
+The rectangle, in points: `x0` is the placement's x, `x1` is `x0 +
+font.width(text, size_pt)`, `y0` is the baseline minus `0.25 × size_pt`, `y1`
+is the baseline plus `0.85 × size_pt`. Clamp non-finite values with the
+existing `num` helper. Escape the URI with the same literal-string escaping the
+content stream uses. Omit `/Annots` entirely when no placement on the page is
+linked — an empty array is legal but noise.
+
+- [ ] **Step 4: Implement the header link and the bullet fix in `src/cv_pdf.rs`**
+
+Add `link: Option<String>` to `Line`, defaulting to `None` everywhere, and
+carry it through `Cursor::place` into the `Placement`.
+
+Add the link line to the header block, immediately after the contact line and
+before the GitHub/LinkedIn line, so it is the fourth placement on the page:
+
+```rust
+// A recruiter who opens this on screen gets to the live CV in one click; one
+// who prints it can still read the address. That is why the URL is the visible
+// text rather than a styled word.
+const ONLINE_CV: &str = "https://sasin91.xyz/cv/";
+```
+
+Render it as `Full CV online: sasin91.xyz/cv` at 9pt Helvetica, 13pt leading,
+with `link: Some(ONLINE_CV.into())`.
+
+Split the bullet constant in two:
+
+```rust
+const BULLET_INDENT_MM: f32 = 5.0;
+/// The actual advance of the "•  " prefix at 10pt, so continuation lines start
+/// under the bullet's text rather than 1.8mm past it.
+const BULLET_HANGING_MM: f32 = 3.2;
+```
+
+and pass `BULLET_INDENT_MM` as the indent and `BULLET_HANGING_MM` as the
+hanging indent at both bullet call sites (achievements and skills).
+
+- [ ] **Step 5: Run everything**
+
+Run: `cargo test && cargo fmt --check && cargo clippy -- -D warnings`, then
+`cargo run --release`. Report the page count and the byte size of
+`public/cv.pdf`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/pdf.rs src/cv_pdf.rs
+git commit -m "feat(cv-pdf): link to the online CV, and fix the bullet hang"
+```
+
 ---
 
 ### Task 8: Remove the browser from the deploy workflow
