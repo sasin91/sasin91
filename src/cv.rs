@@ -171,6 +171,7 @@ mod tests {
         let src = format!(
             r#"
 intro = []
+about = []
 
 [site]
 name = "x"
