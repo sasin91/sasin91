@@ -2,14 +2,16 @@
    so the only variable under test is the toolkit. */
 
 :root {
-  --bg: #fdfdfb;
-  --surface: #f5f5f1;
-  --text: #191918;
-  --muted: #6c6c68;
-  --rule: #e3e3dd;
-  --accent: #2f5aa8;
-  --warn-bg: #fdf7ec;
-  --warn-edge: #c99a3e;
+  color-scheme: light dark;
+
+  --bg: light-dark(#fdfdfb, #141417);
+  --surface: light-dark(#f5f5f1, #1d1d21);
+  --text: light-dark(#191918, #e8e8e4);
+  --muted: light-dark(#6c6c68, #97978f);
+  --rule: light-dark(#e3e3dd, #2b2b31);
+  --accent: light-dark(#2f5aa8, #8fb2ea);
+  --warn-bg: light-dark(#fdf7ec, #241f14);
+  --warn-edge: light-dark(#c99a3e, #b08434);
 
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
@@ -19,17 +21,13 @@
   --measure: 68ch;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #141417;
-    --surface: #1d1d21;
-    --text: #e8e8e4;
-    --muted: #97978f;
-    --rule: #2b2b31;
-    --accent: #8fb2ea;
-    --warn-bg: #241f14;
-    --warn-edge: #b08434;
-  }
+/* The toggle writes data-theme; these pin color-scheme so light-dark() resolves
+   the chosen side regardless of the OS setting. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 *,
@@ -310,17 +308,10 @@ pre.hl-code {
   font-family: var(--mono);
   font-size: 0.76rem;
   padding: 0.5rem 0.9rem;
-  color: #93a1a1;
-  background: #eee8d5;
-  border-bottom: 1px solid rgb(0 0 0 / 0.08);
-}
-
-@media (prefers-color-scheme: dark) {
-  .codeblock .filename {
-    color: #a7adba;
-    background: #343d46;
-    border-bottom-color: rgb(255 255 255 / 0.06);
-  }
+  color: light-dark(#93a1a1, #a7adba);
+  background: light-dark(#eee8d5, #343d46);
+  border-bottom: 1px solid
+    light-dark(rgb(0 0 0 / 0.08), rgb(255 255 255 / 0.06));
 }
 
 /* The inner <code> must not re-pad or re-colour — that belongs to the frame
