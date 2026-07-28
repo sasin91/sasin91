@@ -163,6 +163,20 @@ fn meta(start: &str, end: Option<String>, location: &str) -> String {
     format!("{start} \u{2013} {end} \u{2014} {location}")
 }
 
+/// A role's heading, e.g. "Web developer \u{b7} JUICE ApS". Shared between
+/// `layout()` and its tests so the two can never drift apart: retyping the
+/// same `format!` independently in both places means a changed separator or
+/// field order is only caught if a test happens to notice, not prevented.
+fn role_heading(role: &crate::cv::Role) -> String {
+    format!("{} \u{b7} {}", role.title, role.company)
+}
+
+/// An education entry's heading, e.g. "Web integrator \u{b7} Roskilde
+/// Teknisk Skole". Same reasoning as `role_heading`.
+fn education_heading(education: &crate::cv::Education) -> String {
+    format!("{} \u{b7} {}", education.title, education.school)
+}
+
 /// The heading's own lines, with the vertical gap that precedes every
 /// section already applied to the cursor. Returned rather than placed so the
 /// caller can fold it into one `place_together` unit together with whatever
@@ -254,7 +268,7 @@ fn layout(cv: &Cv) -> Vec<Page> {
 
     let role_block = |role: &crate::cv::Role| {
         entry(
-            &format!("{} \u{b7} {}", role.title, role.company),
+            &role_heading(role),
             &meta(&role.start_label(), role.end_label(), &role.location),
             Some(&role.summary),
             &role.achievements,
@@ -304,7 +318,7 @@ fn layout(cv: &Cv) -> Vec<Page> {
 
     let edu_block = |education: &crate::cv::Education| {
         entry(
-            &format!("{} \u{b7} {}", education.title, education.school),
+            &education_heading(education),
             &meta(
                 &education.start_label(),
                 education.end_label(),
@@ -568,14 +582,18 @@ mod tests {
     /// ("Slagelse") and `cv.site.title` ("Software developer") each recur
     /// elsewhere in the CV (a role's location, a role's title), so a bare
     /// substring check still passes even if the contact line itself were
-    /// dropped from the layout entirely. The header, every role heading and
-    /// every education heading are checked the same way -- `cv.site.title`
-    /// alone would still false-pass via the Syncronet role's identical
-    /// title, and `role.title`/`role.company` alone would still false-pass
-    /// via "Web developer" (three roles) and "JUICE ApS" (two stints) -- and
-    /// role and education entries are additionally checked against their
-    /// full `meta()` line, for the same reason: "Copenhagen" and "Slagelse"
-    /// each appear as more than one entry's location.
+    /// dropped from the layout entirely. Role and education headings are
+    /// checked by occurrence count, not mere presence: the JUICE ApS role
+    /// appears twice with an identical heading ("Web developer \u{b7} JUICE
+    /// ApS"), so a bare `contains` check surviving one of the two being
+    /// dropped would not be a false pass to fight -- `layout()` places each
+    /// role's heading exactly once per role, and asserting the expected
+    /// count is what that guarantee actually is. `role_heading` and
+    /// `education_heading` are the same functions `layout()` calls, not a
+    /// retyped copy, so the two cannot drift apart. Role and education
+    /// entries are additionally checked against their full `meta()` line,
+    /// for the same false-pass reason: "Copenhagen" and "Slagelse" each
+    /// appear as more than one entry's location.
     #[test]
     fn the_pdf_carries_every_field_that_layout_places() {
         let cv = real_cv();
@@ -602,13 +620,23 @@ mod tests {
             assert!(text.contains(&frag), "missing intro paragraph: {frag}");
         }
 
+        // Expected occurrences per heading, not per role: two roles share
+        // "Web developer \u{b7} JUICE ApS" verbatim, so the right expectation
+        // for that heading is 2, and for every other heading it is 1.
+        let mut role_heading_counts: std::collections::HashMap<String, usize> =
+            std::collections::HashMap::new();
         for role in &cv.roles {
-            // The composed heading `layout` actually places, not the two
-            // fields separately: "Web developer" (three roles) and "JUICE
-            // ApS" (two stints) each recur, so checking `title` or `company`
-            // alone would still pass with one role's heading deleted.
-            let heading = format!("{} \u{b7} {}", role.title, role.company);
-            assert!(text.contains(&heading), "missing role heading: {heading}");
+            *role_heading_counts.entry(role_heading(role)).or_insert(0) += 1;
+        }
+        for (heading, expected) in &role_heading_counts {
+            let actual = text.matches(heading.as_str()).count();
+            assert_eq!(
+                actual, *expected,
+                "role heading {heading:?} appears {actual} time(s), expected {expected}"
+            );
+        }
+
+        for role in &cv.roles {
             let meta_line = meta(&role.start_label(), role.end_label(), &role.location);
             assert!(
                 text.contains(&meta_line),
@@ -627,14 +655,25 @@ mod tests {
             assert!(text.contains(&frag), "missing skill: {frag}");
         }
 
+        // Same treatment as role headings, so the two paths do not diverge:
+        // no two education entries share a (title, school) pair today, but
+        // nothing in the assertion itself depends on that being true.
+        let mut education_heading_counts: std::collections::HashMap<String, usize> =
+            std::collections::HashMap::new();
         for education in &cv.education {
-            // Same reasoning as the role heading above: the composed string
-            // `entry(...)` actually places, not `title`/`school` separately.
-            let heading = format!("{} \u{b7} {}", education.title, education.school);
-            assert!(
-                text.contains(&heading),
-                "missing education heading: {heading}"
+            *education_heading_counts
+                .entry(education_heading(education))
+                .or_insert(0) += 1;
+        }
+        for (heading, expected) in &education_heading_counts {
+            let actual = text.matches(heading.as_str()).count();
+            assert_eq!(
+                actual, *expected,
+                "education heading {heading:?} appears {actual} time(s), expected {expected}"
             );
+        }
+
+        for education in &cv.education {
             let meta_line = meta(
                 &education.start_label(),
                 education.end_label(),
