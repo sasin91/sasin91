@@ -424,9 +424,21 @@ Inside `<nav class="site-nav">`, after the links:
 
     button.addEventListener('click', function () {
       var next = current() === 'dark' ? 'light' : 'dark';
-      root.dataset.theme = next;
-      try { localStorage.setItem('theme', next); } catch (e) {}
-      sync();
+
+      function apply() {
+        root.dataset.theme = next;
+        try { localStorage.setItem('theme', next); } catch (e) {}
+        sync();
+      }
+
+      // Same-document view transition: the crossfade of a page transition
+      // without the reload, so scroll position needs no handling at all.
+      if (document.startViewTransition &&
+          !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.startViewTransition(apply);
+      } else {
+        apply();
+      }
     });
   })();
 </script>
@@ -449,10 +461,16 @@ Inside `<nav class="site-nav">`, after the links:
   color: var(--accent);
 }
 
-/* Smooth cross-document navigation. No JavaScript; silently ignored where
-   unsupported. */
+/* Cross-document transitions, for moving between pages. Needs no JavaScript
+   and is silently ignored where unsupported. The theme flip uses the
+   same-document API instead — see the toggle handler. */
 @view-transition {
   navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
