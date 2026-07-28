@@ -62,17 +62,22 @@ content to simplify the code.
 
 ## Architecture
 
-Two modules, flat in `src/` alongside `content.rs`, `cv.rs`, `djot.rs`,
+Three modules, flat in `src/` alongside `content.rs`, `cv.rs`, `djot.rs`,
 `highlight.rs`, `html.rs` and `math.rs`.
+
+### `src/pdf_metrics.rs` — the width tables
+
+Pure data, no logic: two `[u16; 224]` arrays of glyph widths in 1/1000 em,
+indexed by WinAnsi code point minus 32. Kept in its own file because it is
+machine-derived and never hand-edited; mixing it into the writer would invite
+someone to "fix" a width by eye.
 
 ### `src/pdf.rs` — the writer
 
 Knows nothing about CVs. You hand it positioned strings; it hands you bytes.
 
 - `Font { Helvetica, HelveticaBold }`, each with
-  `width(text: &str, size_pt: f32) -> f32` backed by the Adobe Core-14 AFM
-  width tables — a static `[u16; 224]` per font, widths in 1/1000 em, indexed
-  by WinAnsi code point.
+  `width(self, text: &str, size_pt: f32) -> f32` backed by the tables above.
 - `Placement { x_mm, y_mm, size_pt, font, text }`, `Page { placements }`.
 - `write_pdf(title, width_mm, height_mm, &[Page]) -> Vec<u8>` — object
   serialization with byte-accurate xref offsets.
@@ -149,13 +154,26 @@ The bug that motivated the `pdftotext` guards is not tested for, because it
 becomes unrepresentable: `render` takes a `&Cv`. There is no URL to get wrong
 and no homepage to fetch by accident.
 
-### Known risk: the AFM tables
+### The AFM tables — resolved
 
-The Core-14 widths are a fixed, forty-year-old Adobe standard, but they will be
-transcribed by hand. A wrong width is cosmetic and visible — a line wrapping
-early or overrunning the margin — and the side-by-side comparison below is the
-gate that catches it. The tables will also be spot-checked against rendered
-output rather than trusted on sight.
+Originally logged as the main risk here, on the assumption the widths would be
+transcribed by hand. They were not. They are derived from Adobe's published
+1997 Core-14 AFM metrics and cross-checked against two independent lineages —
+URW's Nimbus Sans (a metrically compatible clone with a different glyph set)
+and Mozilla pdf.js's separately transcribed table. All three agree on all 224
+code points for both faces, with no disagreement.
+
+The one real trap was the mapping. AFM files list `C <code> ; WX <width> ; N
+<glyphname>`, where `C` is *AdobeStandardEncoding*. Sixty-six of the 224 WinAnsi
+code points carry `C -1` — including every accented Latin-1 letter. Indexing by
+`C` would have silently dropped `æ`, `ø` and `å`, which is to say `Næstved`,
+`Høng` and `Strøm`. The tables are therefore built by resolving each WinAnsi
+code point to a glyph *name* (per PDF 32000-1 Annex D.2) and looking that name
+up. The encoding map itself was verified by round-tripping 0x20–0xFF through
+CP-1252.
+
+What remains is not correctness but fit: whether Helvetica at the chosen sizes
+looks right. That is the comparison gate below, and it is a human's call.
 
 ## What leaves `.github/workflows/deploy.yml`
 
