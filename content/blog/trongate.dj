@@ -33,4 +33,6 @@ And yet it offers so much more, with close integration, built-in modal support, 
 
 My hope with this article is to spark people's interest and highlight a rough diamond that unfortunately has gained a somewhat bad reputation.
 
+A couple of things I have built around it: [trongate-cors](https://github.com/sasin91/trongate-cors) and [trongate-provision](https://github.com/sasin91/trongate-provision), an experiment in deploying Trongate apps.
+
 // sasin91, 18.09.2024

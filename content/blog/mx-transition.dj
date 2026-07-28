@@ -14,7 +14,7 @@ description = "MX transition provides an easy and intuitive way to add animation
 </video>
 ```
 
-[Demo](https://trongate-framework.fly.dev)
+[Demo](https://trongate-framework.fly.dev) · [source](https://github.com/sasin91/mx-transition)
 
 View Transitions is a [Relatively New Browser API](https://developer.chrome.com/docs/web-platform/view-transitions), it offers smooth and granular transitions between elements and pages through CSS animations
 
