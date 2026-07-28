@@ -2,7 +2,7 @@
 //! serialized to bytes. It knows nothing about what it is typesetting -- see
 //! `cv_pdf` for the layout that drives it.
 
-use crate::pdf_metrics::{HELVETICA, HELVETICA_BOLD};
+use crate::pdf_metrics::{HELVETICA, HELVETICA_BOLD, HELVETICA_BOLD_KERN, HELVETICA_KERN};
 
 pub const POINTS_PER_MM: f32 = 72.0 / 25.4;
 
@@ -20,18 +20,45 @@ impl Font {
         }
     }
 
-    /// The width of `text` in points at `size_pt`. Characters with no WinAnsi
-    /// representation are measured as the '?' they will be rendered as, so the
-    /// measurement never disagrees with what lands on the page.
+    fn kern_table(self) -> &'static [(u16, i16)] {
+        match self {
+            Font::Helvetica => &HELVETICA_KERN,
+            Font::HelveticaBold => &HELVETICA_BOLD_KERN,
+        }
+    }
+
+    /// The kerning adjustment between two adjacent WinAnsi bytes, in 1/1000 em.
+    /// Negative tightens. Zero when the pair has no entry, which is most pairs
+    /// -- only 1283 of Helvetica's 2705 published pairs and 1162 of Bold's 2481
+    /// name a glyph WinAnsi can represent.
+    pub fn kern(self, left: u8, right: u8) -> i16 {
+        let key = (u16::from(left) << 8) | u16::from(right);
+        let table = self.kern_table();
+        match table.binary_search_by_key(&key, |(k, _)| *k) {
+            Ok(index) => table[index].1,
+            Err(_) => 0,
+        }
+    }
+
+    /// The width of `text` in points at `size_pt`, including kerning between
+    /// every adjacent pair. `wrap` (in `cv_pdf`) uses this to decide line
+    /// breaks, so it must agree with what the content-stream writer actually
+    /// draws: if this ignored kerning while the writer applied it, every
+    /// wrapped line would be measured wider than it renders and the column
+    /// would fill short, with no test able to catch the mismatch. Characters
+    /// with no WinAnsi representation are measured as the '?' they will be
+    /// rendered as, so the measurement never disagrees with what lands on the
+    /// page.
     pub fn width(self, text: &str, size_pt: f32) -> f32 {
         let widths = self.widths();
-        let thousandths: u32 = text
-            .chars()
-            .map(|c| {
-                let byte = winansi_byte(c).unwrap_or(b'?');
-                u32::from(widths[byte as usize - 32])
-            })
-            .sum();
+        let bytes = winansi_bytes(text);
+        let mut thousandths: i32 = 0;
+        for (index, &byte) in bytes.iter().enumerate() {
+            thousandths += i32::from(widths[byte as usize - 32]);
+            if let Some(&next) = bytes.get(index + 1) {
+                thousandths += i32::from(self.kern(byte, next));
+            }
+        }
         thousandths as f32 / 1000.0 * size_pt
     }
 }
@@ -86,19 +113,72 @@ pub fn winansi_byte(c: char) -> Option<u8> {
     Some(byte)
 }
 
-/// WinAnsi bytes with PDF literal-string escaping. A character with no WinAnsi
-/// form degrades to '?' rather than aborting the build; the test over the real
+/// The WinAnsi byte sequence for `text`. A character with no WinAnsi form
+/// degrades to '?' rather than aborting the build; the test over the real
 /// content/cv.toml is what stops one reaching a shipped PDF.
-fn encode(value: &str) -> Vec<u8> {
-    let mut out = Vec::with_capacity(value.len());
-    for c in value.chars() {
-        let byte = winansi_byte(c).unwrap_or(b'?');
+///
+/// Shared by `width` and `write_tj_array` so both walk the identical bytes:
+/// building the sequence twice (once to measure, once to render) would risk
+/// the two disagreeing about which glyphs a kern pair falls between.
+fn winansi_bytes(text: &str) -> Vec<u8> {
+    text.chars()
+        .map(|c| winansi_byte(c).unwrap_or(b'?'))
+        .collect()
+}
+
+/// PDF literal-string escaping (7.3.4.2): an unescaped `(` or `)` unbalances
+/// the string and truncates it at the first stray `)`; `\` must escape itself
+/// so it is not read as the start of another escape.
+fn escape_literal(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    for &byte in bytes {
         if matches!(byte, b'(' | b')' | b'\\') {
             out.push(b'\\');
         }
         out.push(byte);
     }
     out
+}
+
+/// Appends a `TJ` array (PDF 32000-1 9.4.3) for `text` in `font` to `content`,
+/// without the trailing `TJ` operator. Splits into a new parenthesized chunk
+/// wherever the kern between two adjacent bytes is non-zero, and negates that
+/// kern for the array: a TJ number is *subtracted* from the horizontal
+/// position, so tightening by 70/1000 em (AFM: -70) must be written as +70 --
+/// getting the sign backwards would double every gap instead of closing it.
+/// Text with no kerned pairs -- most of it -- stays a single chunk with no
+/// numbers, so it costs nothing beyond what a plain `Tj` would.
+fn write_tj_array(content: &mut Vec<u8>, font: Font, text: &str) {
+    let bytes = winansi_bytes(text);
+    content.push(b'[');
+    let mut chunk_start = 0usize;
+    let mut wrote_chunk = false;
+    for index in 0..bytes.len() {
+        let is_last = index + 1 == bytes.len();
+        let kern = if is_last {
+            0
+        } else {
+            font.kern(bytes[index], bytes[index + 1])
+        };
+        if is_last || kern != 0 {
+            if wrote_chunk {
+                content.push(b' ');
+            }
+            content.push(b'(');
+            content.extend_from_slice(&escape_literal(&bytes[chunk_start..=index]));
+            content.push(b')');
+            wrote_chunk = true;
+            if kern != 0 {
+                content.push(b' ');
+                content.extend_from_slice((-i32::from(kern)).to_string().as_bytes());
+            }
+            chunk_start = index + 1;
+        }
+    }
+    if !wrote_chunk {
+        content.extend_from_slice(b"()");
+    }
+    content.push(b']');
 }
 
 /// PDF numbers have no NaN and no infinity (7.3.3). A non-finite value reaching
@@ -229,15 +309,15 @@ pub fn write_pdf(title: &str, width_mm: f32, height_mm: f32, pages: &[Page]) -> 
             };
             content.extend_from_slice(
                 format!(
-                    "BT {font} {size:.2} Tf 1 0 0 1 {x:.2} {y:.2} Tm (",
+                    "BT {font} {size:.2} Tf 1 0 0 1 {x:.2} {y:.2} Tm ",
                     size = num(placement.size_pt),
                     x = num(placement.x_mm) * POINTS_PER_MM,
                     y = num(placement.y_mm) * POINTS_PER_MM,
                 )
                 .as_bytes(),
             );
-            content.extend_from_slice(&encode(&placement.text));
-            content.extend_from_slice(b") Tj ET\n");
+            write_tj_array(&mut content, placement.font, &placement.text);
+            content.extend_from_slice(b" TJ ET\n");
         }
 
         let contents_object = page_object(index) + 1;
@@ -301,6 +381,87 @@ mod tests {
         assert_eq!(crate::pdf_metrics::HELVETICA[('i' as usize) - 32], 222);
         assert_eq!(crate::pdf_metrics::HELVETICA_BOLD[('A' as usize) - 32], 722);
         assert_eq!(crate::pdf_metrics::HELVETICA_BOLD[(' ' as usize) - 32], 278);
+    }
+
+    #[test]
+    fn known_kern_pairs_match_the_published_metrics() {
+        // AFM: KPX A V -70, KPX T o -120, KPX P comma -180, KPX F comma -150.
+        assert_eq!(Font::Helvetica.kern(b'A', b'V'), -70);
+        assert_eq!(Font::Helvetica.kern(b'T', b'o'), -120);
+        assert_eq!(Font::Helvetica.kern(b'P', b','), -180);
+    }
+
+    #[test]
+    fn unkerned_pairs_are_zero() {
+        assert_eq!(Font::Helvetica.kern(b'n', b'n'), 0);
+        assert_eq!(Font::Helvetica.kern(b'x', b'x'), 0);
+    }
+
+    /// The kern tables must be sorted, or the binary search silently misses pairs
+    /// and the text renders unkerned while every other test still passes.
+    #[test]
+    fn the_kern_tables_are_sorted_by_key() {
+        for table in [
+            crate::pdf_metrics::HELVETICA_KERN.as_slice(),
+            crate::pdf_metrics::HELVETICA_BOLD_KERN.as_slice(),
+        ] {
+            assert!(
+                table.windows(2).all(|w| w[0].0 < w[1].0),
+                "kern table is not sorted"
+            );
+        }
+    }
+
+    /// Measurement must agree with rendering. If width() ignores kerning while the
+    /// content stream applies it, every wrapped line is measured too wide and the
+    /// column fills short -- invisible in the tests, visible on the page.
+    #[test]
+    fn width_accounts_for_kerning() {
+        let unkerned = Font::Helvetica.width("nn", 10.0);
+        let kerned = Font::Helvetica.width("AV", 10.0);
+        let sum_of_advances = (667.0 + 667.0) / 1000.0 * 10.0;
+        assert!(kerned < sum_of_advances, "AV must be tightened");
+        assert!((kerned - (sum_of_advances - 0.70)).abs() < 1e-4);
+        // A pair with no kern entry is unaffected.
+        assert!((unkerned - (556.0 + 556.0) / 1000.0 * 10.0).abs() < 1e-4);
+    }
+
+    /// A TJ number is SUBTRACTED from the horizontal coordinate (PDF 32000-1
+    /// 9.4.3), so tightening by 70/1000 em means emitting +70, not -70. Getting
+    /// the sign backwards doubles every gap instead of closing it.
+    #[test]
+    fn the_content_stream_emits_the_negated_kern_as_a_tj_number() {
+        let pages = vec![Page {
+            placements: vec![Placement {
+                x_mm: 16.0,
+                y_mm: 279.0,
+                size_pt: 12.0,
+                font: Font::Helvetica,
+                text: "AV".into(),
+            }],
+        }];
+        let bytes = write_pdf("x", 210.0, 297.0, &pages);
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(
+            text.contains("[(A) 70 (V)] TJ"),
+            "expected a positive TJ adjustment: {text:.600}"
+        );
+    }
+
+    /// Text with no kern pairs must not pay for the machinery.
+    #[test]
+    fn unkerned_text_stays_a_single_show_operation() {
+        let pages = vec![Page {
+            placements: vec![Placement {
+                x_mm: 16.0,
+                y_mm: 279.0,
+                size_pt: 12.0,
+                font: Font::Helvetica,
+                text: "nnnn".into(),
+            }],
+        }];
+        let text = String::from_utf8_lossy(&write_pdf("x", 210.0, 297.0, &pages)).into_owned();
+        assert!(text.contains("[(nnnn)] TJ"));
     }
 
     /// Date ranges sit in a column on the page only if every digit is the same
@@ -422,16 +583,65 @@ mod tests {
         assert!(text.contains("/WinAnsiEncoding"));
     }
 
-    /// The content stream is latin-1 bytes, not UTF-8, so this asserts on raw
-    /// bytes: \(S<F8>n\) with the parens escaped and ø as a single 0xF8.
+    /// Concatenates every parenthesized chunk of a `TJ` array, in order,
+    /// unescaping `\(`, `\)` and `\\`, and dropping the numeric kern
+    /// adjustments between chunks. This is what lets a test assert on the
+    /// *rendered* text rather than on raw content-stream bytes: kerning
+    /// legitimately splits one placement's text across multiple chunks (there
+    /// is a real AFM pair between oslash and n, so "Søn" itself is split), and
+    /// a fixed contiguous byte window would fail on that split even though
+    /// nothing is wrong.
+    fn reconstruct_tj_text(array: &[u8]) -> Vec<u8> {
+        let mut out = Vec::new();
+        let mut in_string = false;
+        let mut i = 0;
+        while i < array.len() {
+            let byte = array[i];
+            if !in_string {
+                if byte == b'(' {
+                    in_string = true;
+                }
+                i += 1;
+                continue;
+            }
+            if byte == b'\\' && i + 1 < array.len() {
+                out.push(array[i + 1]);
+                i += 2;
+                continue;
+            }
+            if byte == b')' {
+                in_string = false;
+                i += 1;
+                continue;
+            }
+            out.push(byte);
+            i += 1;
+        }
+        out
+    }
+
+    /// The content stream is latin-1 bytes, not UTF-8: this asserts on the
+    /// rendered bytes that `(Søn)` reconstructs to, with the parens escaped in
+    /// the content stream and ø surviving as a single 0xF8, not two UTF-8 bytes.
     #[test]
     fn parens_are_escaped_and_high_bytes_are_single_byte() {
         let bytes = one_page_document();
+        let stream_start = find(&bytes, b"stream\n").expect("a stream keyword") + b"stream\n".len();
+        let stream_end = find(&bytes[stream_start..], b"\nendstream")
+            .expect("an endstream keyword")
+            + stream_start;
+        let stream = &bytes[stream_start..stream_end];
+        let array_start = find(stream, b"[").expect("a TJ array");
+        let array_end =
+            find(&stream[array_start..], b"] TJ").expect("a TJ array end") + array_start;
+        let text = reconstruct_tj_text(&stream[array_start + 1..array_end]);
         assert!(
-            bytes
-                .windows(8)
-                .any(|w| w == [b'\\', b'(', b'S', 0xF8, b'n', b'\\', b')', b' ']),
-            "expected an escaped, latin-1 encoded (Søn)"
+            text.windows(4).any(|w| w == [b'(', b'S', 0xF8, b'n']),
+            "expected an escaped, latin-1 encoded (Søn: {text:?}"
+        );
+        assert!(
+            text.windows(2).any(|w| w == *b"n)"),
+            "expected an escaped, latin-1 encoded n): {text:?}"
         );
     }
 
