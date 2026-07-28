@@ -186,6 +186,12 @@ fn main() -> Result<()> {
         format!("{OUT}/cv/index.html"),
         &CvPage { cv: &cv, year }.render()?,
     )?;
+    // Generated from the same `Cv` as the page above, so the two cannot carry
+    // different content. This used to be a CI step that pointed headless Chrome
+    // at a local server; that server once resolved /cv/ to the homepage and the
+    // site shipped the landing page as cv.pdf for several deploys. There is no
+    // URL to get wrong here.
+    fs::write(format!("{OUT}/cv.pdf"), cv_pdf::render(&cv)).context("writing public/cv.pdf")?;
     write(
         format!("{OUT}/blog/index.html"),
         &BlogPage {

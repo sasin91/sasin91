@@ -2,11 +2,6 @@
 //! mirrors the `@page` rule in static/site.css so the printed measure matches
 //! what /cv/ prints to, even though the two do not share a layout.
 
-// `render` is not called from `main.rs` yet: Task 6 wires it into the build.
-// Until then `-D warnings` would fail on dead code that Task 6 gives a caller,
-// so the allow stays until Task 6 lands.
-#![allow(dead_code)]
-
 use crate::cv::Cv;
 use crate::pdf::{Font, POINTS_PER_MM, Page, Placement, write_pdf};
 

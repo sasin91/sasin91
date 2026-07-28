@@ -2,12 +2,6 @@
 //! serialized to bytes. It knows nothing about what it is typesetting -- see
 //! `cv_pdf` for the layout that drives it.
 
-// Nothing in `main.rs` calls this yet: Task 2 consumes `Font::width` and
-// `winansi_byte` for layout/wrapping, and Task 5 consumes them for byte
-// serialization. Until then `-D warnings` would fail the build on dead code
-// that later tasks give a caller, so the allow stays until Task 5 lands.
-#![allow(dead_code)]
-
 use crate::pdf_metrics::{HELVETICA, HELVETICA_BOLD};
 
 pub const POINTS_PER_MM: f32 = 72.0 / 25.4;
