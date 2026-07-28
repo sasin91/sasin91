@@ -117,7 +117,10 @@ pub fn load_posts(dir: &Path, render: impl Fn(&str) -> Result<String>) -> Result
         });
     }
 
-    posts.sort_by_key(|b| std::cmp::Reverse(b.date));
+    // Newest first; ties (two posts sharing a date, e.g. published the same
+    // day) break on `path` so ordering is stable across machines instead of
+    // depending on unspecified WalkDir order.
+    posts.sort_by(|a, b| b.date.cmp(&a.date).then_with(|| a.path.cmp(&b.path)));
     Ok(posts)
 }
 
@@ -209,6 +212,15 @@ Body text here.
         write_fixture(&dir, "newest", "blog/newest", "2025-01-01", "newest body");
         write_fixture(&dir, "middle", "blog/middle", "2022-06-15", "middle body");
         write_fixture(&dir, "oldest", "blog/oldest", "2020-01-01", "oldest body");
+        // Same date as "middle": WalkDir order is unspecified, so without a
+        // tie-break on `path` these two could swap between machines/runs.
+        write_fixture(
+            &dir,
+            "middle-b",
+            "blog/middle-b",
+            "2022-06-15",
+            "middle-b body",
+        );
         // Nested path: the constraint the whole plan exists to protect,
         // exercised here through the real loading path rather than a
         // hand-built `Post`.
@@ -230,15 +242,16 @@ Body text here.
 
         assert_eq!(
             posts.len(),
-            4,
+            5,
             "the two non-.dj files must not be loaded as posts"
         );
 
         let titles: Vec<&str> = posts.iter().map(|p| p.title.as_str()).collect();
         assert_eq!(
             titles,
-            vec!["newest", "middle", "nested", "oldest"],
-            "posts must come back newest first"
+            vec!["newest", "middle", "middle-b", "nested", "oldest"],
+            "posts must come back newest first, with same-date posts \
+             (middle, middle-b) tie-broken by path so order is stable"
         );
 
         let nested = posts.iter().find(|p| p.title == "nested").unwrap();
@@ -246,6 +259,30 @@ Body text here.
 
         let newest = posts.iter().find(|p| p.title == "newest").unwrap();
         assert_eq!(newest.body, "[newest body]");
+
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Focused regression test for the tie-break itself: two posts sharing a
+    /// date must always come back in the same, path-ordered sequence,
+    /// regardless of which one WalkDir happens to visit first.
+    #[test]
+    fn same_date_posts_are_ordered_by_path_not_by_walk_order() {
+        let dir = std::env::temp_dir().join("content-rs-load-posts-same-date-fixture");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        write_fixture(&dir, "b-post", "blog/b-post", "2026-07-26", "b body");
+        write_fixture(&dir, "a-post", "blog/a-post", "2026-07-26", "a body");
+
+        let posts = load_posts(&dir, |body| Ok(body.trim().to_string())).unwrap();
+
+        let paths: Vec<&str> = posts.iter().map(|p| p.path.as_str()).collect();
+        assert_eq!(
+            paths,
+            vec!["blog/a-post", "blog/b-post"],
+            "same-date posts must sort by path, not by filesystem walk order"
+        );
 
         fs::remove_dir_all(&dir).unwrap();
     }
