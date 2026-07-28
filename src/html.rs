@@ -19,7 +19,10 @@ mod tests {
 
     #[test]
     fn escapes_the_four_dangerous_characters() {
-        assert_eq!(escape(r#"<a href="x">&</a>"#), "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;");
+        assert_eq!(
+            escape(r#"<a href="x">&</a>"#),
+            "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;"
+        );
     }
 
     #[test]

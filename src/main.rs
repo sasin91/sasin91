@@ -157,7 +157,12 @@ fn main() -> Result<()> {
 
     write(
         format!("{OUT}/index.html"),
-        &IndexPage { cv: &cv, posts: &posts, year }.render()?,
+        &IndexPage {
+            cv: &cv,
+            posts: &posts,
+            year,
+        }
+        .render()?,
     )?;
     write(
         format!("{OUT}/about/index.html"),
@@ -165,23 +170,42 @@ fn main() -> Result<()> {
     )?;
     write(
         format!("{OUT}/blog/index.html"),
-        &BlogPage { cv: &cv, posts: &posts, year }.render()?,
+        &BlogPage {
+            cv: &cv,
+            posts: &posts,
+            year,
+        }
+        .render()?,
     )?;
 
     for post in &posts {
         write(
             format!("{OUT}/{}/index.html", post.path),
-            &PostPage { cv: &cv, post, year }.render()?,
+            &PostPage {
+                cv: &cv,
+                post,
+                year,
+            }
+            .render()?,
         )?;
     }
 
     write(
         format!("{OUT}/rss.xml"),
-        &Feed { cv: &cv, posts: &posts, base: BASE_URL }.render()?,
+        &Feed {
+            cv: &cv,
+            posts: &posts,
+            base: BASE_URL,
+        }
+        .render()?,
     )?;
     write(
         format!("{OUT}/sitemap.xml"),
-        &Sitemap { posts: &posts, base: BASE_URL }.render()?,
+        &Sitemap {
+            posts: &posts,
+            base: BASE_URL,
+        }
+        .render()?,
     )?;
     write(
         format!("{OUT}/robots.txt"),

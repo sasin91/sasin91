@@ -31,7 +31,12 @@ pub fn render(source: &str, hl: &Highlighter) -> Result<String> {
             }
             Event::End(Container::CodeBlock { .. }) => {
                 let (language, title) = code.take().unwrap_or_default();
-                events.extend(raw_block(code_html(&language, title.as_deref(), &buffer, hl)?));
+                events.extend(raw_block(code_html(
+                    &language,
+                    title.as_deref(),
+                    &buffer,
+                    hl,
+                )?));
                 buffer.clear();
             }
 
@@ -46,9 +51,7 @@ pub fn render(source: &str, hl: &Highlighter) -> Result<String> {
             }
 
             // Text belonging to a block we are capturing, rather than prose.
-            Event::Str(text) if code.is_some() || display_math.is_some() => {
-                buffer.push_str(&text)
-            }
+            Event::Str(text) if code.is_some() || display_math.is_some() => buffer.push_str(&text),
 
             other => events.push(other),
         }
@@ -63,22 +66,30 @@ pub fn render(source: &str, hl: &Highlighter) -> Result<String> {
 fn raw_block(html: String) -> [Event<'static>; 3] {
     [
         Event::Start(
-            Container::RawBlock { format: "html".into() },
+            Container::RawBlock {
+                format: "html".into(),
+            },
             Default::default(),
         ),
         Event::Str(html.into()),
-        Event::End(Container::RawBlock { format: "html".into() }),
+        Event::End(Container::RawBlock {
+            format: "html".into(),
+        }),
     ]
 }
 
 fn raw_inline(html: String) -> [Event<'static>; 3] {
     [
         Event::Start(
-            Container::RawInline { format: "html".into() },
+            Container::RawInline {
+                format: "html".into(),
+            },
             Default::default(),
         ),
         Event::Str(html.into()),
-        Event::End(Container::RawInline { format: "html".into() }),
+        Event::End(Container::RawInline {
+            format: "html".into(),
+        }),
     ]
 }
 
@@ -136,13 +147,19 @@ mod tests {
     #[test]
     fn passes_raw_html_through() {
         let html = render_str("``` =html\n<p class=\"colophon\">Measured.</p>\n```\n");
-        assert!(html.contains("<p class=\"colophon\">Measured.</p>"), "got: {html}");
+        assert!(
+            html.contains("<p class=\"colophon\">Measured.</p>"),
+            "got: {html}"
+        );
     }
 
     #[test]
     fn escapes_a_title_that_contains_markup() {
         let html = render_str("{title=\"<script>\"}\n```bash\nx\n```\n");
-        assert!(!html.contains("<div class=\"filename\"><script>"), "got: {html}");
+        assert!(
+            !html.contains("<div class=\"filename\"><script>"),
+            "got: {html}"
+        );
     }
 
     #[test]
@@ -157,8 +174,14 @@ mod tests {
     #[test]
     fn renders_display_math_to_mathml_rather_than_deferring_to_javascript() {
         let html = render_str("$$`e = w(1 + r/30)`\n");
-        assert!(html.contains("<math") && html.contains(r#"display="block""#), "got: {html}");
+        assert!(
+            html.contains("<math") && html.contains(r#"display="block""#),
+            "got: {html}"
+        );
         // jotdown's default would emit \[ ... \] for KaTeX to pick up.
-        assert!(!html.contains(r"\(") && !html.contains(r"\["), "must not defer to KaTeX: {html}");
+        assert!(
+            !html.contains(r"\(") && !html.contains(r"\["),
+            "must not defer to KaTeX: {html}"
+        );
     }
 }

@@ -2,9 +2,9 @@
 //! both palettes live once in a stylesheet instead of being repeated on every
 //! token of every page.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use syntect::highlighting::ThemeSet;
-use syntect::html::{css_for_theme_with_class_style, ClassStyle, ClassedHTMLGenerator};
+use syntect::html::{ClassStyle, ClassedHTMLGenerator, css_for_theme_with_class_style};
 use syntect::parsing::SyntaxSet;
 use syntect::util::LinesWithEndings;
 

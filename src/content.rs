@@ -16,7 +16,9 @@ where
     use serde::de::Error as _;
 
     let raw = toml::value::Datetime::deserialize(de)?;
-    let date = raw.date.ok_or_else(|| D::Error::custom("expected a date"))?;
+    let date = raw
+        .date
+        .ok_or_else(|| D::Error::custom("expected a date"))?;
 
     NaiveDate::from_ymd_opt(date.year as i32, date.month as u32, date.day as u32)
         .ok_or_else(|| D::Error::custom(format!("not a real date: {raw}")))

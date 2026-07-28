@@ -1,7 +1,7 @@
 //! LaTeX to MathML at build time. Browsers render MathML natively, so a
 //! formula costs the reader no JavaScript.
 
-use latex2mathml::{latex_to_mathml, DisplayStyle};
+use latex2mathml::{DisplayStyle, latex_to_mathml};
 
 use crate::html::escape;
 
