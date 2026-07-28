@@ -276,16 +276,16 @@ pub fn write_pdf(title: &str, width_mm: f32, height_mm: f32, pages: &[Page]) -> 
         out.extend_from_slice(body);
         out.extend_from_slice(b"\nendobj\n");
     }
+    // Computed over the object section as it stands right now -- before the
+    // xref keyword is written -- so the ID stays a pure function of the
+    // document body and `render` produces byte-identical output across runs.
+    let id = fnv1a(&out);
     let xref_start = out.len();
     out.extend_from_slice(format!("xref\n0 {size}\n").as_bytes());
     out.extend_from_slice(b"0000000000 65535 f \n");
     for offset in offsets.iter().skip(1) {
         out.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
     }
-    // Computed over the object section as it stands right now -- before the
-    // xref keyword is written -- so the ID stays a pure function of the
-    // document body and `render` produces byte-identical output across runs.
-    let id = fnv1a(&out);
     out.extend_from_slice(
         format!(
             "trailer\n<< /Size {size} /Root 1 0 R /Info 3 0 R /ID [<{id:016X}> <{id:016X}>] >>\nstartxref\n{xref_start}\n%%EOF\n",
