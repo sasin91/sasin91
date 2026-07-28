@@ -27,9 +27,9 @@
       <header class="site-head">
         <a class="brand" href="/">{{ cv.site.name }}</a>
         <nav class="site-nav" aria-label="Main">
-          <a href="/blog/">Writing</a>
-          <a href="/about/">About</a>
-          <a href="/cv/">CV</a>
+          <a href="/blog/"{% if nav == "blog" %} aria-current="page"{% endif %}>Writing</a>
+          <a href="/about/"{% if nav == "about" %} aria-current="page"{% endif %}>About</a>
+          <a href="/cv/"{% if nav == "cv" %} aria-current="page"{% endif %}>CV</a>
           <a href="{{ cv.site.links.github }}">GitHub</a>
           {# role="switch" rather than a plain button: this is an on/off state,
              and "Dark theme, switch, off" is what a screen reader should say.

@@ -32,6 +32,9 @@ struct IndexPage<'a> {
     cv: &'a Cv,
     posts: &'a [Post],
     year: i32,
+    /// Which `site-nav` link `base.html` marks `aria-current="page"` — see
+    /// that template's nav block. The home page matches none of them.
+    nav: &'static str,
 }
 
 #[derive(Template)]
@@ -39,6 +42,7 @@ struct IndexPage<'a> {
 struct AboutPage<'a> {
     cv: &'a Cv,
     year: i32,
+    nav: &'static str,
 }
 
 #[derive(Template)]
@@ -46,6 +50,7 @@ struct AboutPage<'a> {
 struct CvPage<'a> {
     cv: &'a Cv,
     year: i32,
+    nav: &'static str,
 }
 
 #[derive(Template)]
@@ -54,6 +59,7 @@ struct BlogPage<'a> {
     cv: &'a Cv,
     posts: &'a [Post],
     year: i32,
+    nav: &'static str,
 }
 
 #[derive(Template)]
@@ -62,6 +68,9 @@ struct PostPage<'a> {
     cv: &'a Cv,
     post: &'a Post,
     year: i32,
+    /// A post lives under /blog/, so "Writing" stays highlighted while
+    /// reading one, matching the URL a reader is actually on.
+    nav: &'static str,
 }
 
 #[derive(Template)]
@@ -175,16 +184,27 @@ fn main() -> Result<()> {
             cv: &cv,
             posts: &posts,
             year,
+            nav: "",
         }
         .render()?,
     )?;
     write(
         format!("{OUT}/about/index.html"),
-        &AboutPage { cv: &cv, year }.render()?,
+        &AboutPage {
+            cv: &cv,
+            year,
+            nav: "about",
+        }
+        .render()?,
     )?;
     write(
         format!("{OUT}/cv/index.html"),
-        &CvPage { cv: &cv, year }.render()?,
+        &CvPage {
+            cv: &cv,
+            year,
+            nav: "cv",
+        }
+        .render()?,
     )?;
     // Generated from the same `Cv` as the page above, so the two cannot carry
     // different content. This used to be a CI step that pointed headless Chrome
@@ -198,6 +218,7 @@ fn main() -> Result<()> {
             cv: &cv,
             posts: &posts,
             year,
+            nav: "blog",
         }
         .render()?,
     )?;
@@ -209,6 +230,7 @@ fn main() -> Result<()> {
                 cv: &cv,
                 post,
                 year,
+                nav: "blog",
             }
             .render()?,
         )?;
@@ -245,4 +267,141 @@ fn main() -> Result<()> {
     );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Minimal but complete `Cv` TOML — same shape as `cv::tests::cv_with_dates`,
+    /// trimmed to the fields these page templates actually read.
+    fn cv_fixture() -> Cv {
+        let src = r#"
+intro = []
+about = []
+roles = []
+skills = []
+education = []
+
+[site]
+name = "x"
+title = "x"
+stack = ["x"]
+available = false
+available_note = "x"
+
+[site.links]
+github = "https://github.com/x"
+linkedin = "x"
+email = "x"
+
+[contact]
+town = "x"
+postcode = "x"
+phone = "x"
+email = "x"
+"#;
+        toml::from_str(src).expect("fixture TOML must itself be well-formed")
+    }
+
+    fn post_fixture() -> Post {
+        Post {
+            path: "blog/x".into(),
+            title: "x".into(),
+            date: chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+            description: "x".into(),
+            hero: None,
+            hero_alt: None,
+            body: String::new(),
+            hero_html: None,
+        }
+    }
+
+    /// Every page must mark exactly one `site-nav` link (or none, for the
+    /// home page) with `aria-current="page"` — the bug this guards is the
+    /// nav rendering identically on every page, so no link is ever marked
+    /// active.
+    fn asserts_single_nav_link_current(html: &str, expected: &[&str]) {
+        for label in ["Writing", "About", "CV"] {
+            let marked = html.contains(&format!("aria-current=\"page\">{label}"));
+            assert_eq!(
+                marked,
+                expected.contains(&label),
+                "{label} link's aria-current=\"page\" state is wrong in:\n{html}"
+            );
+        }
+    }
+
+    #[test]
+    fn index_page_highlights_no_nav_link() {
+        let cv = cv_fixture();
+        let posts = [];
+        let html = IndexPage {
+            cv: &cv,
+            posts: &posts,
+            year: 2026,
+            nav: "",
+        }
+        .render()
+        .unwrap();
+        asserts_single_nav_link_current(&html, &[]);
+    }
+
+    #[test]
+    fn about_page_highlights_the_about_link() {
+        let cv = cv_fixture();
+        let html = AboutPage {
+            cv: &cv,
+            year: 2026,
+            nav: "about",
+        }
+        .render()
+        .unwrap();
+        asserts_single_nav_link_current(&html, &["About"]);
+    }
+
+    #[test]
+    fn cv_page_highlights_the_cv_link() {
+        let cv = cv_fixture();
+        let html = CvPage {
+            cv: &cv,
+            year: 2026,
+            nav: "cv",
+        }
+        .render()
+        .unwrap();
+        asserts_single_nav_link_current(&html, &["CV"]);
+    }
+
+    #[test]
+    fn blog_page_highlights_the_writing_link() {
+        let cv = cv_fixture();
+        let posts = [];
+        let html = BlogPage {
+            cv: &cv,
+            posts: &posts,
+            year: 2026,
+            nav: "blog",
+        }
+        .render()
+        .unwrap();
+        asserts_single_nav_link_current(&html, &["Writing"]);
+    }
+
+    /// A post lives under /blog/, so it highlights the same link the blog
+    /// index does rather than none at all.
+    #[test]
+    fn post_page_highlights_the_writing_link() {
+        let cv = cv_fixture();
+        let post = post_fixture();
+        let html = PostPage {
+            cv: &cv,
+            post: &post,
+            year: 2026,
+            nav: "blog",
+        }
+        .render()
+        .unwrap();
+        asserts_single_nav_link_current(&html, &["Writing"]);
+    }
 }

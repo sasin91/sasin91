@@ -120,6 +120,11 @@ dd {
   color: var(--accent);
 }
 
+.site-nav a[aria-current="page"] {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* ---- Day/night switch ----
    The visual state is driven by the theme itself, never by aria-checked, so
    the knob is already on the correct side at first paint. `--switch-x` is a
