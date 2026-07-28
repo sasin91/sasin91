@@ -146,13 +146,38 @@ fn copy_static() -> Result<()> {
     Ok(())
 }
 
+/// A post's hero comes from frontmatter and, unlike the body, never passes
+/// through `djot::render` -- `templates/post.html` renders it straight to an
+/// `<img>`. Left alone, that `<img>` would keep loading the SVG as its own
+/// document, which can only see `prefers-color-scheme` and so ignores the
+/// theme toggle -- exactly the problem inlining fixed for images in the
+/// body. A template cannot read files, so do the same inlining here, once
+/// posts are loaded, and stash the result on `hero_html` for the template to
+/// prefer over the raw `<img>` when present.
+fn inline_svg_heroes(posts: &mut [Post]) -> Result<()> {
+    for post in posts {
+        let Some(hero) = &post.hero else { continue };
+        if !djot::is_local_svg(hero) {
+            continue;
+        }
+
+        let path = Path::new("static").join(hero.trim_start_matches('/'));
+        let svg = fs::read_to_string(&path)
+            .with_context(|| format!("missing SVG referenced by post hero: {hero}"))?;
+        post.hero_html = Some(djot::svg_figure(post.alt(), &svg));
+    }
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let started = std::time::Instant::now();
 
     let hl = highlight::Highlighter::new();
     let cv: Cv = toml::from_str(&fs::read_to_string("content/cv.toml")?)
         .context("parsing content/cv.toml")?;
-    let posts = content::load_posts(Path::new("content/blog"), |body| djot::render(body, &hl))?;
+    let mut posts = content::load_posts(Path::new("content/blog"), |body| djot::render(body, &hl))?;
+    inline_svg_heroes(&mut posts)?;
     let year = chrono::Local::now().year();
 
     if Path::new(OUT).exists() {

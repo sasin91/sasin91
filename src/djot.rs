@@ -74,11 +74,7 @@ pub fn render_with_assets(source: &str, hl: &Highlighter, assets: &Path) -> Resu
                 let path = assets.join(dst.trim_start_matches('/'));
                 let svg = std::fs::read_to_string(&path)
                     .with_context(|| format!("missing SVG referenced by post: {dst}"))?;
-                events.extend(raw_block(format!(
-                    "<figure class=\"diagram\" role=\"img\" aria-label=\"{}\">{}</figure>",
-                    escape(&buffer),
-                    svg
-                )));
+                events.extend(raw_block(svg_figure(&buffer, &svg)));
                 buffer.clear();
             }
 
@@ -106,9 +102,26 @@ pub fn render_with_assets(source: &str, hl: &Highlighter, assets: &Path) -> Resu
 
 /// True for images that should be inlined: a root-relative path ending in
 /// `.svg`. Remote URLs and non-SVG images are left to jotdown's normal
-/// `<img>` rendering.
-fn is_local_svg(dst: &str) -> bool {
+/// `<img>` rendering. `pub(crate)` so `main.rs` can apply the same rule to a
+/// post's hero, which bypasses this module entirely (it comes straight from
+/// frontmatter, never through `Parser`).
+pub(crate) fn is_local_svg(dst: &str) -> bool {
     dst.starts_with('/') && dst.ends_with(".svg")
+}
+
+/// Wrap raw SVG markup in the `<figure>` every inlined diagram uses, carrying
+/// `alt` as the accessible name (a `role="img"` on the figure plus an
+/// `aria-label`, since the SVG's own internal text is not a substitute -- a
+/// screen reader should not have to read a diagram's axis labels to learn
+/// what it depicts). `pub(crate)` so `main.rs` can build the same markup for
+/// a post's hero image, which never passes through `render_with_assets` --
+/// it comes straight from frontmatter to an `<img>` in the template.
+pub(crate) fn svg_figure(alt: &str, svg: &str) -> String {
+    format!(
+        "<figure class=\"diagram\" role=\"img\" aria-label=\"{}\">{}</figure>",
+        escape(alt),
+        svg
+    )
 }
 
 /// Flatten one event from inside an inlined image's alt text into plain

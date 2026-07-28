@@ -5,7 +5,9 @@
 
 {% block content %}
   <article class="prose">
-    {% if let Some(hero) = post.hero %}
+    {% if let Some(hero_html) = post.hero_html %}
+      {{ hero_html|safe }}
+    {% else if let Some(hero) = post.hero %}
       <img src="{{ hero }}" alt="{{ post.alt() }}" />
     {% endif %}
 

@@ -1,86 +1,92 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 470" width="1200" height="470" role="img" aria-label="One FreeBSD box: Caddy terminating TLS in front of two always-running jails, blue and green, with Postgres on the host outside the release cycle">
   <defs>
     <linearGradient id="a-panel" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#12121b"/>
-      <stop offset="100%" stop-color="#0a0a10"/>
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
+      <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
     </linearGradient>
+    <!-- Data colours: fixed hue, but the paired mark (box/text) sits on the
+         panel token, which flips to a near-white surface in light mode. A
+         stop chosen for a near-black panel can drop under 3:1 there, so
+         those specific stops carry a light-mode counterpart via
+         light-dark(), same hue, just darker so it still reads. Stops that
+         already clear 3:1 against the light panel are left as plain hex. -->
     <linearGradient id="a-accent" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#a855f7"/>
-      <stop offset="100%" stop-color="#f9a8d4"/>
+      <stop offset="100%" stop-color="light-dark(#be185d, #f9a8d4)"/>
     </linearGradient>
     <linearGradient id="a-blue" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#3b82f6"/>
-      <stop offset="100%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="light-dark(#0e7490, #22d3ee)"/>
     </linearGradient>
     <linearGradient id="a-green" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#10b981"/>
-      <stop offset="100%" stop-color="#84cc16"/>
+      <stop offset="0%" stop-color="light-dark(#047857, #10b981)"/>
+      <stop offset="100%" stop-color="light-dark(#4d7c0f, #84cc16)"/>
     </linearGradient>
     <pattern id="a-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+      <path d="M40 0H0V40" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.03" stroke-width="1"/>
     </pattern>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280"/>
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--diagram-rule, #6b7280)"/>
     </marker>
   </defs>
 
   <rect width="1200" height="470" rx="24" fill="url(#a-panel)"/>
   <rect width="1200" height="470" rx="24" fill="url(#a-grid)"/>
-  <rect x="0.5" y="0.5" width="1199" height="469" rx="24" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+  <rect x="0.5" y="0.5" width="1199" height="469" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
-    <text x="48" y="52" font-size="16" fill="#ffffff" fill-opacity="0.45">one CX23 in hel1 · FreeBSD 15.1 · root-on-ZFS · 3.86 GB</text>
+    <text x="48" y="52" font-size="16" fill="var(--diagram-muted, #ffffff)">one CX23 in hel1 · FreeBSD 15.1 · root-on-ZFS · 3.86 GB</text>
 
     <!-- internet -->
-    <rect x="48" y="86" width="210" height="58" rx="10" fill="none" stroke="#4b5563" stroke-width="1.5"/>
-    <text x="153" y="112" text-anchor="middle" font-size="15" fill="#e5e7eb">athletos.app</text>
-    <text x="153" y="132" text-anchor="middle" font-size="13" fill="#6b7280">api.athletos.app</text>
+    <rect x="48" y="86" width="210" height="58" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="153" y="112" text-anchor="middle" font-size="15" fill="var(--diagram-text, #e5e7eb)">athletos.app</text>
+    <text x="153" y="132" text-anchor="middle" font-size="13" fill="var(--diagram-muted, #6b7280)">api.athletos.app</text>
 
-    <line x1="258" y1="115" x2="330" y2="115" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrow)"/>
-    <text x="294" y="105" text-anchor="middle" font-size="11" fill="#4b5563">:443</text>
+    <line x1="258" y1="115" x2="330" y2="115" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <text x="294" y="105" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #4b5563)">:443</text>
 
     <!-- caddy -->
-    <rect x="336" y="80" width="250" height="70" rx="10" fill="#1a1a28" stroke="url(#a-accent)" stroke-width="1.5"/>
+    <rect x="336" y="80" width="250" height="70" rx="10" fill="var(--diagram-panel, #1a1a28)" stroke="url(#a-accent)" stroke-width="1.5"/>
     <text x="461" y="106" text-anchor="middle" font-size="16" fill="url(#a-accent)" font-weight="700">Caddy</text>
-    <text x="461" y="128" text-anchor="middle" font-size="12" fill="#9ca3af">automatic TLS · health checks</text>
+    <text x="461" y="128" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9ca3af)">automatic TLS · health checks</text>
 
-    <text x="620" y="100" font-size="12" fill="#4b5563">pf rdr 80/443</text>
-    <text x="620" y="118" font-size="12" fill="#4b5563">→ 8880/8843</text>
-    <text x="620" y="136" font-size="12" fill="#4b5563">so it need not be root</text>
+    <text x="620" y="100" font-size="12" fill="var(--diagram-muted, #4b5563)">pf rdr 80/443</text>
+    <text x="620" y="118" font-size="12" fill="var(--diagram-muted, #4b5563)">→ 8880/8843</text>
+    <text x="620" y="136" font-size="12" fill="var(--diagram-muted, #4b5563)">so it need not be root</text>
 
     <!-- fan out to jails -->
-    <path d="M461 150 L461 176 L300 176 L300 206" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrow)"/>
-    <path d="M461 150 L461 176 L760 176 L760 206" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <path d="M461 150 L461 176 L300 176 L300 206" fill="none" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <path d="M461 150 L461 176 L760 176 L760 206" fill="none" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.5" marker-end="url(#arrow)"/>
 
     <!-- blue jail -->
-    <rect x="120" y="212" width="360" height="120" rx="12" fill="#12121f" stroke="url(#a-blue)" stroke-width="1.5"/>
+    <rect x="120" y="212" width="360" height="120" rx="12" fill="var(--diagram-panel, #12121f)" stroke="url(#a-blue)" stroke-width="1.5"/>
     <text x="144" y="240" font-size="15" fill="url(#a-blue)" font-weight="700">jail: blue</text>
-    <text x="456" y="240" text-anchor="end" font-size="13" fill="#6b7280">10.0.0.2</text>
-    <text x="144" y="268" font-size="13" fill="#e5e7eb">athletos_api</text>
-    <text x="456" y="268" text-anchor="end" font-size="12" fill="#4b5563">:8080 · 16 MB</text>
-    <text x="144" y="292" font-size="13" fill="#e5e7eb">athletos_web</text>
-    <text x="456" y="292" text-anchor="end" font-size="12" fill="#4b5563">:3000 · 120 MB</text>
-    <text x="144" y="316" font-size="11" fill="#4b5563">/usr/local read-only, nullfs from base</text>
+    <text x="456" y="240" text-anchor="end" font-size="13" fill="var(--diagram-muted, #6b7280)">10.0.0.2</text>
+    <text x="144" y="268" font-size="13" fill="var(--diagram-text, #e5e7eb)">athletos_api</text>
+    <text x="456" y="268" text-anchor="end" font-size="12" fill="var(--diagram-muted, #4b5563)">:8080 · 16 MB</text>
+    <text x="144" y="292" font-size="13" fill="var(--diagram-text, #e5e7eb)">athletos_web</text>
+    <text x="456" y="292" text-anchor="end" font-size="12" fill="var(--diagram-muted, #4b5563)">:3000 · 120 MB</text>
+    <text x="144" y="316" font-size="11" fill="var(--diagram-muted, #4b5563)">/usr/local read-only, nullfs from base</text>
 
     <!-- green jail -->
-    <rect x="580" y="212" width="360" height="120" rx="12" fill="#12121f" stroke="url(#a-green)" stroke-width="1.5"/>
+    <rect x="580" y="212" width="360" height="120" rx="12" fill="var(--diagram-panel, #12121f)" stroke="url(#a-green)" stroke-width="1.5"/>
     <text x="604" y="240" font-size="15" fill="url(#a-green)" font-weight="700">jail: green</text>
-    <text x="916" y="240" text-anchor="end" font-size="13" fill="#6b7280">10.0.0.3</text>
-    <text x="604" y="268" font-size="13" fill="#e5e7eb">athletos_api</text>
-    <text x="916" y="268" text-anchor="end" font-size="12" fill="#4b5563">:8080 · 35 MB</text>
-    <text x="604" y="292" font-size="13" fill="#e5e7eb">athletos_web</text>
-    <text x="916" y="292" text-anchor="end" font-size="12" fill="#4b5563">:3000 · 118 MB</text>
-    <text x="604" y="316" font-size="11" fill="#4b5563">both always running · rolled one at a time</text>
+    <text x="916" y="240" text-anchor="end" font-size="13" fill="var(--diagram-muted, #6b7280)">10.0.0.3</text>
+    <text x="604" y="268" font-size="13" fill="var(--diagram-text, #e5e7eb)">athletos_api</text>
+    <text x="916" y="268" text-anchor="end" font-size="12" fill="var(--diagram-muted, #4b5563)">:8080 · 35 MB</text>
+    <text x="604" y="292" font-size="13" fill="var(--diagram-text, #e5e7eb)">athletos_web</text>
+    <text x="916" y="292" text-anchor="end" font-size="12" fill="var(--diagram-muted, #4b5563)">:3000 · 118 MB</text>
+    <text x="604" y="316" font-size="11" fill="var(--diagram-muted, #4b5563)">both always running · rolled one at a time</text>
 
     <!-- postgres -->
-    <path d="M300 332 L300 366 L530 366 L530 386" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrow)"/>
-    <path d="M760 332 L760 366 L610 366 L610 386" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <path d="M300 332 L300 366 L530 366 L530 386" fill="none" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <path d="M760 332 L760 366 L610 366 L610 386" fill="none" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.5" marker-end="url(#arrow)"/>
 
-    <rect x="330" y="392" width="480" height="56" rx="10" fill="#1a1a28" stroke="#f59e0b" stroke-width="1.5"/>
-    <text x="570" y="415" text-anchor="middle" font-size="15" fill="#fbbf24" font-weight="700">PostgreSQL 17 · on the host</text>
-    <text x="570" y="436" text-anchor="middle" font-size="12" fill="#9ca3af">unix socket only · never in the release cycle</text>
+    <rect x="330" y="392" width="480" height="56" rx="10" fill="var(--diagram-panel, #1a1a28)" stroke="light-dark(#b45309, #f59e0b)" stroke-width="1.5"/>
+    <text x="570" y="415" text-anchor="middle" font-size="15" fill="light-dark(#92400e, #fbbf24)" font-weight="700">PostgreSQL 17 · on the host</text>
+    <text x="570" y="436" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9ca3af)">unix socket only · never in the release cycle</text>
 
-    <text x="866" y="418" font-size="12" fill="#4b5563">zroot/data/pgdata</text>
-    <text x="866" y="436" font-size="12" fill="#4b5563">never cloned by a deploy</text>
+    <text x="866" y="418" font-size="12" fill="var(--diagram-muted, #4b5563)">zroot/data/pgdata</text>
+    <text x="866" y="436" font-size="12" fill="var(--diagram-muted, #4b5563)">never cloned by a deploy</text>
   </g>
 </svg>

@@ -50,6 +50,14 @@ pub struct Post {
     pub hero_alt: Option<String>,
     /// Rendered HTML, not source.
     pub body: String,
+    /// Set by `main.rs`, after loading, when `hero` points at a local
+    /// `.svg`: the pre-rendered `<figure>` markup produced the same way the
+    /// body inlines a diagram, so the hero inherits the page theme too. A
+    /// template cannot read the file itself, hence this is filled in at load
+    /// time rather than computed lazily by the template. `None` for a raster
+    /// hero (or no hero at all), in which case the template falls back to a
+    /// plain `<img>`.
+    pub hero_html: Option<String>,
 }
 
 impl Post {
@@ -114,6 +122,10 @@ pub fn load_posts(dir: &Path, render: impl Fn(&str) -> Result<String>) -> Result
             hero: front.hero,
             hero_alt: front.hero_alt,
             body: render(body).with_context(|| format!("rendering {}", file.display()))?,
+            // Filled in by `main.rs` after `load_posts` returns; it needs
+            // the SVG-inlining helper `djot.rs` owns, and this function has
+            // no reason to depend on that module.
+            hero_html: None,
         });
     }
 
@@ -158,6 +170,7 @@ Body text here.
             hero: None,
             hero_alt: None,
             body: String::new(),
+            hero_html: None,
         };
         // The bug this guards: deriving the slug from a filename would
         // flatten this to /blog/mx-transition and break a live URL.
@@ -185,6 +198,7 @@ Body text here.
             hero: None,
             hero_alt: None,
             body: String::new(),
+            hero_html: None,
         };
         assert_eq!(post.date_iso(), "2025-03-03");
         assert_eq!(post.date_long(), "March 3, 2025");

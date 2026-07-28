@@ -1,65 +1,67 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 440" width="1200" height="440" role="img" aria-label="A terminal window showing FreeBSD 15.1 installing to a ZFS root, with the disk partition layout beneath">
   <defs>
     <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#12121b"/>
-      <stop offset="100%" stop-color="#0a0a10"/>
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
+      <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
     </linearGradient>
 
+    <!-- See architecture.svg for why some data stops carry a light-dark()
+         pair and others (already >= 3:1 against the light panel) don't. -->
     <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#a855f7"/>
-      <stop offset="100%" stop-color="#f9a8d4"/>
+      <stop offset="100%" stop-color="light-dark(#be185d, #f9a8d4)"/>
     </linearGradient>
 
     <linearGradient id="bootbar" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#ef4444"/>
-      <stop offset="100%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="light-dark(#c2410c, #f97316)"/>
     </linearGradient>
 
     <linearGradient id="swapbar" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#f59e0b"/>
-      <stop offset="100%" stop-color="#fbbf24"/>
+      <stop offset="0%" stop-color="light-dark(#b45309, #f59e0b)"/>
+      <stop offset="100%" stop-color="light-dark(#92400e, #fbbf24)"/>
     </linearGradient>
 
     <linearGradient id="zfsbar" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#8b5cf6"/>
-      <stop offset="100%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="light-dark(#0e7490, #22d3ee)"/>
     </linearGradient>
 
     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+      <path d="M40 0H0V40" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.03" stroke-width="1"/>
     </pattern>
   </defs>
 
   <rect width="1200" height="440" rx="24" fill="url(#panel)"/>
   <rect width="1200" height="440" rx="24" fill="url(#grid)"/>
-  <rect x="0.5" y="0.5" width="1199" height="439" rx="24" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+  <rect x="0.5" y="0.5" width="1199" height="439" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
 
   <!-- window chrome -->
-  <circle cx="42" cy="40" r="7" fill="#ff5f57"/>
-  <circle cx="66" cy="40" r="7" fill="#febc2e"/>
-  <circle cx="90" cy="40" r="7" fill="#28c840"/>
-  <text x="600" y="45" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" fill="#ffffff" fill-opacity="0.35">root@athletos — serial console</text>
-  <line x1="0" y1="70" x2="1200" y2="70" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1"/>
+  <circle cx="42" cy="40" r="7" fill="light-dark(#dc2626, #ff5f57)"/>
+  <circle cx="66" cy="40" r="7" fill="light-dark(#a16207, #febc2e)"/>
+  <circle cx="90" cy="40" r="7" fill="light-dark(#15803d, #28c840)"/>
+  <text x="600" y="45" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" fill="var(--diagram-muted, #ffffff)">root@athletos — serial console</text>
+  <line x1="0" y1="70" x2="1200" y2="70" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08" stroke-width="1"/>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="19">
-    <text x="48" y="118" fill="#22d3ee">$</text>
-    <text x="76" y="118" fill="#e5e7eb">uname -a</text>
+    <text x="48" y="118" fill="light-dark(#0e7490, #22d3ee)">$</text>
+    <text x="76" y="118" fill="var(--diagram-text, #e5e7eb)">uname -a</text>
 
-    <text x="48" y="152" fill="#a78bfa">FreeBSD</text>
-    <text x="140" y="152" fill="#e5e7eb">athletos</text>
+    <text x="48" y="152" fill="light-dark(#6d28d9, #a78bfa)">FreeBSD</text>
+    <text x="140" y="152" fill="var(--diagram-text, #e5e7eb)">athletos</text>
     <text x="252" y="152" fill="url(#accent)" font-weight="700">15.1-RELEASE</text>
-    <text x="424" y="152" fill="#6b7280">GENERIC amd64</text>
+    <text x="424" y="152" fill="var(--diagram-muted, #6b7280)">GENERIC amd64</text>
 
-    <text x="48" y="200" fill="#22d3ee">$</text>
-    <text x="76" y="200" fill="#e5e7eb">zpool status -x</text>
+    <text x="48" y="200" fill="light-dark(#0e7490, #22d3ee)">$</text>
+    <text x="76" y="200" fill="var(--diagram-text, #e5e7eb)">zpool status -x</text>
 
-    <text x="48" y="234" fill="#4ade80">all pools are healthy</text>
+    <text x="48" y="234" fill="light-dark(#15803d, #4ade80)">all pools are healthy</text>
   </g>
 
   <!-- partition layout -->
   <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">
-    <text x="48" y="292" fill="#6b7280">gpt / da0</text>
-    <text x="1152" y="292" text-anchor="end" fill="#4b5563">arc_max 512 MiB</text>
+    <text x="48" y="292" fill="var(--diagram-muted, #6b7280)">gpt / da0</text>
+    <text x="1152" y="292" text-anchor="end" fill="var(--diagram-muted, #4b5563)">arc_max 512 MiB</text>
 
     <rect x="48" y="306" width="46" height="30" rx="6" fill="url(#bootbar)"/>
     <rect x="102" y="306" width="150" height="30" rx="6" fill="url(#swapbar)"/>
@@ -69,20 +71,20 @@
          nothing legible fits under it -->
     <g transform="translate(48, 372)">
       <rect x="0" y="-11" width="14" height="14" rx="3" fill="url(#bootbar)"/>
-      <text x="24" y="0" fill="#f97316">gptboot0</text>
-      <text x="24" y="20" fill="#4b5563">512 KiB</text>
+      <text x="24" y="0" fill="light-dark(#9a3412, #f97316)">gptboot0</text>
+      <text x="24" y="20" fill="var(--diagram-muted, #4b5563)">512 KiB</text>
     </g>
 
     <g transform="translate(380, 372)">
       <rect x="0" y="-11" width="14" height="14" rx="3" fill="url(#swapbar)"/>
-      <text x="24" y="0" fill="#fbbf24">swap0</text>
-      <text x="24" y="20" fill="#4b5563">2.0 GiB</text>
+      <text x="24" y="0" fill="light-dark(#92400e, #fbbf24)">swap0</text>
+      <text x="24" y="20" fill="var(--diagram-muted, #4b5563)">2.0 GiB</text>
     </g>
 
     <g transform="translate(712, 372)">
       <rect x="0" y="-11" width="14" height="14" rx="3" fill="url(#zfsbar)"/>
-      <text x="24" y="0" fill="#67e8f9">zfs0</text>
-      <text x="24" y="20" fill="#4b5563">36.1 GiB · zroot</text>
+      <text x="24" y="0" fill="light-dark(#155e75, #67e8f9)">zfs0</text>
+      <text x="24" y="20" fill="var(--diagram-muted, #4b5563)">36.1 GiB · zroot</text>
     </g>
   </g>
 </svg>
