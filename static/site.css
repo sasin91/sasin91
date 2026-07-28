@@ -494,3 +494,62 @@ math {
 .skip-link:focus {
   left: 0;
 }
+
+/* ---------- print (the CV, downloaded as a PDF or printed directly) ---------- */
+
+@media print {
+  .site-head,
+  .site-foot,
+  .skip-link,
+  .theme-toggle,
+  .cv-download {
+    display: none;
+  }
+
+  /* Print is always the light palette; a dark CV wastes toner and reads
+     badly on paper. `:root[data-theme="dark"]` (set by the toggle's
+     localStorage-backed script) is more specific than a bare `:root`, so a
+     reader who last left the site in dark mode would otherwise still get a
+     dark printout — hence !important, not just a higher-specificity rule. */
+  :root {
+    color-scheme: light !important;
+  }
+
+  body {
+    font-size: 10.5pt;
+    line-height: 1.45;
+  }
+
+  .wrap {
+    max-width: none;
+    padding: 0;
+  }
+
+  /* Links must not print as blue underlined web links, but the contact line
+     (phone, email) still needs to be readable as plain text on paper. */
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* Roles must not be split across a page break mid-entry, and a role's
+     heading/date line must never be orphaned alone at the foot of a page. */
+  .cv-role {
+    break-inside: avoid;
+  }
+
+  .cv-role h3,
+  .cv-role .meta {
+    break-after: avoid;
+  }
+
+  /* A section heading (Experience/Skills/Education) must not print alone at
+     the foot of a page with its content pushed to the next one. */
+  h2 {
+    break-after: avoid;
+  }
+
+  @page {
+    margin: 18mm 16mm;
+  }
+}

@@ -45,6 +45,19 @@ jobs:
       - name: Build the site
         run: cargo run --release
 
+      # /cv/ is the source of truth (rendered from content/cv.toml); this
+      # generates public/cv.pdf from the same HTML and print stylesheet, so
+      # there is one layout to maintain, not two. Runs before the guards
+      # below so a broken render fails the build instead of shipping.
+      - name: Render the CV to PDF
+        run: |
+          npx --yes serve -s public -l 8123 &
+          npx --yes wait-on http://127.0.0.1:8123/cv/
+          google-chrome --headless --disable-gpu --no-sandbox \
+            --print-to-pdf=public/cv.pdf --no-pdf-header-footer \
+            http://127.0.0.1:8123/cv/
+          test -s public/cv.pdf
+
       - name: Fail if any JavaScript slipped in
         run: |
           count=$(grep -ro '<script' public --include=*.html | wc -l)
@@ -148,7 +161,7 @@ jobs:
           set -euo pipefail
           fail=0
           for path in / /blog /blog/trongate /blog/trongate/mx-transition \
-                      /blog/freebsd-on-hetzner /blog/athletos-freebsd /about/ /cv/ /rss.xml; do
+                      /blog/freebsd-on-hetzner /blog/athletos-freebsd /about/ /cv/ /cv.pdf /rss.xml; do
             # 308 is expected on the extensionless paths: Caddy canonicalises to
             # the trailing-slash form, which browsers and crawlers follow.
             code=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 20 "https://sasin91.xyz$path")
