@@ -19,6 +19,9 @@ struct Line {
     size_pt: f32,
     leading_mm: f32,
     indent_mm: f32,
+    /// Carried straight through to the `Placement`. `None` for every line
+    /// except the one link line in the header.
+    link: Option<String>,
 }
 
 /// Flows lines down a sequence of pages. PDF's origin is the bottom-left, so
@@ -67,6 +70,7 @@ impl Cursor {
                 size_pt: line.size_pt,
                 font: line.font,
                 text: line.text.clone(),
+                link: line.link.clone(),
             });
         }
     }
@@ -144,11 +148,20 @@ fn lines(
             size_pt,
             leading_mm: pt(leading_pt),
             indent_mm: indent_mm + if i == 0 { 0.0 } else { hanging_mm },
+            link: None,
         })
         .collect()
 }
 
 const BULLET_INDENT_MM: f32 = 5.0;
+/// The actual advance of the "•  " prefix at 10pt, so continuation lines start
+/// under the bullet's text rather than 1.8mm past it.
+const BULLET_HANGING_MM: f32 = 3.2;
+
+/// A recruiter who opens this on screen gets to the live CV in one click; one
+/// who prints it can still read the address. That is why the URL is the visible
+/// text rather than a styled word.
+const ONLINE_CV: &str = "https://sasin91.xyz/cv/";
 
 /// The date range and location under a heading: "September 2024 - February
 /// 2026 - Copenhagen". The web page uses an en dash between the dates and an
@@ -211,7 +224,7 @@ fn entry(heading: &str, meta_line: &str, body: Option<&str>, bullets: &[String])
             10.0,
             14.0,
             BULLET_INDENT_MM,
-            BULLET_INDENT_MM,
+            BULLET_HANGING_MM,
         ));
     }
     block
@@ -252,6 +265,25 @@ fn layout(cv: &Cv) -> Vec<Page> {
         cv.contact.town, cv.contact.postcode, cv.contact.phone, cv.contact.email
     );
     cursor.place(&lines(&contact, Font::Helvetica, 9.0, 13.0, 0.0, 0.0));
+
+    // One Line, one placement, one rectangle: splitting "Full CV online:" from
+    // the URL into two placements on this baseline would make them extract as
+    // one run-together word (see `no_two_placements_share_a_baseline`). The
+    // whole sentence is clickable as a result, not just the URL substring --
+    // an acceptable trade against ever risking a shared baseline.
+    let mut online_cv = lines(
+        "Full CV online: sasin91.xyz/cv",
+        Font::Helvetica,
+        9.0,
+        13.0,
+        0.0,
+        0.0,
+    );
+    if let Some(line) = online_cv.first_mut() {
+        line.link = Some(ONLINE_CV.into());
+    }
+    cursor.place(&online_cv);
+
     let links = format!("{} \u{b7} {}", cv.site.links.github, cv.site.links.linkedin);
     cursor.place(&lines(&links, Font::Helvetica, 9.0, 13.0, 0.0, 0.0));
 
@@ -294,7 +326,7 @@ fn layout(cv: &Cv) -> Vec<Page> {
             10.0,
             14.0,
             BULLET_INDENT_MM,
-            BULLET_INDENT_MM,
+            BULLET_HANGING_MM,
         )
     };
     let heading_lines = section_heading(&mut cursor, "Skills");
@@ -426,6 +458,7 @@ mod tests {
             size_pt: 10.0,
             leading_mm: 14.0 / POINTS_PER_MM,
             indent_mm: 0.0,
+            link: None,
         }
     }
 
@@ -771,5 +804,46 @@ mod tests {
                  extract as one run-together word"
             );
         }
+    }
+
+    /// A human who receives the PDF should be able to reach the live CV in one
+    /// click; a human who receives it on paper should be able to type it.
+    #[test]
+    fn the_header_carries_a_visible_clickable_link_to_the_online_cv() {
+        let pages = layout(&real_cv());
+        let linked: Vec<&Placement> = pages[0]
+            .placements
+            .iter()
+            .filter(|p| p.link.is_some())
+            .collect();
+        assert_eq!(linked.len(), 1, "expected exactly one linked placement");
+        assert_eq!(linked[0].link.as_deref(), Some("https://sasin91.xyz/cv/"));
+        assert!(
+            linked[0].text.contains("sasin91.xyz/cv"),
+            "the URL must be readable on paper"
+        );
+    }
+
+    /// It is no use to a reader who has to hunt for it.
+    #[test]
+    fn the_online_cv_link_is_near_the_top_of_the_first_page() {
+        let pages = layout(&real_cv());
+        let index = pages[0]
+            .placements
+            .iter()
+            .position(|p| p.link.is_some())
+            .expect("a linked placement");
+        assert!(index < 6, "the link is {index} placements down the page");
+    }
+
+    /// A bullet's continuation lines must align under its text, not past it. The
+    /// hanging indent has to equal the actual advance of the bullet prefix.
+    #[test]
+    fn bullet_continuation_lines_align_under_the_bullet_text() {
+        let prefix_width_mm = Font::Helvetica.width("\u{2022}  ", 10.0) / POINTS_PER_MM;
+        assert!(
+            (BULLET_HANGING_MM - prefix_width_mm).abs() < 0.05,
+            "hanging indent {BULLET_HANGING_MM}mm does not match the prefix advance {prefix_width_mm}mm"
+        );
     }
 }

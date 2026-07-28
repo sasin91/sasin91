@@ -241,6 +241,10 @@ pub struct Placement {
     pub size_pt: f32,
     pub font: Font,
     pub text: String,
+    /// When set, a `/Link` annotation is drawn over this placement's glyphs,
+    /// pointing at the URI. `None` for the overwhelming majority of placements,
+    /// which are plain text with nothing to click.
+    pub link: Option<String>,
 }
 
 /// One page of absolute-positioned text placements.
@@ -305,6 +309,7 @@ pub fn write_pdf(title: &str, width_mm: f32, height_mm: f32, pages: &[Page]) -> 
 
     for (index, page) in pages.iter().enumerate() {
         let mut content = Vec::new();
+        let mut annots = Vec::new();
         for placement in &page.placements {
             let font = match placement.font {
                 Font::Helvetica => "/F1",
@@ -321,15 +326,40 @@ pub fn write_pdf(title: &str, width_mm: f32, height_mm: f32, pages: &[Page]) -> 
             );
             write_tj_array(&mut content, placement.font, &placement.text);
             content.extend_from_slice(b" TJ ET\n");
+
+            if let Some(uri) = &placement.link {
+                // The rect must track the same kerning-aware width the content
+                // stream just drew with `write_tj_array`, or the clickable area
+                // over- or under-hangs the glyphs it is supposed to sit on.
+                let x0 = num(placement.x_mm) * POINTS_PER_MM;
+                let baseline = num(placement.y_mm) * POINTS_PER_MM;
+                let size = num(placement.size_pt);
+                let x1 = x0 + placement.font.width(&placement.text, size);
+                let y0 = baseline - 0.25 * size;
+                let y1 = baseline + 0.85 * size;
+                let escaped_uri =
+                    String::from_utf8_lossy(&escape_literal(uri.as_bytes())).into_owned();
+                annots.push(format!(
+                    "<< /Type /Annot /Subtype /Link /Rect [{x0:.2} {y0:.2} {x1:.2} {y1:.2}] \
+                     /Border [0 0 0] /A << /S /URI /URI ({escaped_uri}) >> >>"
+                ));
+            }
         }
 
         let contents_object = page_object(index) + 1;
+        // Omitted, not emitted empty, on a page with no linked placements: an
+        // empty /Annots array is legal PDF but is noise a viewer never needs.
+        let annots_entry = if annots.is_empty() {
+            String::new()
+        } else {
+            format!(" /Annots [{}]", annots.join(" "))
+        };
         objects.push((
             page_object(index),
             format!(
                 "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width:.2} {height:.2}] \
                  /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> \
-                 /Contents {contents_object} 0 R >>"
+                 /Contents {contents_object} 0 R{annots_entry} >>"
             )
             .into_bytes(),
         ));
@@ -441,6 +471,7 @@ mod tests {
                 size_pt: 12.0,
                 font: Font::Helvetica,
                 text: "AV".into(),
+                link: None,
             }],
         }];
         let bytes = write_pdf("x", 210.0, 297.0, &pages);
@@ -461,6 +492,7 @@ mod tests {
                 size_pt: 12.0,
                 font: Font::Helvetica,
                 text: "nnnn".into(),
+                link: None,
             }],
         }];
         let text = String::from_utf8_lossy(&write_pdf("x", 210.0, 297.0, &pages)).into_owned();
@@ -569,6 +601,7 @@ mod tests {
                 size_pt: 12.0,
                 font: Font::Helvetica,
                 text: "Sælger & (Søn) ApS \\ æøå".into(),
+                link: None,
             }],
         }];
         write_pdf("Jonas Hansen - CV", 210.0, 297.0, &pages)
@@ -674,6 +707,7 @@ mod tests {
                 size_pt: 9.0,
                 font: Font::HelveticaBold,
                 text: "side".into(),
+                link: None,
             }],
         };
         let bytes = write_pdf("x", 210.0, 297.0, &[page(), page(), Page::default()]);
@@ -737,6 +771,7 @@ mod tests {
                 size_pt: f32::NAN,
                 font: Font::Helvetica,
                 text: "hello".into(),
+                link: None,
             }],
         }];
         let bytes = write_pdf("x", f32::NAN, 297.0, &pages);
@@ -780,5 +815,77 @@ mod tests {
     #[test]
     fn the_file_ends_with_a_terminated_eof_marker() {
         assert!(one_page_document().ends_with(b"%%EOF\n"));
+    }
+
+    /// A link annotation must sit over the text it belongs to, with no visible
+    /// border -- Acrobat draws a black box around a /Link annotation by default,
+    /// which looks like a printing error on a CV.
+    #[test]
+    fn a_placement_with_a_link_emits_a_link_annotation() {
+        let pages = vec![Page {
+            placements: vec![Placement {
+                x_mm: 16.0,
+                y_mm: 279.0,
+                size_pt: 9.0,
+                font: Font::Helvetica,
+                text: "sasin91.xyz/cv".into(),
+                link: Some("https://sasin91.xyz/cv/".into()),
+            }],
+        }];
+        let text = String::from_utf8_lossy(&write_pdf("x", 210.0, 297.0, &pages)).into_owned();
+        assert!(text.contains("/Subtype /Link"));
+        assert!(text.contains("/URI (https://sasin91.xyz/cv/)"));
+        assert!(text.contains("/Border [0 0 0]"));
+    }
+
+    #[test]
+    fn a_page_with_no_links_has_no_annots_entry() {
+        let pages = vec![Page {
+            placements: vec![Placement {
+                x_mm: 16.0,
+                y_mm: 279.0,
+                size_pt: 9.0,
+                font: Font::Helvetica,
+                text: "plain".into(),
+                link: None,
+            }],
+        }];
+        let text = String::from_utf8_lossy(&write_pdf("x", 210.0, 297.0, &pages)).into_owned();
+        assert!(!text.contains("/Annots"));
+    }
+
+    /// The clickable rectangle must actually cover the glyphs. A zero-width or
+    /// inverted rect is a link nobody can click, and looks identical on the page.
+    #[test]
+    fn the_link_rectangle_covers_the_text() {
+        let placement = Placement {
+            x_mm: 16.0,
+            y_mm: 279.0,
+            size_pt: 9.0,
+            font: Font::Helvetica,
+            text: "sasin91.xyz/cv".into(),
+            link: Some("https://sasin91.xyz/cv/".into()),
+        };
+        let expected_width = Font::Helvetica.width(&placement.text, 9.0);
+        let pages = vec![Page {
+            placements: vec![placement],
+        }];
+        let text = String::from_utf8_lossy(&write_pdf("x", 210.0, 297.0, &pages)).into_owned();
+        let rect = text
+            .split("/Rect [")
+            .nth(1)
+            .and_then(|t| t.split(']').next())
+            .expect("a /Rect");
+        let n: Vec<f32> = rect
+            .split_whitespace()
+            .map(|v| v.parse().unwrap())
+            .collect();
+        assert_eq!(n.len(), 4);
+        assert!(n[2] > n[0], "rect has no width");
+        assert!(n[3] > n[1], "rect has no height");
+        assert!(
+            (n[2] - n[0] - expected_width).abs() < 0.5,
+            "rect width does not match the text"
+        );
     }
 }
