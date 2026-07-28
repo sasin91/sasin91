@@ -7,6 +7,16 @@
     {% block description %}{% endblock %}
     <link rel="icon" href="/favicon.png" sizes="any">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('theme');
+          if (t === 'light' || t === 'dark') {
+            document.documentElement.dataset.theme = t;
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="stylesheet" href="/site.css" />
     <link rel="stylesheet" href="/syntax.css" />
     <link rel="alternate" type="application/rss+xml" title="{{ cv.site.name }}" href="/rss.xml" />
@@ -20,6 +30,9 @@
           <a href="/blog/">Writing</a>
           <a href="/about/">About</a>
           <a href="{{ cv.site.links.github }}">GitHub</a>
+          <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false">
+            Dark theme
+          </button>
         </nav>
       </header>
 
@@ -32,5 +45,42 @@
         <a href="/rss.xml">RSS</a>
       </footer>
     </div>
+    <script>
+      (function () {
+        var button = document.getElementById('theme-toggle');
+        if (!button) return;
+        var root = document.documentElement;
+
+        function current() {
+          return root.dataset.theme ||
+            (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        }
+
+        function sync() {
+          button.setAttribute('aria-pressed', String(current() === 'dark'));
+        }
+
+        sync();
+
+        button.addEventListener('click', function () {
+          var next = current() === 'dark' ? 'light' : 'dark';
+
+          function apply() {
+            root.dataset.theme = next;
+            try { localStorage.setItem('theme', next); } catch (e) {}
+            sync();
+          }
+
+          // Same-document view transition: the crossfade of a page transition
+          // without the reload, so scroll position needs no handling at all.
+          if (document.startViewTransition &&
+              !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.startViewTransition(apply);
+          } else {
+            apply();
+          }
+        });
+      })();
+    </script>
   </body>
 </html>

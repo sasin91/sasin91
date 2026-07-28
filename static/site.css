@@ -85,6 +85,40 @@ body {
   color: var(--accent);
 }
 
+.theme-toggle {
+  font: inherit;
+  font-size: 0.94rem;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  color: var(--accent);
+}
+
+/* Cross-document transitions, for moving between pages. Needs no JavaScript
+   and is silently ignored where unsupported. The theme flip uses the
+   same-document API instead — see the toggle handler. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 .site-foot {
   margin-top: 6rem;
   padding: 2rem 0 3.5rem;
