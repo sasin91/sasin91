@@ -60,7 +60,22 @@ jobs:
           done
           echo "all required URLs present"
 
+      # Until the box is provisioned there is nowhere to send this. Skipping
+      # loudly beats failing every push: a permanently red pipeline is one you
+      # stop reading, and the build and its guards above are the part that
+      # actually protects the live site.
+      - name: Is a deploy target configured?
+        id: target
+        run: |
+          if [ -z "${{ secrets.DEPLOY_HOST }}" ] || [ -z "${{ secrets.DEPLOY_USER }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deploy skipped::The site built and passed its guards, but DEPLOY_HOST/DEPLOY_USER are not set, so there is nowhere to publish it yet."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Add the host key
+        if: steps.target.outputs.configured == 'true'
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
@@ -68,6 +83,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
 
       - name: Rsync to the box
+        if: steps.target.outputs.configured == 'true'
         run: |
           rsync -az --delete public/ \
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/usr/local/www/sasin91.xyz/"
