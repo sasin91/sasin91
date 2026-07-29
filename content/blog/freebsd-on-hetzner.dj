@@ -5,6 +5,7 @@ date = 2026-07-26
 description = "Hetzner has no FreeBSD image, and the installer everyone recommends never verifies what it downloads before handing it root. In this article I install 15.1 on root-on-ZFS the honest way, and walk through the five things that broke on the way there."
 hero = "/images/freebsd-on-hetzner/header.svg"
 hero_alt = "FreeBSD 15.1 on root-on-ZFS, with the disk partition layout"
+card = "/images/freebsd-on-hetzner/card.png"
 +++
 
 Hetzner has no FreeBSD image and their ISO library stops at 15.0. You can still get *any* release on there, unattended, in about an hour.
@@ -234,6 +235,44 @@ vfs.zfs.arc_max  536870912                (512 MiB)
 
 15.1 on root-on-ZFS, a release the ISO library does not carry, from media you can verify.
 :::
+
+## Under load
+
+I measured this from a separate Hetzner VPS in the same datacentre, hel1, against a control: an identical CX23 running Ubuntu 24.04, the same Caddy 2.11.4 serving byte-identical files, with an ECDSA P-256 certificate to match. `vegeta`, a fresh TCP and TLS connection per request, which is what a crawler does and what a browser never does.
+
+{title="9-load.sh"}
+```bash
+vegeta attack -targets targets.txt -rate 500 -duration 30s \
+       -keepalive=false | vegeta report
+
+# freebsd   100/s  4.9ms   250/s  4.7ms   500/s  4.0ms   mean
+# ubuntu    100/s  5.7ms   250/s  5.0ms   500/s  5.2ms   mean
+```
+
+At 100, 250 and 500 fresh connections a second both boxes delivered the full offered rate with 100% success, and the FreeBSD box was the faster of the two at every step.
+
+The crypto is not the constraint either.
+
+{title="openssl speed ecdsap256"}
+```bash
+# sign/s
+#  37920   this box (epyc, one core)
+#  32614   ubuntu control (xeon, one core)
+```
+
+The EPYC signs 16% faster than the control's Xeon, which is worth stating because it means the hardware favours the FreeBSD box rather than the other way round. Against 500 connections a second, 37,920 signatures is roughly 75x headroom. Whatever the ceiling is, it is not asymmetric crypto.
+
+::: warning
+## Two things I did not establish
+
+Above 500/s the measurements were not reproducible. One clean run at 1000/s had FreeBSD at 497/s and the Ubuntu control at 999/s. A later run gave 179/s at 1000/s, and then 566/s at 1500/s — more offered load producing more throughput, which is not a property a server can have. It is the single load generator accumulating TIME_WAIT between runs. A real answer needs several generators.
+
+An earlier attempt measured this from a Windows laptop over the public internet and got 50-100 connections a second. That was low by five to ten times, and the cause was ephemeral-port exhaustion on the client. The first measurement was wrong, and it was wrong in a way that produced a confident and completely incorrect explanation.
+:::
+
+One hypothesis died on the way. FreeBSD's `kern.ipc.soacceptqueue` is 128 and Ubuntu's `net.core.somaxconn` is 4096, so the listen backlog differs by 32x, which looked like the obvious cause and survived the arithmetic. I set the control to 128, restarted Caddy so the listener picked the new value up, and it still delivered 999.9/s. Refuted.
+
+That leaves `pf`, which redirects 443 to Caddy's high port, as the untested suspect. Untested because that high port is not reachable from outside, so there was no way to bypass the redirect and compare against it.
 
 The same steps work for any release. Change the version in step 3 and the rest follows.
 

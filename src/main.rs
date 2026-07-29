@@ -41,7 +41,7 @@ struct Meta {
     /// `og:image`, absolute under `BASE_URL` for the same reason `url` is --
     /// see that field's doc comment. `None` for every page with no suitable
     /// asset (the landing, about, CV and blog-listing pages always; a post
-    /// whenever its hero is missing or is an SVG -- see `og_image`).
+    /// with no `card` whose hero is missing or is an SVG -- see `og_image`).
     image: Option<String>,
     /// `og:image:alt`, carried alongside `image` rather than invented as a
     /// generic fallback string. Only meaningful when `image` is `Some`;
@@ -263,20 +263,54 @@ fn inline_svg_heroes(posts: &mut [Post]) -> Result<()> {
 /// about the build would ever point at the gap.
 const OG_IMAGE_EXTENSIONS: [&str; 4] = [".png", ".jpg", ".jpeg", ".webp"];
 
-/// A post's `og:image` and its alt text, derived from `hero`/`hero_alt` --
-/// but only when `hero` is a raster image (see `OG_IMAGE_EXTENSIONS`).
-/// Returns `(None, None)` for a post with no hero and for one whose hero is
-/// an SVG; the image, when present, is made absolute under `BASE_URL` for
-/// the same reason `Meta::url` must be (a relative `og:image` is silently
-/// ignored by every crawler that reads it).
-fn og_image(post: &Post) -> (Option<String>, Option<String>) {
-    let Some(hero) = &post.hero else {
-        return (None, None);
-    };
-    if !OG_IMAGE_EXTENSIONS.iter().any(|ext| hero.ends_with(ext)) {
-        return (None, None);
+fn is_raster(path: &str) -> bool {
+    OG_IMAGE_EXTENSIONS.iter().any(|ext| path.ends_with(ext))
+}
+
+/// A post's `og:image` and its alt text, in this order:
+///
+/// 1. `card`, if the post declares one;
+/// 2. otherwise `hero`, but only when it is a raster image
+///    (see `OG_IMAGE_EXTENSIONS`);
+/// 3. otherwise nothing.
+///
+/// `card` exists as a field of its own because a post's hero and its
+/// link-share image are not the same picture and cannot always be the same
+/// file — see [`content::FrontMatter::card`]. `freebsd-on-hetzner` is the
+/// concrete case: its hero is an SVG, which is right for the page (inlined,
+/// so it follows the theme toggle) and invisible to every crawler, all of
+/// which drop an SVG `og:image` and render the link with no image at all.
+/// Collapsing the two fields into one would force a choice between a
+/// theme-aware page and a shareable link.
+///
+/// The image, when present, is made absolute under `BASE_URL` for the same
+/// reason `Meta::url` must be (a relative `og:image` is silently ignored by
+/// every crawler that reads it).
+///
+/// Fails when `card` points at an SVG. That is the exact bug this field was
+/// added to fix, re-entered by hand, and it is invisible in the output: the
+/// tag would be present, the build green, the link-share still blank. The
+/// check lives here rather than in a separate validator so it cannot be
+/// skipped -- this is the only place a `card` is ever read.
+fn og_image(post: &Post) -> Result<(Option<String>, Option<String>)> {
+    if let Some(card) = &post.card {
+        anyhow::ensure!(
+            is_raster(card),
+            "post {:?}: card = {card:?} is not a raster image. \
+             A card exists precisely because crawlers refuse an SVG, so an \
+             SVG card is never shared; use one of {OG_IMAGE_EXTENSIONS:?}",
+            post.path
+        );
+        return Ok((Some(format!("{BASE_URL}{card}")), post.hero_alt.clone()));
     }
-    (Some(format!("{BASE_URL}{hero}")), post.hero_alt.clone())
+
+    let Some(hero) = &post.hero else {
+        return Ok((None, None));
+    };
+    if !is_raster(hero) {
+        return Ok((None, None));
+    }
+    Ok((Some(format!("{BASE_URL}{hero}")), post.hero_alt.clone()))
 }
 
 fn main() -> Result<()> {
@@ -409,7 +443,7 @@ fn main() -> Result<()> {
     )?;
 
     for post in &posts {
-        let (image, image_alt) = og_image(post);
+        let (image, image_alt) = og_image(post)?;
         write(
             format!("{OUT}/{}/index.html", post.path),
             &PostPage {
@@ -509,6 +543,7 @@ email = "x"
             description: "x".into(),
             hero: None,
             hero_alt: None,
+            card: None,
             body: String::new(),
             hero_html: None,
         }
@@ -795,16 +830,18 @@ email = "x"
     /// this post must come out exactly like one with no hero at all.
     /// Checked against a real post, not a fixture, so a future edit that
     /// swaps this post's hero to a raster format is what breaks this test,
-    /// rather than the test quietly asserting nothing.
+    /// rather than the test quietly asserting nothing. Posts that declare a
+    /// `card` are excluded: an SVG hero *plus* a card is the case the test
+    /// below covers, and it is meant to come out the opposite way.
     #[test]
-    fn a_post_with_an_svg_hero_emits_no_og_image() {
+    fn a_post_with_an_svg_hero_and_no_card_emits_no_og_image() {
         let posts = real_posts();
         let post = posts
             .iter()
-            .find(|p| p.hero.as_deref().is_some_and(|h| h.ends_with(".svg")))
-            .expect("content/blog must still have a post with an SVG hero");
+            .find(|p| p.card.is_none() && p.hero.as_deref().is_some_and(|h| h.ends_with(".svg")))
+            .expect("content/blog must still have a post with an SVG hero and no card");
 
-        let (image, image_alt) = og_image(post);
+        let (image, image_alt) = og_image(post).unwrap();
         assert_eq!(image, None, "SVG hero must not become og:image");
         assert_eq!(image_alt, None);
 
@@ -833,30 +870,39 @@ email = "x"
         );
     }
 
-    /// The post this whole feature exists for: its PNG hero must become an
-    /// absolute `og:image`, carry its `hero_alt` as `og:image:alt`, and flip
-    /// `twitter:card` to `summary_large_image` — a `summary` card with a
-    /// large image renders as a cramped thumbnail.
+    /// The post this whole feature exists for, and the case `card` was added
+    /// to make possible: an SVG hero — right on the page, worthless to a
+    /// crawler — alongside a PNG card that must become an absolute
+    /// `og:image`, carry `hero_alt` as `og:image:alt`, and flip
+    /// `twitter:card` to `summary_large_image` (a `summary` card with a large
+    /// image renders as a cramped thumbnail). Before `card` existed this post
+    /// shared as a bare link.
     #[test]
-    fn a_post_with_a_raster_hero_gets_an_absolute_og_image_and_a_large_card() {
+    fn a_post_with_an_svg_hero_and_a_card_gets_an_absolute_og_image_and_a_large_card() {
         let posts = real_posts();
         let post = posts
             .iter()
-            .find(|p| p.path == "blog/link-share-load")
-            .expect("content/blog/link-share-load.dj must exist with a PNG hero");
+            .find(|p| p.path == "blog/freebsd-on-hetzner")
+            .expect("content/blog/freebsd-on-hetzner.dj must exist");
         assert_eq!(
             post.hero.as_deref(),
-            Some("/images/link-share-load/card.png"),
-            "fixture assumption: this post's hero moved"
+            Some("/images/freebsd-on-hetzner/header.svg"),
+            "fixture assumption: this post's hero is the SVG that makes card necessary"
+        );
+        assert_eq!(
+            post.card.as_deref(),
+            Some("/images/freebsd-on-hetzner/card.png"),
+            "fixture assumption: this post's card moved"
         );
 
-        let (image, image_alt) = og_image(post);
+        let (image, image_alt) = og_image(post).unwrap();
         assert_eq!(
             image.as_deref(),
             Some(concat!(
                 "https://sasin91.xyz",
-                "/images/link-share-load/card.png"
-            ))
+                "/images/freebsd-on-hetzner/card.png"
+            )),
+            "the card must win over the hero, and be absolute"
         );
         assert!(
             image_alt.is_some(),
@@ -899,6 +945,40 @@ email = "x"
             html.contains("name=\"twitter:card\" content=\"summary_large_image\""),
             "{html}"
         );
+    }
+
+    /// Builds a `Post` carrying just the fields `og_image` reads.
+    fn post_with_images(hero: Option<&str>, card: Option<&str>) -> Post {
+        Post {
+            hero: hero.map(Into::into),
+            hero_alt: Some("alt".into()),
+            card: card.map(Into::into),
+            ..post_fixture()
+        }
+    }
+
+    /// With no `card`, a raster hero is still the fallback — adding `card`
+    /// must not have quietly made the hero path dead.
+    #[test]
+    fn a_raster_hero_is_still_used_when_no_card_is_set() {
+        let (image, _) = og_image(&post_with_images(Some("/images/x/hero.png"), None)).unwrap();
+        assert_eq!(
+            image.as_deref(),
+            Some("https://sasin91.xyz/images/x/hero.png")
+        );
+    }
+
+    /// An SVG `card` is the original bug typed into the field invented to
+    /// prevent it, and it fails silently everywhere it matters: the tag ships,
+    /// the page looks fine, and every crawler drops the image. Stopping the
+    /// build is the only place it can be noticed.
+    #[test]
+    fn an_svg_card_stops_the_build() {
+        let err = og_image(&post_with_images(None, Some("/images/x/card.svg")))
+            .expect_err("an SVG card must not build");
+        let msg = err.to_string();
+        assert!(msg.contains("card.svg"), "error must name the value: {msg}");
+        assert!(msg.contains("blog/x"), "error must name the post: {msg}");
     }
 
     #[test]

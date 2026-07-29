@@ -38,6 +38,26 @@ pub struct FrontMatter {
     pub hero: Option<String>,
     #[serde(default)]
     pub hero_alt: Option<String>,
+    /// A raster image used only as the link-share card (`og:image`), never
+    /// rendered on the page itself.
+    ///
+    /// Separate from `hero` because the two have incompatible requirements
+    /// and `freebsd-on-hetzner` is the post where that stopped being
+    /// theoretical: its hero is `/images/freebsd-on-hetzner/header.svg`,
+    /// which is the right choice on the page — `main.rs` inlines it, so it
+    /// follows the theme toggle instead of being stuck on
+    /// `prefers-color-scheme` — and simultaneously useless to every crawler,
+    /// because Facebook, LinkedIn and Twitter/X all refuse to render an SVG
+    /// as a share image (see `main::OG_IMAGE_EXTENSIONS`). Without this
+    /// field the post either loses its theme-aware hero or shares as a bare
+    /// link with no image at all. With it, the page keeps the SVG and the
+    /// crawler gets a PNG.
+    ///
+    /// Must itself be a raster file; a `card` pointing at an SVG is the same
+    /// bug wearing a different name, and `main::og_image` refuses to build
+    /// rather than emit it.
+    #[serde(default)]
+    pub card: Option<String>,
 }
 
 #[derive(Debug)]
@@ -48,6 +68,9 @@ pub struct Post {
     pub description: String,
     pub hero: Option<String>,
     pub hero_alt: Option<String>,
+    /// The link-share card, if the post carries one. See
+    /// [`FrontMatter::card`] for why this is not just `hero`.
+    pub card: Option<String>,
     /// Rendered HTML, not source.
     pub body: String,
     /// Set by `main.rs`, after loading, when `hero` points at a local
@@ -151,6 +174,7 @@ pub fn load_posts(dir: &Path, render: impl Fn(&str) -> Result<String>) -> Result
             description: front.description,
             hero: front.hero,
             hero_alt: front.hero_alt,
+            card: front.card,
             body: render(body).with_context(|| format!("rendering {}", file.display()))?,
             // Filled in by `main.rs` after `load_posts` returns; it needs
             // the SVG-inlining helper `djot.rs` owns, and this function has
@@ -199,6 +223,7 @@ Body text here.
             description: front.description,
             hero: None,
             hero_alt: None,
+            card: None,
             body: String::new(),
             hero_html: None,
         };
@@ -217,6 +242,7 @@ Body text here.
             description: "x".into(),
             hero: None,
             hero_alt: None,
+            card: None,
             body: body.into(),
             hero_html: hero_html.map(Into::into),
         }
@@ -283,6 +309,7 @@ Body text here.
             description: front.description,
             hero: None,
             hero_alt: None,
+            card: None,
             body: String::new(),
             hero_html: None,
         };
