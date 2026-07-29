@@ -58,6 +58,13 @@ pub struct FrontMatter {
     /// rather than emit it.
     #[serde(default)]
     pub card: Option<String>,
+    /// Alt text for `card`, and never reused from `hero_alt`. The two images
+    /// show different things -- on `freebsd-on-hetzner` the hero is a disk
+    /// layout and the card is a latency chart -- so describing one with the
+    /// other's words is wrong in the place it is least likely to be noticed,
+    /// since `og:image:alt` is only ever read aloud by someone else's client.
+    #[serde(default)]
+    pub card_alt: Option<String>,
 }
 
 #[derive(Debug)]
@@ -71,6 +78,8 @@ pub struct Post {
     /// The link-share card, if the post carries one. See
     /// [`FrontMatter::card`] for why this is not just `hero`.
     pub card: Option<String>,
+    /// Alt text for `card`. See [`FrontMatter::card_alt`].
+    pub card_alt: Option<String>,
     /// Rendered HTML, not source.
     pub body: String,
     /// Set by `main.rs`, after loading, when `hero` points at a local
@@ -175,6 +184,7 @@ pub fn load_posts(dir: &Path, render: impl Fn(&str) -> Result<String>) -> Result
             hero: front.hero,
             hero_alt: front.hero_alt,
             card: front.card,
+            card_alt: front.card_alt,
             body: render(body).with_context(|| format!("rendering {}", file.display()))?,
             // Filled in by `main.rs` after `load_posts` returns; it needs
             // the SVG-inlining helper `djot.rs` owns, and this function has
@@ -224,6 +234,7 @@ Body text here.
             hero: None,
             hero_alt: None,
             card: None,
+            card_alt: None,
             body: String::new(),
             hero_html: None,
         };
@@ -243,6 +254,7 @@ Body text here.
             hero: None,
             hero_alt: None,
             card: None,
+            card_alt: None,
             body: body.into(),
             hero_html: hero_html.map(Into::into),
         }
@@ -310,6 +322,7 @@ Body text here.
             hero: None,
             hero_alt: None,
             card: None,
+            card_alt: None,
             body: String::new(),
             hero_html: None,
         };

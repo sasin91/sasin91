@@ -6,6 +6,7 @@ description = "Hetzner has no FreeBSD image, and the installer everyone recommen
 hero = "/images/freebsd-on-hetzner/header.svg"
 hero_alt = "FreeBSD 15.1 on root-on-ZFS, with the disk partition layout"
 card = "/images/freebsd-on-hetzner/card.png"
+card_alt = "Bar chart of mean latency for a fresh TLS connection at 100, 250 and 500 connections a second: FreeBSD 4.9, 4.7 and 4.0 milliseconds, Ubuntu 5.7, 5.0 and 5.2"
 +++
 
 Hetzner has no FreeBSD image and their ISO library stops at 15.0. You can still get *any* release on there, unattended, in about an hour.
@@ -242,8 +243,8 @@ I measured this from a separate Hetzner VPS in the same datacentre, hel1, agains
 
 {title="9-load.sh"}
 ```bash
-vegeta attack -targets targets.txt -rate 500 -duration 30s \
-       -keepalive=false | vegeta report
+vegeta attack -targets targets.txt -rate 500 -duration 10s \
+       -keepalive=false -timeout 20s | vegeta report
 
 # freebsd   100/s  4.9ms   250/s  4.7ms   500/s  4.0ms   mean
 # ubuntu    100/s  5.7ms   250/s  5.0ms   500/s  5.2ms   mean

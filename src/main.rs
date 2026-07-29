@@ -301,7 +301,18 @@ fn og_image(post: &Post) -> Result<(Option<String>, Option<String>)> {
              SVG card is never shared; use one of {OG_IMAGE_EXTENSIONS:?}",
             post.path
         );
-        return Ok((Some(format!("{BASE_URL}{card}")), post.hero_alt.clone()));
+        // Deliberately not falling back to `hero_alt`. The card and the hero
+        // are different pictures, so the hero's words would describe the wrong
+        // image -- and wrongly in the one place nobody proofreads, since
+        // `og:image:alt` is only ever surfaced by someone else's client.
+        let alt = post.card_alt.clone();
+        anyhow::ensure!(
+            alt.is_some(),
+            "post {:?}: card = {card:?} has no card_alt. The card is a \
+             different image from the hero, so it needs its own description",
+            post.path
+        );
+        return Ok((Some(format!("{BASE_URL}{card}")), alt));
     }
 
     let Some(hero) = &post.hero else {
@@ -544,6 +555,7 @@ email = "x"
             hero: None,
             hero_alt: None,
             card: None,
+            card_alt: None,
             body: String::new(),
             hero_html: None,
         }
@@ -979,6 +991,39 @@ email = "x"
         let msg = err.to_string();
         assert!(msg.contains("card.svg"), "error must name the value: {msg}");
         assert!(msg.contains("blog/x"), "error must name the post: {msg}");
+    }
+
+    /// A card with no description of its own would otherwise silently inherit
+    /// `hero_alt`, which describes a different picture. `og:image:alt` is only
+    /// ever surfaced by someone else's client, so a wrong value here is the
+    /// kind nobody on this side ever sees.
+    #[test]
+    fn a_card_without_its_own_alt_stops_the_build() {
+        let err = og_image(&post_with_images(None, Some("/images/x/card.png")))
+            .expect_err("a card with no card_alt must not build");
+        let msg = err.to_string();
+        assert!(msg.contains("card_alt"), "error must name the field: {msg}");
+        assert!(msg.contains("blog/x"), "error must name the post: {msg}");
+    }
+
+    /// The real shape on `freebsd-on-hetzner`: an SVG hero for the page and a
+    /// PNG card for crawlers, each described in its own words.
+    #[test]
+    fn a_card_is_shared_with_its_own_description_not_the_heros() {
+        let post = Post {
+            card_alt: Some("a latency chart".into()),
+            ..post_with_images(Some("/images/x/hero.svg"), Some("/images/x/card.png"))
+        };
+        let (image, alt) = og_image(&post).unwrap();
+        assert_eq!(
+            image.as_deref(),
+            Some("https://sasin91.xyz/images/x/card.png")
+        );
+        assert_eq!(
+            alt.as_deref(),
+            Some("a latency chart"),
+            "must not fall back to hero_alt"
+        );
     }
 
     #[test]
