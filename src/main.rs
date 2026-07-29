@@ -162,6 +162,18 @@ fn hash_css(bytes: &[u8]) -> String {
     format!("{hash:016x}")
 }
 
+/// Builds the on-disk name for a hashed asset: `<stem>.<hash>.css`. This is
+/// the only seam holding the builder and the Caddyfile's cache rule (see
+/// `docs/deploy.md`) together -- that rule matches `\.[0-9a-f]{8,}\.css$`,
+/// so this exact construction is what the test below checks against that
+/// shape directly, rather than trusting `hash_css`'s own format in
+/// isolation. A typo here (a dropped dot, a different separator) would
+/// compile, pass every other test, build fine, and only show up as the
+/// Caddy rule silently failing to match once it's live.
+fn hashed_css_name(stem: &str, bytes: &[u8]) -> String {
+    format!("{stem}.{}.css", hash_css(bytes))
+}
+
 fn write(path: impl AsRef<Path>, contents: &str) -> Result<()> {
     let path = path.as_ref();
     if let Some(dir) = path.parent() {
@@ -248,9 +260,9 @@ fn main() -> Result<()> {
     // page and recomputing it per page would just repeat the same read.
     let site_css_bytes =
         fs::read("static/site.css").context("reading static/site.css to hash it")?;
-    let site_css = format!("site.{}.css", hash_css(&site_css_bytes));
+    let site_css = hashed_css_name("site", &site_css_bytes);
     let syntax_css_body = hl.stylesheet("Solarized (light)", "base16-ocean.dark")?;
-    let syntax_css = format!("syntax.{}.css", hash_css(syntax_css_body.as_bytes()));
+    let syntax_css = hashed_css_name("syntax", syntax_css_body.as_bytes());
 
     if Path::new(OUT).exists() {
         fs::remove_dir_all(OUT).with_context(|| {
@@ -755,20 +767,39 @@ email = "x"
         assert_ne!(a, c, "a single changed byte must change the hash");
     }
 
-    /// Must match the Caddyfile's `\.[0-9a-f]{8,}\.css$` immutable-cache
-    /// rule (see docs/deploy.md) -- if the builder's digest shape and the
-    /// server's regex disagree, the header silently never applies, and
-    /// nothing about that failure is loud.
+    /// Mirrors the Caddyfile's `\.[0-9a-f]{8,}\.css$` immutable-cache matcher
+    /// (see docs/deploy.md) character-for-character, without pulling in a
+    /// regex crate for the one pattern: a literal dot, 8+ lowercase hex
+    /// digits, then a literal `.css` at the end of the string.
+    fn matches_caddy_hashed_css_pattern(name: &str) -> bool {
+        let Some(before_css) = name.strip_suffix(".css") else {
+            return false;
+        };
+        let Some(dot_at) = before_css.rfind('.') else {
+            return false;
+        };
+        let hash_part = &before_css[dot_at + 1..];
+        hash_part.len() >= 8
+            && hash_part
+                .chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    }
+
+    /// Exercises the real `hashed_css_name` construction `main` actually
+    /// calls -- not just `hash_css`'s own output in isolation, and not a
+    /// hand-written fixture already shaped to pass. A dropped dot or a
+    /// changed separator here would compile, pass every other test in this
+    /// suite, and build fine locally; it would only show up as the Caddy
+    /// rule above silently never matching once the site was live, with no
+    /// error and no failed request to point at it.
     #[test]
-    fn hash_css_output_is_lowercase_hex_of_at_least_eight_characters() {
-        let hash = hash_css(b"some stylesheet bytes");
-        assert!(
-            hash.len() >= 8
-                && hash
-                    .chars()
-                    .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()),
-            "got: {hash}"
-        );
+    fn hashed_css_name_matches_the_caddy_immutable_pattern() {
+        for name in [
+            hashed_css_name("site", b"some stylesheet bytes"),
+            hashed_css_name("syntax", b"some other stylesheet bytes"),
+        ] {
+            assert!(matches_caddy_hashed_css_pattern(&name), "got: {name}");
+        }
     }
 
     /// A single stale `/site.css` or `/syntax.css` reference is a 404

@@ -87,13 +87,21 @@ sasin91.xyz, www.sasin91.xyz {
 	# can never change what it returns. That is what makes it safe to tell a
 	# browser never to ask again -- and it is what stops the revalidation
 	# round trip that made every click after a deploy feel slow.
-	@immutable path_regexp \.[0-9a-f]{8,}\.css$
-	header @immutable Cache-Control "public, max-age=31536000, immutable"
+	@hashed path_regexp \.[0-9a-f]{8,}\.css$
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
 
 	# Everything else changes at the same URL on every deploy, so it must be
-	# revalidated rather than cached blind. `no-cache` still allows a 304 off
-	# the ETag, so a revalidation costs headers, not the body.
-	header Cache-Control "public, no-cache"
+	# revalidated rather than cached blind. `no-cache` does not mean "do not
+	# store" -- it means "revalidate before reuse", so a repeat visit costs a
+	# 304 off the ETag rather than the whole body.
+	#
+	# The two matchers are deliberately mutually exclusive rather than relying
+	# on one general rule and one specific one. `header` is last-write-wins,
+	# and a general rule that also matches the hashed files would silently
+	# overwrite the immutable header above -- a failure with no symptom except
+	# the site being slow again.
+	@unhashed not path_regexp \.[0-9a-f]{8,}\.css$
+	header @unhashed Cache-Control "public, no-cache"
 
 	file_server
 }
@@ -109,7 +117,16 @@ Hours later the heuristic grows and the site quietly feels fast again --
 which is why this read as "a bit of latency" that "went back to normal", and
 why it would have returned on every subsequent deploy.
 
-The two rules above split the site's assets into two lifetimes:
+The two rules above split the site's assets into two lifetimes. They are
+written as `@hashed` / `@unhashed`, a mutually exclusive pair, rather than one
+general `header Cache-Control ...` plus one scoped to `@hashed` on top of it
+-- `header` overwrites, it does not merge, so an unscoped rule matches the
+hashed files too and clobbers whichever one runs second, regardless of source
+order (`route { }` does not fix this: it only pins the order, and the general
+rule still wins by running last). If this ever gets "simplified" back to a
+general rule plus a specific exception, the immutable header silently stops
+applying to the stylesheets and the revalidation round trip this change
+exists to remove comes back, with nothing failing loudly to say so.
 
 - **The hashed stylesheets** get `max-age=31536000` (one year) and
   `immutable`: a year because a hashed URL never needs revisiting once
