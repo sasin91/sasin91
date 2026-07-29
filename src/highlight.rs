@@ -43,7 +43,9 @@ impl Highlighter {
         ))
     }
 
-    /// Both palettes, written once at build time into public/syntax.css.
+    /// Both palettes, written once at build time into public/syntax.<hash>.css
+    /// -- `main` hashes the returned string and picks the filename, this
+    /// function only produces the bytes.
     pub fn stylesheet(&self, light: &str, dark: &str) -> Result<String> {
         let light = self
             .themes

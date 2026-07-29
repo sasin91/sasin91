@@ -52,6 +52,14 @@ struct IndexPage<'a> {
     meta: Meta,
     /// The landing page has no code on it, so `syntax.css` never loads here.
     syntax: bool,
+    /// Content-hashed `site.<hash>.css`, computed once in `main` -- see
+    /// `hash_css`. Constant for the whole build, so every page shares the
+    /// same value rather than each recomputing it.
+    site_css: &'a str,
+    /// Content-hashed `syntax.<hash>.css`. Present even when `syntax` is
+    /// false, since Askama needs the field to exist; `base.html` only
+    /// renders the `<link>` when `syntax` is true.
+    syntax_css: &'a str,
 }
 
 #[derive(Template)]
@@ -62,6 +70,8 @@ struct AboutPage<'a> {
     nav: &'static str,
     meta: Meta,
     syntax: bool,
+    site_css: &'a str,
+    syntax_css: &'a str,
 }
 
 #[derive(Template)]
@@ -72,6 +82,8 @@ struct CvPage<'a> {
     nav: &'static str,
     meta: Meta,
     syntax: bool,
+    site_css: &'a str,
+    syntax_css: &'a str,
 }
 
 #[derive(Template)]
@@ -85,6 +97,8 @@ struct BlogPage<'a> {
     /// The listing shows only titles and descriptions, never a post's body,
     /// so there is never highlighted code on this page either.
     syntax: bool,
+    site_css: &'a str,
+    syntax_css: &'a str,
 }
 
 #[derive(Template)]
@@ -101,6 +115,8 @@ struct PostPage<'a> {
     /// wrapper in the rendered body — never hardcoded, since most posts
     /// mix prose with code and some (see `Post::has_syntax`) have none.
     syntax: bool,
+    site_css: &'a str,
+    syntax_css: &'a str,
 }
 
 #[derive(Template)]
@@ -122,6 +138,30 @@ struct Sitemap<'a> {
     base: &'a str,
 }
 
+/// FNV-1a over an asset's own bytes, formatted as fixed-width lowercase hex.
+///
+/// Duplicated rather than reusing `pdf::fnv1a` (private, and scoped to the
+/// PDF `/ID`): a six-line hash copied here is cheaper than making the PDF
+/// writer's internals `pub` just so the asset pipeline could borrow them, and
+/// it keeps the two writers free to change their hashing independently.
+///
+/// Must be a pure function of the bytes -- no timestamps, no filesystem
+/// paths, no iteration order -- because the deploy hardlinks unchanged files
+/// from the previous release (`rsync --link-dest`, see docs/deploy.md); a
+/// hash that moved without the content moving would re-transfer both
+/// stylesheets and invalidate every client's cache on every deploy for no
+/// reason. `{:016x}` rather than bare `{:x}` so the digest is always 16
+/// characters -- a leading zero must not silently shrink the name below the
+/// Caddyfile's `\.[0-9a-f]{8,}\.css$` immutable-cache rule.
+fn hash_css(bytes: &[u8]) -> String {
+    let mut hash = 0xcbf2_9ce4_8422_2325u64;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("{hash:016x}")
+}
+
 fn write(path: impl AsRef<Path>, contents: &str) -> Result<()> {
     let path = path.as_ref();
     if let Some(dir) = path.parent() {
@@ -130,7 +170,13 @@ fn write(path: impl AsRef<Path>, contents: &str) -> Result<()> {
     fs::write(path, contents).with_context(|| format!("writing {}", path.display()))
 }
 
-fn copy_static() -> Result<()> {
+/// Walks `static/` into `public/`, renaming `site.css` to its content-hashed
+/// name (`site_css`, e.g. `site.<hash>.css`) on the way through. Renaming
+/// during the copy rather than after means an unhashed `public/site.css` is
+/// never created in the first place -- there is no stray file to remember to
+/// delete, and no window where both the old and new names exist and a page
+/// could end up linking the wrong one.
+fn copy_static(site_css: &str) -> Result<()> {
     let mut copied = 0usize;
 
     for entry in WalkDir::new("static") {
@@ -139,7 +185,11 @@ fn copy_static() -> Result<()> {
             continue;
         }
         let rel = entry.path().strip_prefix("static")?;
-        let dest = Path::new(OUT).join(rel);
+        let dest = if rel == Path::new("site.css") {
+            Path::new(OUT).join(site_css)
+        } else {
+            Path::new(OUT).join(rel)
+        };
         if let Some(dir) = dest.parent() {
             fs::create_dir_all(dir)
                 .with_context(|| format!("creating directory {}", dir.display()))?;
@@ -193,6 +243,15 @@ fn main() -> Result<()> {
     inline_svg_heroes(&mut posts)?;
     let year = chrono::Local::now().year();
 
+    // Hashed once here, not per page: the hash is a pure function of each
+    // file's own bytes (see `hash_css`), so it is the same value on every
+    // page and recomputing it per page would just repeat the same read.
+    let site_css_bytes =
+        fs::read("static/site.css").context("reading static/site.css to hash it")?;
+    let site_css = format!("site.{}.css", hash_css(&site_css_bytes));
+    let syntax_css_body = hl.stylesheet("Solarized (light)", "base16-ocean.dark")?;
+    let syntax_css = format!("syntax.{}.css", hash_css(syntax_css_body.as_bytes()));
+
     if Path::new(OUT).exists() {
         fs::remove_dir_all(OUT).with_context(|| {
             format!(
@@ -201,12 +260,9 @@ fn main() -> Result<()> {
             )
         })?;
     }
-    copy_static()?;
+    copy_static(&site_css)?;
 
-    write(
-        format!("{OUT}/syntax.css"),
-        &hl.stylesheet("Solarized (light)", "base16-ocean.dark")?,
-    )?;
+    write(format!("{OUT}/{syntax_css}"), &syntax_css_body)?;
 
     write(
         format!("{OUT}/index.html"),
@@ -222,6 +278,8 @@ fn main() -> Result<()> {
                 og_type: "website",
             },
             syntax: false,
+            site_css: &site_css,
+            syntax_css: &syntax_css,
         }
         .render()?,
     )?;
@@ -241,6 +299,8 @@ fn main() -> Result<()> {
                 og_type: "website",
             },
             syntax: false,
+            site_css: &site_css,
+            syntax_css: &syntax_css,
         }
         .render()?,
     )?;
@@ -260,6 +320,8 @@ fn main() -> Result<()> {
                 og_type: "website",
             },
             syntax: false,
+            site_css: &site_css,
+            syntax_css: &syntax_css,
         }
         .render()?,
     )?;
@@ -283,6 +345,8 @@ fn main() -> Result<()> {
                 og_type: "website",
             },
             syntax: false,
+            site_css: &site_css,
+            syntax_css: &syntax_css,
         }
         .render()?,
     )?;
@@ -302,6 +366,8 @@ fn main() -> Result<()> {
                     og_type: "article",
                 },
                 syntax: post.has_syntax(),
+                site_css: &site_css,
+                syntax_css: &syntax_css,
             }
             .render()?,
         )?;
@@ -400,6 +466,13 @@ email = "x"
         }
     }
 
+    /// Stand-ins for the hashed names `main` computes once per real build.
+    /// Fixed strings, not `hash_css` output, because these tests care about
+    /// the value being threaded through to every page unchanged, not about
+    /// hashing itself (that property has its own tests below).
+    const SITE_CSS_FIXTURE: &str = "site.aaaaaaaaaaaaaaaa.css";
+    const SYNTAX_CSS_FIXTURE: &str = "syntax.bbbbbbbbbbbbbbbb.css";
+
     /// Every page must mark exactly one `site-nav` link (or none, for the
     /// home page) with `aria-current="page"` — the bug this guards is the
     /// nav rendering identically on every page, so no link is ever marked
@@ -426,6 +499,8 @@ email = "x"
             nav: "",
             meta: meta_fixture("/", "website"),
             syntax: false,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
         }
         .render()
         .unwrap();
@@ -441,6 +516,8 @@ email = "x"
             nav: "about",
             meta: meta_fixture("/about/", "website"),
             syntax: false,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
         }
         .render()
         .unwrap();
@@ -456,6 +533,8 @@ email = "x"
             nav: "cv",
             meta: meta_fixture("/cv/", "website"),
             syntax: false,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
         }
         .render()
         .unwrap();
@@ -473,6 +552,8 @@ email = "x"
             nav: "blog",
             meta: meta_fixture("/blog/", "website"),
             syntax: false,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
         }
         .render()
         .unwrap();
@@ -492,6 +573,8 @@ email = "x"
             nav: "blog",
             meta: meta_fixture(&post.url(), "article"),
             syntax: false,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
         }
         .render()
         .unwrap();
@@ -517,6 +600,8 @@ email = "x"
                     nav: "",
                     meta: meta_fixture("/", "website"),
                     syntax: false,
+                    site_css: SITE_CSS_FIXTURE,
+                    syntax_css: SYNTAX_CSS_FIXTURE,
                 }
                 .render()
                 .unwrap(),
@@ -529,6 +614,8 @@ email = "x"
                     nav: "about",
                     meta: meta_fixture("/about/", "website"),
                     syntax: false,
+                    site_css: SITE_CSS_FIXTURE,
+                    syntax_css: SYNTAX_CSS_FIXTURE,
                 }
                 .render()
                 .unwrap(),
@@ -541,6 +628,8 @@ email = "x"
                     nav: "cv",
                     meta: meta_fixture("/cv/", "website"),
                     syntax: false,
+                    site_css: SITE_CSS_FIXTURE,
+                    syntax_css: SYNTAX_CSS_FIXTURE,
                 }
                 .render()
                 .unwrap(),
@@ -554,6 +643,8 @@ email = "x"
                     nav: "blog",
                     meta: meta_fixture("/blog/", "website"),
                     syntax: false,
+                    site_css: SITE_CSS_FIXTURE,
+                    syntax_css: SYNTAX_CSS_FIXTURE,
                 }
                 .render()
                 .unwrap(),
@@ -567,6 +658,8 @@ email = "x"
                     nav: "blog",
                     meta: meta_fixture(&post.url(), "article"),
                     syntax: false,
+                    site_css: SITE_CSS_FIXTURE,
+                    syntax_css: SYNTAX_CSS_FIXTURE,
                 }
                 .render()
                 .unwrap(),
@@ -621,10 +714,12 @@ email = "x"
             nav: "about",
             meta: meta_fixture("/about/", "website"),
             syntax: false,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
         }
         .render()
         .unwrap();
-        assert!(!html.contains("syntax.css"), "{html}");
+        assert!(!html.contains(SYNTAX_CSS_FIXTURE), "{html}");
     }
 
     #[test]
@@ -638,9 +733,62 @@ email = "x"
             nav: "blog",
             meta: meta_fixture(&post.url(), "article"),
             syntax: true,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
         }
         .render()
         .unwrap();
-        assert!(html.contains("syntax.css"), "{html}");
+        assert!(html.contains(SYNTAX_CSS_FIXTURE), "{html}");
+    }
+
+    /// The whole caching scheme rests on this: unchanged bytes must hash
+    /// identically across builds (or `rsync --link-dest` cannot hardlink and
+    /// every deploy re-transfers the stylesheet), and changed bytes must hash
+    /// differently (or a stale, long-cached copy would keep being served
+    /// under a name nothing tells the browser to drop).
+    #[test]
+    fn hash_css_is_stable_for_the_same_bytes_and_changes_with_the_content() {
+        let a = hash_css(b"body { color: red; }");
+        let b = hash_css(b"body { color: red; }");
+        let c = hash_css(b"body { color: blue; }");
+        assert_eq!(a, b, "identical bytes must hash identically");
+        assert_ne!(a, c, "a single changed byte must change the hash");
+    }
+
+    /// Must match the Caddyfile's `\.[0-9a-f]{8,}\.css$` immutable-cache
+    /// rule (see docs/deploy.md) -- if the builder's digest shape and the
+    /// server's regex disagree, the header silently never applies, and
+    /// nothing about that failure is loud.
+    #[test]
+    fn hash_css_output_is_lowercase_hex_of_at_least_eight_characters() {
+        let hash = hash_css(b"some stylesheet bytes");
+        assert!(
+            hash.len() >= 8
+                && hash
+                    .chars()
+                    .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()),
+            "got: {hash}"
+        );
+    }
+
+    /// A single stale `/site.css` or `/syntax.css` reference is a 404
+    /// stylesheet on a live page -- every page must link only the hashed
+    /// names threaded through from `main`, never the bare ones.
+    #[test]
+    fn every_page_links_only_hashed_stylesheet_names() {
+        for (name, html) in all_pages_html() {
+            assert!(
+                html.contains(&format!("href=\"/{SITE_CSS_FIXTURE}\"")),
+                "{name}: missing hashed site.css link\n{html}"
+            );
+            assert!(
+                !html.contains("href=\"/site.css\""),
+                "{name}: linked bare /site.css\n{html}"
+            );
+            assert!(
+                !html.contains("href=\"/syntax.css\""),
+                "{name}: linked bare /syntax.css\n{html}"
+            );
+        }
     }
 }

@@ -82,9 +82,51 @@ sasin91.xyz, www.sasin91.xyz {
 	# The old Laravel routes had no trailing slash, and the generator writes
 	# <path>/index.html. This resolves /blog/trongate without a redirect.
 	try_files {path} {path}/ {path}/index.html
+
+	# Stylesheet filenames carry a hash of their own contents, so a given URL
+	# can never change what it returns. That is what makes it safe to tell a
+	# browser never to ask again -- and it is what stops the revalidation
+	# round trip that made every click after a deploy feel slow.
+	@immutable path_regexp \.[0-9a-f]{8,}\.css$
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	# Everything else changes at the same URL on every deploy, so it must be
+	# revalidated rather than cached blind. `no-cache` still allows a 304 off
+	# the ETag, so a revalidation costs headers, not the body.
+	header Cache-Control "public, no-cache"
+
 	file_server
 }
 ```
+
+Measured against the live site before this rule existed: Caddy sent no
+`Cache-Control` at all, only `ETag`, `Last-Modified` and `Vary`. With no
+explicit freshness, browsers fall back to heuristic caching -- roughly 10% of
+the age since `Last-Modified`. Immediately after a deploy that age is near
+zero, so freshness is near zero, and every navigation revalidated every
+stylesheet: a measured 135ms round trip, render-blocking, on every click.
+Hours later the heuristic grows and the site quietly feels fast again --
+which is why this read as "a bit of latency" that "went back to normal", and
+why it would have returned on every subsequent deploy.
+
+The two rules above split the site's assets into two lifetimes:
+
+- **The hashed stylesheets** get `max-age=31536000` (one year) and
+  `immutable`: a year because a hashed URL never needs revisiting once
+  cached, and `immutable` so the browser does not even bother re-checking it
+  on reload. This is only safe *because* the filename changes when the
+  content does (see `hash_css` in `src/main.rs`) -- a long `max-age` on a
+  fixed name like `site.css` would be a staleness trap, since a cached copy
+  would then survive a deploy that changed the CSS underneath it.
+- **Everything else** -- HTML, `rss.xml`, `sitemap.xml`, `cv.pdf` -- gets
+  `no-cache`. That name is misleading: it does not mean "do not cache", it
+  means "revalidate before reuse". The browser still stores the response and
+  still sends the `ETag` on the next request, so a fresh visit costs a 304
+  and a header round trip, not the full body. That is the right behaviour for
+  these files specifically because they change at the same URL on every
+  deploy -- `/`, `/cv.pdf`, `/rss.xml` never get a new name the way the
+  stylesheets do, so blind caching them would show a stale page just as
+  surely as a long `max-age` on `site.css` would.
 
 Reload without dropping connections:
 

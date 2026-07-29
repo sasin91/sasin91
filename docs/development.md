@@ -25,10 +25,12 @@ once:
   directory* is `public/` holds it open — on Windows that blocks the removal
   outright ("os error 32: file in use by another process"). With `--directory`
   the process stays in the repo root, so the build is free to wipe the output.
-- Pages link their assets root-absolutely (`/site.css`). Serving the repo root
-  and browsing `/public/index.html` therefore renders the page **unstyled**,
-  because `/site.css` does not exist at that level. `--directory public` makes
-  `public/` the document root, so those links resolve.
+- Pages link their assets root-absolutely (e.g. `/site.<hash>.css` — the hash
+  changes on every stylesheet edit, so don't hardcode a value from a previous
+  build). Serving the repo root and browsing `/public/index.html` therefore
+  renders the page **unstyled**, because that path does not exist at the repo
+  root. `--directory public` makes `public/` the document root, so those
+  links resolve.
 
 A post is one `.dj` file under `content/blog/` with a `+++` TOML header. The
 `path` key is the URL, and is deliberately not derived from the filename — this

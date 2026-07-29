@@ -31,8 +31,12 @@
         } catch (e) {}
       })();
     </script>
-    <link rel="stylesheet" href="/site.css" />
-    {% if syntax %}<link rel="stylesheet" href="/syntax.css" />{% endif %}
+    {# Filenames carry a hash of their own bytes (`hash_css` in main.rs), so
+       the Caddy rule in docs/deploy.md can cache them forever without a stale
+       copy ever surviving a deploy -- a changed file gets a changed name and
+       so a fresh URL, and the old name is never revisited. #}
+    <link rel="stylesheet" href="/{{ site_css }}" />
+    {% if syntax %}<link rel="stylesheet" href="/{{ syntax_css }}" />{% endif %}
     <link rel="alternate" type="application/rss+xml" title="{{ cv.site.name }}" href="/rss.xml" />
   </head>
   <body>
