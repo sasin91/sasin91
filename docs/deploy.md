@@ -72,40 +72,72 @@ variables -> Actions before the workflow can deploy:
 
 ## Caddy
 
-Add alongside the existing athletos.app block in `/usr/local/etc/caddy/Caddyfile`:
+The block lives in its own file, `/usr/local/etc/caddy/sites/sasin91.caddy`,
+not the AthletOS `/usr/local/etc/caddy/Caddyfile` itself. The main Caddyfile
+pulls this one in via an `import sites/*.caddy` line at its bottom, but that
+Caddyfile belongs to AthletOS: `infra/bootstrap.sh` in the athletos repo
+installs it fresh on every bootstrap, so the `import` line is lost on a
+re-bootstrap and must be re-added by hand. This file survives that -- it is
+not touched by AthletOS's install. This is what is live now:
 
 ```caddy
+# sasin91.xyz — a static site, unrelated to AthletOS beyond sharing this box.
+#
+# Kept in its own file so the AthletOS Caddyfile stays about AthletOS. Note
+# that infra/bootstrap.sh installs that Caddyfile from the athletos repo, so
+# the `import sites/*.caddy` line there is lost if the box is ever
+# re-bootstrapped — this file survives, but the import must be re-added.
 sasin91.xyz, www.sasin91.xyz {
 	encode zstd gzip
-	root * /usr/local/www/sasin91.xyz
+	root * /usr/local/www/sasin91.xyz/current
 
-	# The old Laravel routes had no trailing slash, and the generator writes
-	# <path>/index.html. This resolves /blog/trongate without a redirect.
+	# The old Laravel routes had no trailing slash and the generator writes
+	# <path>/index.html, so /blog/trongate must still resolve. Caddy answers
+	# the directory candidate with a 308 to the trailing-slash form, which
+	# browsers and crawlers follow.
 	try_files {path} {path}/ {path}/index.html
+	file_server
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
 
 	# Stylesheet filenames carry a hash of their own contents, so a given URL
-	# can never change what it returns. That is what makes it safe to tell a
-	# browser never to ask again -- and it is what stops the revalidation
-	# round trip that made every click after a deploy feel slow.
+	# can never change what it returns. That is what makes a one-year lifetime
+	# safe, and it is what removes the revalidation round trip that made every
+	# click feel slow for hours after a deploy: with no Cache-Control at all,
+	# browsers fall back to heuristic freshness of roughly 10% of the age
+	# since Last-Modified, which is near zero on a file that just shipped.
 	@hashed path_regexp \.[0-9a-f]{8,}\.css$
 	header @hashed Cache-Control "public, max-age=31536000, immutable"
 
-	# Everything else changes at the same URL on every deploy, so it must be
-	# revalidated rather than cached blind. `no-cache` does not mean "do not
-	# store" -- it means "revalidate before reuse", so a repeat visit costs a
-	# 304 off the ETag rather than the whole body.
+	# Everything else — HTML, cv.pdf, rss.xml, images — keeps a fixed URL and
+	# changes on deploy, so it must be revalidated rather than cached blind.
+	# `no-cache` does not mean "do not store": it means "revalidate before
+	# reuse", so a repeat visit costs a 304 off the ETag, not the whole body.
 	#
-	# The two matchers are deliberately mutually exclusive rather than relying
-	# on one general rule and one specific one. `header` is last-write-wins,
-	# and a general rule that also matches the hashed files would silently
-	# overwrite the immutable header above -- a failure with no symptom except
-	# the site being slow again.
+	# The two matchers are deliberately mutually exclusive rather than one
+	# general rule plus a specific exception. `header` overwrites rather than
+	# merging, so a general rule matching the hashed files too would clobber
+	# the immutable header depending on evaluation order — a failure whose
+	# only symptom is the site being slow again. Reordering would also work,
+	# but this pair cannot be broken by a later edit that reorders them.
 	@unhashed not path_regexp \.[0-9a-f]{8,}\.css$
 	header @unhashed Cache-Control "public, no-cache"
-
-	file_server
 }
 ```
+
+Root points at `current`, the symlink, not its parent -- pointing it at
+`/usr/local/www/sasin91.xyz` directly would serve a directory listing of
+`releases/` instead of the site, since the symlink is what resolves to the
+live release.
+
+The `header {}` block carries two security headers, `X-Content-Type-Options
+nosniff` and `Referrer-Policy strict-origin-when-cross-origin`. Omitting them
+does not break the site the way the wrong root does, but it is a silent
+regression: nothing about the site looks broken with them missing, they just
+quietly aren't sent.
 
 Measured against the live site before this rule existed: Caddy sent no
 `Cache-Control` at all, only `ETag`, `Last-Modified` and `Vary`. With no
@@ -115,7 +147,11 @@ zero, so freshness is near zero, and every navigation revalidated every
 stylesheet: a measured 135ms round trip, render-blocking, on every click.
 Hours later the heuristic grows and the site quietly feels fast again --
 which is why this read as "a bit of latency" that "went back to normal", and
-why it would have returned on every subsequent deploy.
+why it would have returned on every subsequent deploy. After the reload: the
+hashed stylesheet returns `public, max-age=31536000, immutable`; HTML and
+`cv.pdf` return `public, no-cache`; an HTML revalidation returns `304` with a
+zero-byte body. The reload itself was graceful -- same pid before and after,
+no dropped connections.
 
 The two rules above split the site's assets into two lifetimes. They are
 written as `@hashed` / `@unhashed`, a mutually exclusive pair, rather than one
@@ -149,10 +185,27 @@ nothing failing loudly to say so.
   stylesheets do, so blind caching them would show a stale page just as
   surely as a long `max-age` on `site.css` would.
 
-Reload without dropping connections:
+A bare `caddy reload --config ...` fails here with `dial tcp [::1]:2019:
+connect: connection refused`. Caddy's admin API on this box is not on the
+default `localhost:2019` -- `/usr/local/etc/rc.d/caddy` exports `CADDY_ADMIN`
+pointing at a unix socket, `unix//var/run/caddy/caddy.sock`, for the running
+instance. A directly-invoked `caddy reload` does not inherit that variable,
+so it falls back to `localhost:2019`, where nothing is listening. Going
+through the rc.d script instead reaches the running instance and reloads
+without dropping connections:
 
 ```sh
-caddy reload --config /usr/local/etc/caddy/Caddyfile
+service caddy configtest
+service caddy reload
+```
+
+**Rolling back** this change is restoring the pre-change backup and
+reloading the same way:
+
+```sh
+cp /usr/local/etc/caddy/sites/sasin91.caddy.bak.20260729094952 \
+   /usr/local/etc/caddy/sites/sasin91.caddy
+service caddy reload
 ```
 
 ## One-time setup
