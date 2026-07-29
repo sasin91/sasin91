@@ -1,8 +1,5 @@
 {% extends "base.html" %}
 
-{% block title %}{{ post.title }} — {{ cv.site.name }}{% endblock %}
-{% block description %}<meta name="description" content="{{ post.description }}" />{% endblock %}
-
 {% block content %}
   <article class="prose">
     {% if let Some(hero_html) = post.hero_html %}

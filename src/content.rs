@@ -99,6 +99,21 @@ impl Post {
             .is_some_and(|h| h.contains(FIGURE))
             || self.body.contains(FIGURE)
     }
+
+    /// Whether this post needs `syntax.css`. Matches the exact wrapper
+    /// [`crate::highlight::Highlighter::to_html`] emits for every fenced code
+    /// block it highlights, regardless of language (even an unrecognised one
+    /// still gets this wrapper via the plain-text fallback — see
+    /// `highlight::tests::falls_back_to_plain_text_for_an_unknown_language`).
+    /// An inline `` `code` `` span never reaches the highlighter — djot.rs
+    /// only intercepts `Container::CodeBlock`, not `Container::Verbatim` — so
+    /// it renders as plain jotdown `<code>` and never sets this true. Without
+    /// this check every page would pay for a render-blocking stylesheet it
+    /// has no highlighted code to use.
+    pub fn has_syntax(&self) -> bool {
+        const HIGHLIGHTED: &str = "<pre class=\"hl-code\">";
+        self.body.contains(HIGHLIGHTED)
+    }
 }
 
 /// `+++ toml +++` frontmatter, then the body.
@@ -224,6 +239,28 @@ Body text here.
         assert!(!post_with(None, "<p>text</p>").has_diagrams());
         assert!(!post_with(None, "<img src=\"/hero.png\" alt=\"x\" />").has_diagrams());
         assert!(!post_with(None, "<figure class=\"photo\"><svg></svg></figure>").has_diagrams());
+    }
+
+    #[test]
+    fn detects_a_highlighted_code_block() {
+        // The exact wrapper Highlighter::to_html emits, so the two stay in
+        // step; a real fenced block always renders through it.
+        let highlighted = crate::highlight::Highlighter::new()
+            .to_html("x\n", "bash")
+            .unwrap();
+        assert!(post_with(None, &highlighted).has_syntax());
+    }
+
+    #[test]
+    fn a_post_with_only_inline_code_spans_does_not_need_syntax_css() {
+        // Inline `code` spans are jotdown's own <code>, never routed through
+        // the highlighter, so they must not trip this on.
+        assert!(!post_with(None, "<p>run <code>ls</code> first</p>").has_syntax());
+    }
+
+    #[test]
+    fn a_post_with_no_code_at_all_does_not_need_syntax_css() {
+        assert!(!post_with(None, "<p>no code here</p>").has_syntax());
     }
 
     #[test]

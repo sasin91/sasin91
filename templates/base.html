@@ -3,8 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}{{ cv.site.name }}{% endblock %}</title>
-    {% block description %}{% endblock %}
+    <title>{{ meta.title }}</title>
+    <meta name="description" content="{{ meta.description }}" />
+    <link rel="canonical" href="{{ meta.url }}" />
+
+    {# Without these a shared link renders as bare text: no card, and the
+       crawler has to guess the canonical URL. og:image is deliberately absent
+       until a 1200x630 card exists -- pointing it at a missing file, or at
+       anything under 200x200, is worse than omitting it, because crawlers
+       then show a broken thumbnail rather than falling back cleanly. #}
+    <meta property="og:type" content="{{ meta.og_type }}" />
+    <meta property="og:site_name" content="{{ cv.site.name }}" />
+    <meta property="og:title" content="{{ meta.title }}" />
+    <meta property="og:description" content="{{ meta.description }}" />
+    <meta property="og:url" content="{{ meta.url }}" />
+    <meta property="og:locale" content="en_GB" />
+    <meta name="twitter:card" content="summary" />
     <link rel="icon" href="/favicon.png" sizes="any">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <script>
@@ -18,7 +32,7 @@
       })();
     </script>
     <link rel="stylesheet" href="/site.css" />
-    <link rel="stylesheet" href="/syntax.css" />
+    {% if syntax %}<link rel="stylesheet" href="/syntax.css" />{% endif %}
     <link rel="alternate" type="application/rss+xml" title="{{ cv.site.name }}" href="/rss.xml" />
   </head>
   <body>

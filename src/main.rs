@@ -26,6 +26,20 @@ use walkdir::WalkDir;
 const OUT: &str = "public";
 const BASE_URL: &str = "https://sasin91.xyz";
 
+/// Everything the document head needs that differs per page. A struct rather
+/// than Askama blocks because the description text is needed twice -- once as
+/// `<meta name="description">` and once as `og:description` -- and a block
+/// cannot be expanded twice.
+struct Meta {
+    title: String,
+    description: String,
+    /// Absolute, because og:url and canonical must both be absolute; a
+    /// relative URL is silently ignored by every crawler that reads them.
+    url: String,
+    /// "website" for the landing, listing and CV pages; "article" for a post.
+    og_type: &'static str,
+}
+
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexPage<'a> {
@@ -35,6 +49,9 @@ struct IndexPage<'a> {
     /// Which `site-nav` link `base.html` marks `aria-current="page"` — see
     /// that template's nav block. The home page matches none of them.
     nav: &'static str,
+    meta: Meta,
+    /// The landing page has no code on it, so `syntax.css` never loads here.
+    syntax: bool,
 }
 
 #[derive(Template)]
@@ -43,6 +60,8 @@ struct AboutPage<'a> {
     cv: &'a Cv,
     year: i32,
     nav: &'static str,
+    meta: Meta,
+    syntax: bool,
 }
 
 #[derive(Template)]
@@ -51,6 +70,8 @@ struct CvPage<'a> {
     cv: &'a Cv,
     year: i32,
     nav: &'static str,
+    meta: Meta,
+    syntax: bool,
 }
 
 #[derive(Template)]
@@ -60,6 +81,10 @@ struct BlogPage<'a> {
     posts: &'a [Post],
     year: i32,
     nav: &'static str,
+    meta: Meta,
+    /// The listing shows only titles and descriptions, never a post's body,
+    /// so there is never highlighted code on this page either.
+    syntax: bool,
 }
 
 #[derive(Template)]
@@ -71,6 +96,11 @@ struct PostPage<'a> {
     /// A post lives under /blog/, so "Writing" stays highlighted while
     /// reading one, matching the URL a reader is actually on.
     nav: &'static str,
+    meta: Meta,
+    /// Only true when `post.has_syntax()` found the highlighter's own
+    /// wrapper in the rendered body — never hardcoded, since most posts
+    /// mix prose with code and some (see `Post::has_syntax`) have none.
+    syntax: bool,
 }
 
 #[derive(Template)]
@@ -185,6 +215,13 @@ fn main() -> Result<()> {
             posts: &posts,
             year,
             nav: "",
+            meta: Meta {
+                title: format!("{} — {}", cv.site.name, cv.site.title),
+                description: cv.site.stack_line(),
+                url: format!("{BASE_URL}/"),
+                og_type: "website",
+            },
+            syntax: false,
         }
         .render()?,
     )?;
@@ -194,6 +231,16 @@ fn main() -> Result<()> {
             cv: &cv,
             year,
             nav: "about",
+            meta: Meta {
+                title: format!("About — {}", cv.site.name),
+                description: format!(
+                    "{} in {}. {}.",
+                    cv.site.title, cv.contact.town, cv.site.available_note
+                ),
+                url: format!("{BASE_URL}/about/"),
+                og_type: "website",
+            },
+            syntax: false,
         }
         .render()?,
     )?;
@@ -203,6 +250,16 @@ fn main() -> Result<()> {
             cv: &cv,
             year,
             nav: "cv",
+            meta: Meta {
+                title: format!("CV — {}", cv.site.name),
+                description: format!(
+                    "{}, {}. {}, {}.",
+                    cv.site.name, cv.site.title, cv.contact.town, cv.contact.postcode
+                ),
+                url: format!("{BASE_URL}/cv/"),
+                og_type: "website",
+            },
+            syntax: false,
         }
         .render()?,
     )?;
@@ -219,6 +276,13 @@ fn main() -> Result<()> {
             posts: &posts,
             year,
             nav: "blog",
+            meta: Meta {
+                title: format!("Writing — {}", cv.site.name),
+                description: "Notes on things I built and what broke on the way.".to_string(),
+                url: format!("{BASE_URL}/blog/"),
+                og_type: "website",
+            },
+            syntax: false,
         }
         .render()?,
     )?;
@@ -231,6 +295,13 @@ fn main() -> Result<()> {
                 post,
                 year,
                 nav: "blog",
+                meta: Meta {
+                    title: format!("{} — {}", post.title, cv.site.name),
+                    description: post.description.clone(),
+                    url: format!("{BASE_URL}{}", post.url()),
+                    og_type: "article",
+                },
+                syntax: post.has_syntax(),
             }
             .render()?,
         )?;
@@ -317,6 +388,18 @@ email = "x"
         }
     }
 
+    /// A `Meta` whose `url` is absolute under `BASE_URL`, matching what
+    /// `main` builds for a real page — content beyond that doesn't matter to
+    /// the tests that use this fixture.
+    fn meta_fixture(path: &str, og_type: &'static str) -> Meta {
+        Meta {
+            title: "x".into(),
+            description: "x".into(),
+            url: format!("{BASE_URL}{path}"),
+            og_type,
+        }
+    }
+
     /// Every page must mark exactly one `site-nav` link (or none, for the
     /// home page) with `aria-current="page"` — the bug this guards is the
     /// nav rendering identically on every page, so no link is ever marked
@@ -341,6 +424,8 @@ email = "x"
             posts: &posts,
             year: 2026,
             nav: "",
+            meta: meta_fixture("/", "website"),
+            syntax: false,
         }
         .render()
         .unwrap();
@@ -354,6 +439,8 @@ email = "x"
             cv: &cv,
             year: 2026,
             nav: "about",
+            meta: meta_fixture("/about/", "website"),
+            syntax: false,
         }
         .render()
         .unwrap();
@@ -367,6 +454,8 @@ email = "x"
             cv: &cv,
             year: 2026,
             nav: "cv",
+            meta: meta_fixture("/cv/", "website"),
+            syntax: false,
         }
         .render()
         .unwrap();
@@ -382,6 +471,8 @@ email = "x"
             posts: &posts,
             year: 2026,
             nav: "blog",
+            meta: meta_fixture("/blog/", "website"),
+            syntax: false,
         }
         .render()
         .unwrap();
@@ -399,9 +490,157 @@ email = "x"
             post: &post,
             year: 2026,
             nav: "blog",
+            meta: meta_fixture(&post.url(), "article"),
+            syntax: false,
         }
         .render()
         .unwrap();
         asserts_single_nav_link_current(&html, &["Writing"]);
+    }
+
+    /// Every page's head must carry exactly one of each of these — two would
+    /// mean a block got expanded twice (the reason `Meta` replaced Askama
+    /// blocks: see the struct's doc comment), zero would mean the head
+    /// markup silently dropped out of `base.html`.
+    fn all_pages_html() -> Vec<(&'static str, String)> {
+        let cv = cv_fixture();
+        let post = post_fixture();
+        let posts = [post_fixture()];
+
+        vec![
+            (
+                "index",
+                IndexPage {
+                    cv: &cv,
+                    posts: &posts,
+                    year: 2026,
+                    nav: "",
+                    meta: meta_fixture("/", "website"),
+                    syntax: false,
+                }
+                .render()
+                .unwrap(),
+            ),
+            (
+                "about",
+                AboutPage {
+                    cv: &cv,
+                    year: 2026,
+                    nav: "about",
+                    meta: meta_fixture("/about/", "website"),
+                    syntax: false,
+                }
+                .render()
+                .unwrap(),
+            ),
+            (
+                "cv",
+                CvPage {
+                    cv: &cv,
+                    year: 2026,
+                    nav: "cv",
+                    meta: meta_fixture("/cv/", "website"),
+                    syntax: false,
+                }
+                .render()
+                .unwrap(),
+            ),
+            (
+                "blog",
+                BlogPage {
+                    cv: &cv,
+                    posts: &posts,
+                    year: 2026,
+                    nav: "blog",
+                    meta: meta_fixture("/blog/", "website"),
+                    syntax: false,
+                }
+                .render()
+                .unwrap(),
+            ),
+            (
+                "post",
+                PostPage {
+                    cv: &cv,
+                    post: &post,
+                    year: 2026,
+                    nav: "blog",
+                    meta: meta_fixture(&post.url(), "article"),
+                    syntax: false,
+                }
+                .render()
+                .unwrap(),
+            ),
+        ]
+    }
+
+    #[test]
+    fn every_page_emits_exactly_one_title_description_and_canonical() {
+        for (name, html) in all_pages_html() {
+            assert_eq!(html.matches("<title>").count(), 1, "{name}: title\n{html}");
+            assert_eq!(
+                html.matches("<meta name=\"description\"").count(),
+                1,
+                "{name}: description\n{html}"
+            );
+            assert_eq!(
+                html.matches("<link rel=\"canonical\"").count(),
+                1,
+                "{name}: canonical\n{html}"
+            );
+        }
+    }
+
+    /// A relative `og:url` is silently ignored by every crawler that reads
+    /// it — the exact bug `Meta::url`'s doc comment names — so every page's
+    /// value must start with `BASE_URL`, not merely be present.
+    #[test]
+    fn og_url_is_absolute_on_every_page() {
+        let marker = format!("property=\"og:url\" content=\"{BASE_URL}");
+        for (name, html) in all_pages_html() {
+            assert!(html.contains(&marker), "{name}: {html}");
+        }
+    }
+
+    /// Guards against `og:image` being added before a real 1200x630 card
+    /// asset exists — see the comment in `templates/base.html` explaining
+    /// why a missing or undersized image is worse than none at all.
+    #[test]
+    fn no_page_emits_an_og_image() {
+        for (name, html) in all_pages_html() {
+            assert!(!html.contains("og:image"), "{name}: {html}");
+        }
+    }
+
+    #[test]
+    fn a_page_with_no_code_does_not_link_syntax_css() {
+        let cv = cv_fixture();
+        let html = AboutPage {
+            cv: &cv,
+            year: 2026,
+            nav: "about",
+            meta: meta_fixture("/about/", "website"),
+            syntax: false,
+        }
+        .render()
+        .unwrap();
+        assert!(!html.contains("syntax.css"), "{html}");
+    }
+
+    #[test]
+    fn a_post_that_contains_code_links_syntax_css() {
+        let cv = cv_fixture();
+        let post = post_fixture();
+        let html = PostPage {
+            cv: &cv,
+            post: &post,
+            year: 2026,
+            nav: "blog",
+            meta: meta_fixture(&post.url(), "article"),
+            syntax: true,
+        }
+        .render()
+        .unwrap();
+        assert!(html.contains("syntax.css"), "{html}");
     }
 }

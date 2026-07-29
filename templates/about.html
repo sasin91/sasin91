@@ -1,8 +1,5 @@
 {% extends "base.html" %}
 
-{% block title %}About — {{ cv.site.name }}{% endblock %}
-{% block description %}<meta name="description" content="{{ cv.site.title }} in {{ cv.contact.town }}. {{ cv.site.available_note }}." />{% endblock %}
-
 {% block content %}
   <h1>About</h1>
   <p class="lede">{{ cv.site.title }}. {{ cv.site.available_note }}.</p>
