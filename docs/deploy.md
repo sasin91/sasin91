@@ -121,12 +121,16 @@ The two rules above split the site's assets into two lifetimes. They are
 written as `@hashed` / `@unhashed`, a mutually exclusive pair, rather than one
 general `header Cache-Control ...` plus one scoped to `@hashed` on top of it
 -- `header` overwrites, it does not merge, so an unscoped rule matches the
-hashed files too and clobbers whichever one runs second, regardless of source
-order (`route { }` does not fix this: it only pins the order, and the general
-rule still wins by running last). If this ever gets "simplified" back to a
-general rule plus a specific exception, the immutable header silently stops
-applying to the stylesheets and the revalidation round trip this change
-exists to remove comes back, with nothing failing loudly to say so.
+hashed files too and clobbers whichever one runs second. Reordering the two
+rules so the more specific one runs last would also fix the overwrite. The
+mutually exclusive pair is preferred anyway because it removes the dependency
+on remembering that ordering forever: with `@hashed` and `@unhashed` written
+so neither can ever match a request the other one does, a future edit that
+reorders or generalises the rules cannot silently break the split. Collapse
+this back into a general rule plus a specific exception, in the wrong order,
+and the immutable header silently stops applying to the stylesheets -- the
+revalidation round trip this change exists to remove comes back, with
+nothing failing loudly to say so.
 
 - **The hashed stylesheets** get `max-age=31536000` (one year) and
   `immutable`: a year because a hashed URL never needs revisiting once
