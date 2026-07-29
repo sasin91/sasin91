@@ -38,6 +38,15 @@ struct Meta {
     url: String,
     /// "website" for the landing, listing and CV pages; "article" for a post.
     og_type: &'static str,
+    /// `og:image`, absolute under `BASE_URL` for the same reason `url` is --
+    /// see that field's doc comment. `None` for every page with no suitable
+    /// asset (the landing, about, CV and blog-listing pages always; a post
+    /// whenever its hero is missing or is an SVG -- see `og_image`).
+    image: Option<String>,
+    /// `og:image:alt`, carried alongside `image` rather than invented as a
+    /// generic fallback string. Only meaningful when `image` is `Some`;
+    /// `base.html` renders it only in that case.
+    image_alt: Option<String>,
 }
 
 #[derive(Template)]
@@ -244,6 +253,32 @@ fn inline_svg_heroes(posts: &mut [Post]) -> Result<()> {
     Ok(())
 }
 
+/// Extensions a post's hero must end in for it to become `Meta::image`.
+/// SVG is deliberately excluded, even though it is most posts' hero format
+/// today (`athletos-freebsd`, `freebsd-on-hetzner`): Facebook, LinkedIn and
+/// Twitter/X all refuse to render an SVG as a link-share image and fall back
+/// to no image at all. Emitting `og:image` for an SVG hero would look
+/// handled -- the tag is there, the build is green -- while every crawler
+/// silently drops it, which is worse than omitting the tag, because nothing
+/// about the build would ever point at the gap.
+const OG_IMAGE_EXTENSIONS: [&str; 4] = [".png", ".jpg", ".jpeg", ".webp"];
+
+/// A post's `og:image` and its alt text, derived from `hero`/`hero_alt` --
+/// but only when `hero` is a raster image (see `OG_IMAGE_EXTENSIONS`).
+/// Returns `(None, None)` for a post with no hero and for one whose hero is
+/// an SVG; the image, when present, is made absolute under `BASE_URL` for
+/// the same reason `Meta::url` must be (a relative `og:image` is silently
+/// ignored by every crawler that reads it).
+fn og_image(post: &Post) -> (Option<String>, Option<String>) {
+    let Some(hero) = &post.hero else {
+        return (None, None);
+    };
+    if !OG_IMAGE_EXTENSIONS.iter().any(|ext| hero.ends_with(ext)) {
+        return (None, None);
+    }
+    (Some(format!("{BASE_URL}{hero}")), post.hero_alt.clone())
+}
+
 fn main() -> Result<()> {
     let started = std::time::Instant::now();
 
@@ -288,6 +323,10 @@ fn main() -> Result<()> {
                 description: cv.site.stack_line(),
                 url: format!("{BASE_URL}/"),
                 og_type: "website",
+                // No site-wide social card exists; pointing this at a
+                // missing file would be worse than omitting it.
+                image: None,
+                image_alt: None,
             },
             syntax: false,
             site_css: &site_css,
@@ -309,6 +348,8 @@ fn main() -> Result<()> {
                 ),
                 url: format!("{BASE_URL}/about/"),
                 og_type: "website",
+                image: None,
+                image_alt: None,
             },
             syntax: false,
             site_css: &site_css,
@@ -330,6 +371,8 @@ fn main() -> Result<()> {
                 ),
                 url: format!("{BASE_URL}/cv/"),
                 og_type: "website",
+                image: None,
+                image_alt: None,
             },
             syntax: false,
             site_css: &site_css,
@@ -355,6 +398,8 @@ fn main() -> Result<()> {
                 description: "Notes on things I built and what broke on the way.".to_string(),
                 url: format!("{BASE_URL}/blog/"),
                 og_type: "website",
+                image: None,
+                image_alt: None,
             },
             syntax: false,
             site_css: &site_css,
@@ -364,6 +409,7 @@ fn main() -> Result<()> {
     )?;
 
     for post in &posts {
+        let (image, image_alt) = og_image(post);
         write(
             format!("{OUT}/{}/index.html", post.path),
             &PostPage {
@@ -376,6 +422,8 @@ fn main() -> Result<()> {
                     description: post.description.clone(),
                     url: format!("{BASE_URL}{}", post.url()),
                     og_type: "article",
+                    image,
+                    image_alt,
                 },
                 syntax: post.has_syntax(),
                 site_css: &site_css,
@@ -468,13 +516,18 @@ email = "x"
 
     /// A `Meta` whose `url` is absolute under `BASE_URL`, matching what
     /// `main` builds for a real page — content beyond that doesn't matter to
-    /// the tests that use this fixture.
+    /// the tests that use this fixture. `image`/`image_alt` are always
+    /// `None` here, matching every non-post page and any post fixture with
+    /// no hero; the image-specific tests below build a `Meta` directly
+    /// instead of going through this helper.
     fn meta_fixture(path: &str, og_type: &'static str) -> Meta {
         Meta {
             title: "x".into(),
             description: "x".into(),
             url: format!("{BASE_URL}{path}"),
             og_type,
+            image: None,
+            image_alt: None,
         }
     }
 
@@ -707,14 +760,145 @@ email = "x"
         }
     }
 
-    /// Guards against `og:image` being added before a real 1200x630 card
-    /// asset exists — see the comment in `templates/base.html` explaining
-    /// why a missing or undersized image is worse than none at all.
+    /// The landing, about, CV and blog-listing pages have no social-card
+    /// asset to point at — see the comment on `Meta::image` and each
+    /// `Meta { image: None, .. }` in `main` — so they must emit neither
+    /// `og:image` nor the large-card `twitter:card`. The "post" fixture in
+    /// `all_pages_html` has no hero either, so it belongs in this same
+    /// assertion; the posts that *do* get an image are covered by the two
+    /// tests below instead.
     #[test]
-    fn no_page_emits_an_og_image() {
+    fn pages_without_a_hero_image_emit_no_og_image() {
         for (name, html) in all_pages_html() {
             assert!(!html.contains("og:image"), "{name}: {html}");
+            assert!(
+                html.contains("name=\"twitter:card\" content=\"summary\""),
+                "{name}: {html}"
+            );
         }
+    }
+
+    /// Loads the real posts under `content/blog` rather than a hand-built
+    /// fixture. The two og:image tests below key off which of these real
+    /// posts has an SVG hero and which has a raster one, so a future post
+    /// that changes format (SVG becomes the raster path's own test subject,
+    /// or vice versa) is caught here instead of a stale fixture quietly
+    /// drifting from what actually ships.
+    fn real_posts() -> Vec<Post> {
+        content::load_posts(Path::new("content/blog"), |body| Ok(body.to_string()))
+            .expect("content/blog must parse for these tests")
+    }
+
+    /// The regression this guards: a naive "always use the hero as
+    /// og:image" would emit an SVG URL here, which Facebook, LinkedIn and
+    /// Twitter/X all silently discard (see `og_image`'s doc comment) — so
+    /// this post must come out exactly like one with no hero at all.
+    /// Checked against a real post, not a fixture, so a future edit that
+    /// swaps this post's hero to a raster format is what breaks this test,
+    /// rather than the test quietly asserting nothing.
+    #[test]
+    fn a_post_with_an_svg_hero_emits_no_og_image() {
+        let posts = real_posts();
+        let post = posts
+            .iter()
+            .find(|p| p.hero.as_deref().is_some_and(|h| h.ends_with(".svg")))
+            .expect("content/blog must still have a post with an SVG hero");
+
+        let (image, image_alt) = og_image(post);
+        assert_eq!(image, None, "SVG hero must not become og:image");
+        assert_eq!(image_alt, None);
+
+        let cv = cv_fixture();
+        let html = PostPage {
+            cv: &cv,
+            post,
+            year: 2026,
+            nav: "blog",
+            meta: Meta {
+                image,
+                image_alt,
+                ..meta_fixture(&post.url(), "article")
+            },
+            syntax: post.has_syntax(),
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
+        }
+        .render()
+        .unwrap();
+
+        assert!(!html.contains("og:image"), "{html}");
+        assert!(
+            html.contains("name=\"twitter:card\" content=\"summary\""),
+            "{html}"
+        );
+    }
+
+    /// The post this whole feature exists for: its PNG hero must become an
+    /// absolute `og:image`, carry its `hero_alt` as `og:image:alt`, and flip
+    /// `twitter:card` to `summary_large_image` — a `summary` card with a
+    /// large image renders as a cramped thumbnail.
+    #[test]
+    fn a_post_with_a_raster_hero_gets_an_absolute_og_image_and_a_large_card() {
+        let posts = real_posts();
+        let post = posts
+            .iter()
+            .find(|p| p.path == "blog/link-share-load")
+            .expect("content/blog/link-share-load.dj must exist with a PNG hero");
+        assert_eq!(
+            post.hero.as_deref(),
+            Some("/images/link-share-load/card.png"),
+            "fixture assumption: this post's hero moved"
+        );
+
+        let (image, image_alt) = og_image(post);
+        assert_eq!(
+            image.as_deref(),
+            Some(concat!(
+                "https://sasin91.xyz",
+                "/images/link-share-load/card.png"
+            ))
+        );
+        assert!(
+            image_alt.is_some(),
+            "hero_alt must carry through as the image alt"
+        );
+
+        let cv = cv_fixture();
+        let html = PostPage {
+            cv: &cv,
+            post,
+            year: 2026,
+            nav: "blog",
+            meta: Meta {
+                image: image.clone(),
+                image_alt: image_alt.clone(),
+                ..meta_fixture(&post.url(), "article")
+            },
+            syntax: post.has_syntax(),
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
+        }
+        .render()
+        .unwrap();
+
+        assert!(
+            html.contains(&format!(
+                "property=\"og:image\" content=\"{}\"",
+                image.unwrap()
+            )),
+            "{html}"
+        );
+        assert!(
+            html.contains(&format!(
+                "property=\"og:image:alt\" content=\"{}\"",
+                image_alt.unwrap()
+            )),
+            "{html}"
+        );
+        assert!(
+            html.contains("name=\"twitter:card\" content=\"summary_large_image\""),
+            "{html}"
+        );
     }
 
     #[test]

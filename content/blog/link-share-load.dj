@@ -3,6 +3,8 @@ path = "blog/link-share-load"
 title = "What a shared link costs a two-core box"
 date = 2026-07-29
 description = "Both my sites went slow at once, then recovered on their own. It was a link shared in Messenger. Same server, same files: 111 requests a second on fresh connections, 199 on reused ones."
+hero = "/images/link-share-load/card.png"
+hero_alt = "Bar chart: at 200 requests a second, a reused connection answers in 54ms and a fresh TLS connection in 663ms"
 +++
 
 Both sasin91.xyz and athletos.app felt slow at the same time, and then they were
