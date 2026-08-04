@@ -201,8 +201,9 @@ certificates and shell. They will work, and they will be yours to maintain.
 
 ## What you lose with Kubernetes
 
-The other column, also measured. Cluster at rest, one tenant serving a static
-site.
+The other column, also measured. This is the table from [part
+one](/blog/k3s-platform-kit/), reproduced here because the comparison is
+meaningless without it — cluster at rest, one tenant serving a static site.
 
 | Namespace | Pods | CPU | Memory |
 |---|---|---|---|
@@ -214,11 +215,14 @@ site.
 | system-upgrade | 1 | 1m | 56 Mi |
 | **platform total** | 43 | **194m** | **4,526 Mi** |
 
-CPU is a rounding error — 194m of 9,400m allocatable. Memory is what you are
-buying, and about 63% of it is the observability stack. In exchange: metrics,
-logs and traces already wired to datasources, 42 provisioned dashboards, and a
-trace arriving with the exact pod that served the request attached. That is
-worth real money when you need it.
+As I put it in [part one](/blog/k3s-platform-kit/):
+
+> CPU is a rounding error — 194m of 9,400m allocatable, about 2%. Memory is what
+> you are buying, and roughly two thirds of it is the observability stack.
+
+In exchange: metrics, logs and traces already wired to datasources, 42
+provisioned dashboards, and a trace arriving with the exact pod that served the
+request attached. That is worth real money when you need it.
 
 But hold the 4,526 Mi against three CX23. Twelve gigabytes in total, and the
 platform wants 4.5 of them before anything of yours runs — and it does not
