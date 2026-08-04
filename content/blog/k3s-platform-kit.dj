@@ -169,9 +169,9 @@ not benchmark the two here, so treat that as the reason I chose it rather than
 a measurement of it. It also speaks Prometheus remote-write and PromQL, so
 nothing downstream has to know.
 
-The single-node deployment is genuinely single-node, which suits a platform
-this size. If you outgrow it, the cluster version is a migration rather than a
-rewrite.
+The single-node build is one process, and that is the entire deployment — not a
+reduced mode you are meant to grow out of. If you do outgrow it, the cluster
+version is a migration rather than a rewrite.
 
 The collector in front of it is an OpenTelemetry collector, and that is the
 piece that makes traces worth having: it stamps `k8s.pod.name`,
