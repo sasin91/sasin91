@@ -1,8 +1,10 @@
 +++
 path = "blog/three-freebsd-boxes-instead-of-k3s"
 title = "Three FreeBSD boxes instead of a k3s cluster"
-date = 2026-08-07
+date = 2026-08-04
 description = "I run FreeBSD in production and I also wrote the k3s kit, so this is an argument with myself. Three jailed boxes behind a load balancer cost a fraction of a three node cluster and give up the scheduler, the rollout and the admission control. Here is where I think the line actually falls, with the measured numbers from both sides."
+series = "self-hosting"
+part = 4
 +++
 
 I published [a k3s platform kit](/blog/k3s-platform-kit/) with the bill attached,

@@ -1,8 +1,10 @@
 +++
 path = "blog/the-edge-of-a-self-hosted-cluster"
 title = "The edge of a self-hosted cluster"
-date = 2026-08-06
+date = 2026-08-04
 description = "Websockets through a Gateway API listener, the client address a cloud load balancer throws away, and the honest trade you make by putting a CDN in front of your own hardware. What the k3s platform kit ships at its edge by default, why there is no WAF in it, and three edge failures that reported success on the way up."
+series = "self-hosting"
+part = 3
 +++
 
 Inside the cluster, everything is yours. The edge is where that stops being

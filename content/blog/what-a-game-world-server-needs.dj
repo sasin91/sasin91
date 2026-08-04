@@ -1,8 +1,10 @@
 +++
 path = "blog/what-a-game-world-server-needs"
 title = "What a game world server actually needs"
-date = 2026-08-09
+date = 2026-08-04
 description = "An open-source WoW emulator splits into an auth daemon, a world daemon and a relational database. Everything except the world daemon is an ordinary service that belongs in a cluster — the world daemon is a long-lived, memory-resident process whose tick is bounded by a single thread. Here is what that shape wants from hardware, and why it fits a Kubernetes cluster worse than people assume."
+series = "self-hosting"
+part = 6
 +++
 
 A World of Warcraft server emulator is one of the better distributed-systems

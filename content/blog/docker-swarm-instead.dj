@@ -1,8 +1,10 @@
 +++
 path = "blog/docker-swarm-instead"
 title = "Docker Swarm instead of a k3s platform"
-date = 2026-08-08
+date = 2026-08-04
 description = "Swarm mode is still in the Docker Engine, still shipping bug fixes, and still dismissed because people confuse it with a different product that was removed in 2023. It is the strongest just-enough-orchestration option for a small fleet. Here is what it genuinely gives you, what it costs you, and the fleet size where the answer flips."
+series = "self-hosting"
+part = 5
 +++
 
 Kubernetes won. That is a fact about industry adoption, and it is not

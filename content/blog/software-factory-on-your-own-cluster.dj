@@ -1,8 +1,10 @@
 +++
 path = "blog/software-factory-on-your-own-cluster"
 title = "A software factory on your own Kubernetes cluster"
-date = 2026-08-10
+date = 2026-08-04
 description = "Cloudflare ships an open-source AI app-generation platform you can deploy yourself — onto their edge. Doing the same on your own cluster is not an AI problem, it is a tenancy problem, and the isolation an agent run needs is almost exactly what a tenant namespace already gives you. Here is the mapping, the capacity arithmetic on a measured cluster, and the parts I would not build."
+series = "self-hosting"
+part = 7
 +++
 
 A software factory, in the sense I mean it here: a service that takes a brief,
