@@ -20,9 +20,9 @@ Then I ran it on real hardware, four times, until it stopped lying to me.
 This post is the bill. Not an estimate.
 
 ::: note
-**Part 1 of 7 of [Running things on your own hardware](/blog/running-things-on-your-own-hardware/)**, a series about building a platform on your own hardware and then arguing about whether to.
+**Part 1 of 7 of [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)**, a series about building a platform on your own hardware and then arguing about whether to.
 
-Previous: [Running things on your own hardware](/blog/running-things-on-your-own-hardware/)
+Previous: [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)
 
 Next: [OpenTelemetry on a self-hosted k3s cluster](/blog/opentelemetry-on-k3s/)
 :::
