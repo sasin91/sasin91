@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 670" width="1200" height="670" role="img" aria-label="Inside a k3s cluster: a git fork reconciled by Flux into the platform and tenant namespaces, a visitor request arriving through Traefik and the Gateway API to a tenant application, and telemetry from both leaving over OTLP to a collector that fans out to VictoriaMetrics, VictoriaLogs and Tempo, with Grafana reachable only by port-forward">
+  <defs>
+    <!-- Standalone only: when this SVG is the document root (opened via
+         file://, not inlined), `svg:root` matches and forces color-scheme to
+         dark so the bare light-dark() calls on the flow colours resolve to the
+         same half as the var() chrome fallbacks, both sides of the original
+         dark design, together. `svg:root` never matches once this file is
+         inlined into a page (there `:root` is <html>), so this has zero effect
+         there; an unscoped `:root` selector would have matched <html> too and
+         forced the whole site dark. -->
+    <style>svg:root { color-scheme: dark; }</style>
+
+    <linearGradient id="k-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
+      <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+
+    <!-- Three flows, three hues. Each carries a light-dark() pair because the
+         stops were chosen against a near-black panel and drop under 3:1 on the
+         near-white one. -->
+    <linearGradient id="k-deliver" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="light-dark(#5b3fd8, #a78bfa)"/>
+      <stop offset="100%" stop-color="light-dark(#7c5cf0, #c4b5fd)"/>
+    </linearGradient>
+    <linearGradient id="k-traffic" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="light-dark(#0f766e, #5eead4)"/>
+      <stop offset="100%" stop-color="light-dark(#14918a, #99f6e4)"/>
+    </linearGradient>
+
+    <marker id="k-arrow-d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#5b3fd8, #a78bfa)"/>
+    </marker>
+    <marker id="k-arrow-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#0f766e, #5eead4)"/>
+    </marker>
+    <marker id="k-arrow-o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#b45309, #fbbf24)"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="670" rx="24" fill="url(#k-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="669" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="48" font-size="16" fill="var(--diagram-muted, #9a9aa6)">3 nodes in fsn1 · k3s v1.35.6+k3s1 · Flux · Gateway API · EUR 122/month</text>
+
+    <!-- the cluster boundary -->
+    <rect x="220" y="80" width="940" height="552" rx="24" fill="none" stroke="var(--diagram-rule, #2b2b36)" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="244" y="108" font-size="13" fill="var(--diagram-muted, #9a9aa6)">k3s cluster</text>
+
+    <!-- ========== outside the cluster ========== -->
+    <rect x="40" y="140" width="150" height="64" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="115" y="168" text-anchor="middle" font-size="15" fill="var(--diagram-text, #e8e8e4)">git</text>
+    <text x="115" y="188" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9a9aa6)">your fork</text>
+
+    <rect x="40" y="280" width="150" height="64" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="115" y="308" text-anchor="middle" font-size="15" fill="var(--diagram-text, #e8e8e4)">visitor</text>
+    <text x="115" y="328" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9a9aa6)">HTTPS</text>
+
+    <!-- ========== delivery ========== -->
+    <rect x="290" y="140" width="200" height="64" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="url(#k-deliver)" stroke-width="1.5"/>
+    <text x="390" y="168" text-anchor="middle" font-size="16" fill="url(#k-deliver)" font-weight="700">Flux</text>
+    <text x="390" y="188" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9a9aa6)">pull only · prunes · waits</text>
+
+    <path d="M 194 172 H 284" fill="none" stroke="url(#k-deliver)" stroke-width="1.5" marker-end="url(#k-arrow-d)"/>
+    <text x="252" y="160" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #6c6c68)">commit</text>
+
+    <!-- applies into both namespaces -->
+    <path d="M 340 208 V 276" fill="none" stroke="url(#k-deliver)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#k-arrow-d)"/>
+    <path d="M 470 172 H 660 V 276" fill="none" stroke="url(#k-deliver)" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#k-arrow-d)"/>
+    <text x="700" y="200" font-size="11" fill="var(--diagram-muted, #6c6c68)">applies · reverts drift</text>
+
+    <!-- ========== traffic ========== -->
+    <rect x="290" y="280" width="200" height="64" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="url(#k-traffic)" stroke-width="1.5"/>
+    <text x="390" y="306" text-anchor="middle" font-size="15" fill="url(#k-traffic)" font-weight="700">Traefik</text>
+    <text x="390" y="326" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9a9aa6)">Gateway · TLS · 2 replicas</text>
+
+    <rect x="560" y="280" width="220" height="64" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="670" y="306" text-anchor="middle" font-size="15" fill="var(--diagram-text, #e8e8e4)">your app</text>
+    <text x="670" y="326" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9a9aa6)">tenant namespace</text>
+
+    <path d="M 194 312 H 284" fill="none" stroke="url(#k-traffic)" stroke-width="1.5" marker-end="url(#k-arrow-t)"/>
+    <path d="M 494 312 H 554" fill="none" stroke="url(#k-traffic)" stroke-width="1.5" marker-end="url(#k-arrow-t)"/>
+    <text x="524" y="302" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #6c6c68)">HTTPRoute</text>
+
+    <text x="820" y="300" font-size="11" fill="var(--diagram-muted, #6c6c68)">quota · limits · NetworkPolicy</text>
+    <text x="820" y="318" font-size="11" fill="var(--diagram-muted, #6c6c68)">PDB · RBAC · restricted</text>
+    <text x="820" y="336" font-size="11" fill="var(--diagram-muted, #6c6c68)">hostname checked at admission</text>
+
+    <!-- ========== telemetry ========== -->
+    <rect x="260" y="392" width="860" height="216" rx="12" fill="var(--diagram-panel, #1b1b26)" fill-opacity="0.55" stroke="var(--diagram-rule, #2b2b36)" stroke-width="1"/>
+    <text x="282" y="418" font-size="12" fill="var(--diagram-muted, #9a9aa6)">observability namespace · not exposed</text>
+
+    <path d="M 330 348 V 460" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" stroke-dasharray="2 4" marker-end="url(#k-arrow-o)"/>
+    <path d="M 640 348 V 432 H 400 V 460" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" stroke-dasharray="2 4" marker-end="url(#k-arrow-o)"/>
+    <text x="356" y="378" font-size="11" fill="var(--diagram-muted, #6c6c68)">OTLP</text>
+
+    <rect x="290" y="462" width="190" height="64" rx="10" fill="var(--diagram-panel, #12121b)" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5"/>
+    <text x="385" y="488" text-anchor="middle" font-size="14" fill="light-dark(#b45309, #fbbf24)" font-weight="700">OTel collector</text>
+    <text x="385" y="508" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">stamps pod · ns · node</text>
+
+    <rect x="560" y="424" width="190" height="52" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="655" y="447" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">VictoriaMetrics</text>
+    <text x="655" y="465" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">metrics</text>
+
+    <rect x="560" y="488" width="190" height="52" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="655" y="511" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">VictoriaLogs</text>
+    <text x="655" y="529" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">logs</text>
+
+    <rect x="560" y="552" width="190" height="52" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="655" y="575" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">Tempo</text>
+    <text x="655" y="593" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">traces</text>
+
+    <path d="M 484 494 C 520 494 520 450 554 450" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#k-arrow-o)"/>
+    <path d="M 484 494 H 554" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#k-arrow-o)"/>
+    <path d="M 484 494 C 520 494 520 578 554 578" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#k-arrow-o)"/>
+
+    <rect x="860" y="488" width="180" height="52" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="950" y="511" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">Grafana</text>
+    <text x="950" y="529" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">port-forward only</text>
+
+    <path d="M 754 450 C 800 450 810 514 854 514" fill="none" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.5"/>
+    <path d="M 754 514 H 854" fill="none" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.5"/>
+    <path d="M 754 578 C 800 578 810 514 854 514" fill="none" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.5"/>
+
+    <text x="950" y="566" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #6c6c68)">no ingress, by design</text>
+  </g>
+</svg>

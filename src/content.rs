@@ -1,5 +1,7 @@
 //! Loading posts from disk: frontmatter, the `Post` type, and the walk.
 
+use std::collections::HashMap;
+
 use anyhow::{Context, Result};
 use chrono::NaiveDate;
 use serde::Deserialize;
@@ -65,6 +67,21 @@ pub struct FrontMatter {
     /// since `og:image:alt` is only ever read aloud by someone else's client.
     #[serde(default)]
     pub card_alt: Option<String>,
+    /// The series this post belongs to, if any, as a stable identifier rather
+    /// than a display name -- `self-hosting`, not "Self-hosting on Hetzner".
+    ///
+    /// Exists because `date` is the wrong tool for the job and was briefly
+    /// used as one. Seven posts written together and published together share
+    /// a publication date, so they tied, and the tiebreak is `path` -- which
+    /// ordered them alphabetically. The workaround was to invent seven
+    /// consecutive dates so the sort would come out right, which is a lie in
+    /// the metadata to obtain a presentation effect, and it would have gone on
+    /// lying every time anyone read the dates.
+    #[serde(default)]
+    pub series: Option<String>,
+    /// Position within `series`, counting from 1. Ignored without `series`.
+    #[serde(default)]
+    pub part: Option<u32>,
 }
 
 #[derive(Debug)]
@@ -80,6 +97,10 @@ pub struct Post {
     pub card: Option<String>,
     /// Alt text for `card`. See [`FrontMatter::card_alt`].
     pub card_alt: Option<String>,
+    /// See [`FrontMatter::series`].
+    pub series: Option<String>,
+    /// See [`FrontMatter::part`].
+    pub part: Option<u32>,
     /// Rendered HTML, not source.
     pub body: String,
     /// Set by `main.rs`, after loading, when `hero` points at a local
@@ -185,6 +206,8 @@ pub fn load_posts(dir: &Path, render: impl Fn(&str) -> Result<String>) -> Result
             hero_alt: front.hero_alt,
             card: front.card,
             card_alt: front.card_alt,
+            series: front.series,
+            part: front.part,
             body: render(body).with_context(|| format!("rendering {}", file.display()))?,
             // Filled in by `main.rs` after `load_posts` returns; it needs
             // the SVG-inlining helper `djot.rs` owns, and this function has
@@ -193,10 +216,47 @@ pub fn load_posts(dir: &Path, render: impl Fn(&str) -> Result<String>) -> Result
         });
     }
 
-    // Newest first; ties (two posts sharing a date, e.g. published the same
-    // day) break on `path` so ordering is stable across machines instead of
-    // depending on unspecified WalkDir order.
-    posts.sort_by(|a, b| b.date.cmp(&a.date).then_with(|| a.path.cmp(&b.path)));
+    // Newest first, with one exception: a series is kept together and read in
+    // part order.
+    //
+    // A series sits in the timeline at the date of its most recent part, so
+    // publishing part five moves the whole series up rather than stranding
+    // parts one to four further down the page. Within the series, `part`
+    // ascends -- part one first -- because a reader arriving at the listing
+    // needs the entry point, not the latest instalment.
+    //
+    // Ties outside a series still break on `path`, so ordering stays stable
+    // across machines rather than depending on unspecified WalkDir order.
+    let mut anchor: HashMap<String, NaiveDate> = HashMap::new();
+    for post in &posts {
+        if let Some(name) = &post.series {
+            anchor
+                .entry(name.clone())
+                .and_modify(|d| {
+                    if post.date > *d {
+                        *d = post.date;
+                    }
+                })
+                .or_insert(post.date);
+        }
+    }
+    posts.sort_by(|a, b| {
+        let a_date = a
+            .series
+            .as_ref()
+            .and_then(|n| anchor.get(n).copied())
+            .unwrap_or(a.date);
+        let b_date = b
+            .series
+            .as_ref()
+            .and_then(|n| anchor.get(n).copied())
+            .unwrap_or(b.date);
+        b_date
+            .cmp(&a_date)
+            .then_with(|| a.series.cmp(&b.series))
+            .then_with(|| a.part.cmp(&b.part))
+            .then_with(|| a.path.cmp(&b.path))
+    });
     Ok(posts)
 }
 
@@ -235,6 +295,8 @@ Body text here.
             hero_alt: None,
             card: None,
             card_alt: None,
+            series: None,
+            part: None,
             body: String::new(),
             hero_html: None,
         };
@@ -255,6 +317,8 @@ Body text here.
             hero_alt: None,
             card: None,
             card_alt: None,
+            series: None,
+            part: None,
             body: body.into(),
             hero_html: hero_html.map(Into::into),
         }
@@ -323,6 +387,8 @@ Body text here.
             hero_alt: None,
             card: None,
             card_alt: None,
+            series: None,
+            part: None,
             body: String::new(),
             hero_html: None,
         };
@@ -401,6 +467,61 @@ Body text here.
         assert_eq!(newest.body, "[newest body]");
 
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// A series is read front to back, and it sits in the timeline at its most
+    /// recent part.
+    ///
+    /// The bug this guards: seven posts written and published together share a
+    /// date, so they tie, and the old tie-break was `path` -- which ordered a
+    /// numbered series alphabetically. The fix that was almost shipped instead
+    /// was seven invented consecutive dates, which would have sorted correctly
+    /// and lied about when each post was written.
+    #[test]
+    fn a_series_is_ordered_by_part_and_anchored_at_its_newest() {
+        let dir = std::env::temp_dir().join("content-rs-load-posts-series-fixture");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        // Deliberately written out of order, and with paths whose alphabetical
+        // order (three, two, one) is the reverse of the reading order.
+        for (slug, part) in [("three", 3u32), ("one", 1), ("two", 2)] {
+            fs::write(
+                dir.join(format!("{slug}.dj")),
+                format!(
+                    "+++
+path = \"blog/{slug}\"
+title = \"{slug}\"
+date = 2026-08-04
+                     description = \"d\"
+series = \"s\"
+part = {part}
++++
+body
+"
+                ),
+            )
+            .unwrap();
+        }
+        // A standalone post, newer than the series, must still come first.
+        write_fixture(&dir, "later", "blog/later", "2026-08-09", "later body");
+        // ...and one older than the series must still come last.
+        write_fixture(&dir, "older", "blog/older", "2026-01-01", "older body");
+
+        let posts = load_posts(&dir, |body| Ok(body.trim().to_string())).unwrap();
+        let paths: Vec<&str> = posts.iter().map(|p| p.path.as_str()).collect();
+
+        assert_eq!(
+            paths,
+            vec![
+                "blog/later",
+                "blog/one",
+                "blog/two",
+                "blog/three",
+                "blog/older"
+            ],
+            "a series must read part-first and sit at its own date, with              unrelated posts still ordered newest first"
+        );
     }
 
     /// Focused regression test for the tie-break itself: two posts sharing a

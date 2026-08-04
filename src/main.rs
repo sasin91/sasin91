@@ -556,6 +556,8 @@ email = "x"
             hero_alt: None,
             card: None,
             card_alt: None,
+            series: None,
+            part: None,
             body: String::new(),
             hero_html: None,
         }
@@ -1012,6 +1014,8 @@ email = "x"
     fn a_card_is_shared_with_its_own_description_not_the_heros() {
         let post = Post {
             card_alt: Some("a latency chart".into()),
+            series: None,
+            part: None,
             ..post_with_images(Some("/images/x/hero.svg"), Some("/images/x/card.png"))
         };
         let (image, alt) = og_image(&post).unwrap();
