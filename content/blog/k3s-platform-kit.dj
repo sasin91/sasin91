@@ -2,7 +2,7 @@
 path = "blog/k3s-platform-kit"
 title = "K3s starter kit on Hetzner cloud"
 date = 2026-08-04
-description = "I built a production-shaped k3s platform on Hetzner, then ran it on real hardware until it stopped lying to me. It costs €122 a month, 63% of its memory goes to watching itself, and the application it exists to run is 8 MiB. Here is the whole bill, and the failures that reported success."
+description = "A fork-and-edit k3s platform for Hetzner: GitOps delivery, encrypted secrets, certificates, per-tenant isolation and observability, with the reasoning attached to every decision. Built, then run on real hardware four times until it stopped lying to me. Here is what it costs, what it does, and the failures that reported success."
 +++
 
 Creating a Kubernetes cluster is a solved problem. What comes after — delivery,
@@ -20,7 +20,7 @@ This post is the bill. Not an estimate.
 - [What it actually is](#What-it-actually-is)
 - [The price, measured](#The-price-measured)
 - [What you are trading](#What-you-are-trading)
-- [The 566x problem](#The-566x-problem)
+- [What it uses](#What-it-uses)
 - [What went wrong: the cluster that never started](#What-went-wrong-the-cluster-that-never-started)
 - [What went wrong: destroy does not destroy](#What-went-wrong-destroy-does-not-destroy)
 - [What went wrong: three ways to forbid the same thing](#What-went-wrong-three-ways-to-forbid-the-same-thing)
@@ -95,7 +95,7 @@ the observability stack is for, and it is why that stack costs what it does.
 If you want none of that, the honest answer is a managed platform, and I would
 not argue with you.
 
-## The 566x problem
+## What it uses
 
 Cluster at rest, running one static site. Measured, not estimated.
 
@@ -110,24 +110,22 @@ Cluster at rest, running one static site. Measured, not estimated.
 | **platform total** | 43 | **194m** | **4,526 Mi** |
 | **the actual application** | 2 | 2m | **8 Mi** |
 
-The platform is 566 times the memory of the workload it exists to run, and
-**63% of the platform is the part that watches it**.
-
 CPU is a rounding error — 194m of 9,400m allocatable, about 2%. Memory is what
-you are buying.
+you are buying, and roughly two thirds of it is the observability stack.
 
-It gets better with more tenants, and only with more tenants. A single
-application on this shape is an absurd trade, and anyone showing you a
-"production-ready Kubernetes platform" without this table is selling something.
+That is the fixed cost. It does not grow much as you add tenants, which is the
+whole reason the shape makes sense with several and not with one: the same
+4.5 GiB carries your second tenant and your tenth. Size the nodes for the
+platform first and the workloads second, and budget about 5 GiB before anything
+of yours runs.
 
-There is a related number I find harder to defend. The cluster carries
-**161,507 active time series** while running one static site. Two histograms
-from the control plane —
+One number is worth knowing before you scale out. The cluster carries **161,507
+active time series** at this size, and two control-plane histograms —
 `apiserver_request_duration_seconds_bucket` and
-`etcd_request_duration_seconds_bucket` — are **27% of all series on the
-cluster**, and nothing queries them. That is the default configuration of every
-Kubernetes monitoring stack I have used, and it is a per-series cost you pay
-whether or not anyone ever looks.
+`etcd_request_duration_seconds_bucket` — account for 27% of them, unqueried.
+That is the default in every Kubernetes monitoring stack I have used. Dropping
+or aggregating those buckets is the cheapest win available, and the kit leaves
+the decision to you rather than silently making it.
 
 ## What went wrong: the cluster that never started
 
