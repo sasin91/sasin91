@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600" role="img" aria-label="Three options across a spectrum. Left, three FreeBSD boxes with no orchestrator and jails inside, hand-tended. Middle, Docker Swarm: three nodes with one manager, a routing mesh across all of them, fed by one compose file. Right, the k3s platform kit: a cluster boundary holding Flux, a Gateway, cert-manager and observability, annotated with 81 custom resource definitions and 4,526 mebibytes. Beneath, two axes running in opposite directions: components acting on your behalf increase to the right, while things you must write yourself decrease. Swarm sits where they cross.">
+  <defs>
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="w-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
+      <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="600" rx="24" fill="url(#w-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="599" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="44" font-size="16" fill="var(--diagram-muted, #9a9aa6)">the spectrum · every step right hands over more, and asks you to write less</text>
+
+    <rect x="48" y="80" width="336" height="290" rx="12" fill="none" stroke="var(--diagram-rule, #2b2b36)" stroke-width="1.5"/>
+    <text x="72" y="108" font-size="14" fill="light-dark(#0f766e, #5eead4)" font-weight="700">three FreeBSD boxes</text>
+    <text x="72" y="128" font-size="11" fill="var(--diagram-muted, #9a9aa6)">no orchestrator at all</text>
+    <g fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5">
+      <rect x="72" y="146" width="288" height="58" rx="8"/>
+      <rect x="72" y="216" width="288" height="58" rx="8"/>
+    </g>
+    <g fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.2">
+      <rect x="86" y="162" width="80" height="28" rx="5"/><rect x="178" y="162" width="80" height="28" rx="5"/><rect x="270" y="162" width="76" height="28" rx="5"/>
+      <rect x="86" y="232" width="80" height="28" rx="5"/><rect x="178" y="232" width="80" height="28" rx="5"/><rect x="270" y="232" width="76" height="28" rx="5"/>
+    </g>
+    <g font-size="9" fill="var(--diagram-text, #e8e8e4)" text-anchor="middle">
+      <text x="126" y="180">jail</text><text x="218" y="180">jail</text><text x="308" y="180">jail</text>
+      <text x="126" y="250">jail</text><text x="218" y="250">jail</text><text x="308" y="250">jail</text>
+    </g>
+    <text x="72" y="300" font-size="11" fill="var(--diagram-muted, #9a9aa6)">you place every service by hand</text>
+    <text x="72" y="320" font-size="11" fill="var(--diagram-muted, #9a9aa6)">you write the failover</text>
+    <text x="72" y="340" font-size="11" fill="var(--diagram-muted, #6c6c68)">nothing acts without you</text>
+
+    <rect x="432" y="80" width="336" height="290" rx="12" fill="var(--diagram-panel, #1b1b26)" fill-opacity="0.5" stroke="light-dark(#b45309, #fbbf24)" stroke-width="2"/>
+    <text x="456" y="108" font-size="14" fill="light-dark(#b45309, #fbbf24)" font-weight="700">Docker Swarm</text>
+    <text x="456" y="128" font-size="11" fill="var(--diagram-muted, #9a9aa6)">just enough orchestration</text>
+    <g fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5">
+      <rect x="456" y="146" width="92" height="60" rx="8"/><rect x="562" y="146" width="92" height="60" rx="8"/><rect x="668" y="146" width="76" height="60" rx="8"/>
+    </g>
+    <text x="502" y="172" text-anchor="middle" font-size="10" fill="light-dark(#b45309, #fbbf24)" font-weight="700">manager</text>
+    <text x="502" y="190" text-anchor="middle" font-size="9" fill="var(--diagram-muted, #9a9aa6)">raft</text>
+    <text x="608" y="180" text-anchor="middle" font-size="10" fill="var(--diagram-text, #e8e8e4)">worker</text>
+    <text x="706" y="180" text-anchor="middle" font-size="10" fill="var(--diagram-text, #e8e8e4)">worker</text>
+    <rect x="456" y="218" width="288" height="24" rx="5" fill="light-dark(#b45309, #fbbf24)" fill-opacity="0.18" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1"/>
+    <text x="600" y="234" text-anchor="middle" font-size="10" fill="light-dark(#b45309, #fbbf24)">routing mesh · any node answers</text>
+    <rect x="456" y="256" width="150" height="34" rx="6" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.2"/>
+    <text x="531" y="277" text-anchor="middle" font-size="10" fill="var(--diagram-text, #e8e8e4)">compose file</text>
+    <path d="M 610 273 H 660" fill="none" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.2"/>
+    <text x="666" y="270" font-size="10" fill="var(--diagram-muted, #9a9aa6)">docker stack</text>
+    <text x="666" y="284" font-size="10" fill="var(--diagram-muted, #9a9aa6)">deploy</text>
+    <text x="456" y="320" font-size="11" fill="var(--diagram-muted, #9a9aa6)">scheduling, rollout, secrets</text>
+    <text x="456" y="340" font-size="11" fill="var(--diagram-muted, #6c6c68)">and very little else</text>
+
+    <rect x="816" y="80" width="336" height="290" rx="12" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="840" y="108" font-size="14" fill="light-dark(#5b3fd8, #a78bfa)" font-weight="700">the k3s platform kit</text>
+    <text x="840" y="128" font-size="11" fill="var(--diagram-muted, #9a9aa6)">a cluster, and its opinions</text>
+    <g fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.2">
+      <rect x="840" y="146" width="140" height="34" rx="6"/><rect x="992" y="146" width="136" height="34" rx="6"/>
+      <rect x="840" y="192" width="140" height="34" rx="6"/><rect x="992" y="192" width="136" height="34" rx="6"/>
+    </g>
+    <g font-size="10" fill="var(--diagram-text, #e8e8e4)" text-anchor="middle">
+      <text x="910" y="167">Flux</text><text x="1060" y="167">Gateway API</text>
+      <text x="910" y="213">cert-manager</text><text x="1060" y="213">observability</text>
+    </g>
+    <rect x="840" y="240" width="288" height="46" rx="6" fill="light-dark(#5b3fd8, #a78bfa)" fill-opacity="0.15"/>
+    <text x="984" y="260" text-anchor="middle" font-size="12" fill="light-dark(#5b3fd8, #a78bfa)" font-weight="700">81 CRDs · 4,526 Mi</text>
+    <text x="984" y="278" text-anchor="middle" font-size="10" fill="var(--diagram-muted, #9a9aa6)">running before your code does</text>
+    <text x="840" y="320" font-size="11" fill="var(--diagram-muted, #9a9aa6)">isolation generated per tenant</text>
+    <text x="840" y="340" font-size="11" fill="var(--diagram-muted, #6c6c68)">and checked in CI</text>
+
+    <path d="M 48 434 H 1152" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="2"/>
+    <path d="M 1140 428 L 1152 434 L 1140 440 z" fill="light-dark(#5b3fd8, #a78bfa)"/>
+    <text x="48" y="424" font-size="12" fill="light-dark(#5b3fd8, #a78bfa)">components acting on your behalf</text>
+
+    <path d="M 1152 486 H 48" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="2"/>
+    <path d="M 60 480 L 48 486 L 60 492 z" fill="light-dark(#0f766e, #5eead4)"/>
+    <text x="880" y="508" font-size="12" fill="light-dark(#0f766e, #5eead4)">things you must write yourself</text>
+
+    <path d="M 600 380 V 500" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <circle cx="600" cy="434" r="5" fill="light-dark(#b45309, #fbbf24)"/>
+    <circle cx="600" cy="486" r="5" fill="light-dark(#b45309, #fbbf24)"/>
+    <text x="612" y="546" font-size="12" fill="light-dark(#b45309, #fbbf24)" font-weight="700">Swarm sits where they cross</text>
+    <text x="612" y="566" font-size="11" fill="var(--diagram-muted, #6c6c68)">which is the argument for it, and the whole of it</text>
+  </g>
+</svg>

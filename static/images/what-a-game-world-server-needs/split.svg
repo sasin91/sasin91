@@ -83,8 +83,8 @@
 
     <path d="M 666 300 C 620 300 600 316 590 322" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#g2-c)"/>
     <path d="M 666 400 C 620 400 600 350 590 340" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#g2-c)"/>
-    <text x="596" y="470" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">every realm reads and writes the same</text>
-    <text x="596" y="486" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">characters and guilds</text>
+    <text x="360" y="436" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">every realm reads and writes the same</text>
+    <text x="360" y="452" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">characters and guilds</text>
 
     <text x="48" y="616" font-size="12" fill="var(--diagram-muted, #6c6c68)">the split is not by tier · it is by what survives being moved. Everything on the left can be killed mid-request. Nothing on the right can.</text>
   </g>

@@ -228,7 +228,6 @@ Add the rest of the mismatch:
 
 ![The same system split: behind one load balancer, a cluster holding replicated auth daemons and the web front end over a shared database of accounts, characters and guilds; outside it, each world daemon on its own machine with its own read-mostly world database, reaching back into the shared database for characters and guilds.](/images/what-a-game-world-server-needs/split.svg)
 
-
 Everything else, and it is more than you would guess.
 
 - **The auth daemon.** Its durable state lives in the auth database; the
@@ -309,52 +308,43 @@ profile of a running server. Three measurements would settle the rest.
 
 ## Three things I was wrong about before touching a keyboard
 
-What follows is three corrections, and I owe you the framing: these are
-assumptions the reading killed, not incidents a running server taught me. They
-are cheap lessons. They were still lessons.
+Three corrections. These are assumptions the reading killed, not incidents a
+running server taught me: cheap lessons, and still lessons.
 
 ## Lesson one: more cores is the wrong axis
 
 I assumed a modern core with a thread pool would scale across cores, and that
-the answer to a busy realm was a bigger machine.
+the answer to a busy realm was a bigger machine. The source says otherwise, as
+above: `MapUpdate.Threads = 1`, parallelism between maps and instances but never
+within one, and a barrier every tick, so idle threads cannot help the map that
+is late. That is the design, not a profile of a running server — and still the
+design you buy hardware against.
 
-The shipped defaults say otherwise. TrinityCore's `MapUpdate.Threads` defaults
-to **1**, the parallelism that does exist is across maps and instances, so a
-hundred dungeon groups spread out nicely and one crowded city does not spread
-at all, and the barrier at the end of every tick means idle threads cannot help
-the map that is late.
-
-The consequence is a purchasing inversion. **A tick bounded by one thread is
-bounded by clock, not by core count**, and the fastest single thread you can
-buy tends to live in a desktop socket.
+**A tick bounded by one thread is bounded by clock, not by core count**, and the
+fastest single thread you can buy tends to live in a desktop socket.
 
 ## Lesson two: MariaDB is a preference, not a given
 
-I went in assuming MariaDB was a drop-in everywhere, because it has been a
-drop-in everywhere else I have used it for a decade. One project documents
-MySQL and tolerates MariaDB, one dropped it on a dated notice, one installs it
-by default.
+I assumed MariaDB was a drop-in everywhere, because it has been everywhere else
+I have used it for a decade. One project documents MySQL and tolerates MariaDB,
+one dropped it on a dated notice, one installs it by default.
 
-The lesson is not "MariaDB is fine" or "MariaDB is not fine". It is that
 **"MySQL-compatible" is a claim about the wire protocol and the client library,
-not about a project's test matrix**. If nobody upstream builds against it, you
-own that combination. I still prefer MariaDB. I now know which core makes that
-preference cheapest, and it is not the one I would otherwise pick.
+not about a project's test matrix**, and if nobody upstream builds against it,
+you own that combination. I still prefer MariaDB, and I now know which core
+makes that preference cheapest — not the one I would otherwise pick.
 
 ## Lesson three: the realm list hands out an address
 
-My mental model was that the client talks to a front door and the front door
-routes. It does not.
+I assumed the client talks to a front door that routes. It does not: the auth
+daemon reads `realmlist.address` and `realmlist.port` from the database and
+hands them to the client, which connects there directly. The column is
+documented as the world server's public WAN or LAN IP address, with a note that
+several world servers on one machine "will all need to use a different port".
 
-The auth daemon reads `realmlist.address` and `realmlist.port` out of the
-database and hands them to the client, which then connects there directly. The
-column is documented as the public WAN or LAN IP address of the world server,
-with a note that if several world servers share a machine "they will all need
-to use a different port".
-
-So the world server's reachable address is a value in a database row, published
-to clients, not a hostname you can rewrite at an ingress. Whatever you put in
-front of it has to be a transparent TCP path — the same class of decision as
+So the reachable address is published to clients from a database row, not a
+hostname you can rewrite at an ingress, and whatever you put in front has to be
+a transparent TCP path — the same class of decision as
 [the edge of a self-hosted cluster](/blog/the-edge-of-a-self-hosted-cluster/),
 where what you can proxy determines what you can move. **A protocol that
 publishes its own endpoint has already made your topology decision for you.**

@@ -5,6 +5,8 @@ date = 2026-08-04
 description = "I run FreeBSD in production and I also wrote the k3s kit, so this is an argument with myself: three jailed boxes behind a load balancer against a three node cluster, giving up the scheduler, the rollout and the admission control, with the measured numbers from both sides."
 series = "self-hosting"
 part = 4
+hero = "/images/three-freebsd-boxes-instead-of-k3s/side-by-side.svg"
+hero_alt = "Two columns at equal width: three FreeBSD boxes with jails over a shared kernel, against three k3s nodes overlaid by one block labelled platform, 4,526 mebibytes and 81 custom resource definitions, with the application drawn to scale inside it as an eight mebibyte square"
 +++
 
 I published [a k3s platform kit](/blog/k3s-platform-kit/) with the bill attached,
@@ -298,30 +300,23 @@ it:
 
 ## Three arguments I lost with myself
 
-Three things I believed going in, in the order I stopped believing them. Each
-one I would have argued confidently in a pub, and each one is wrong in a way
-that only shows up when you put the numbers next to each other.
+Three things I believed going in, in the order I stopped believing them, each
+wrong in a way that only shows up with the numbers side by side.
 
 ## Lesson one: the money was never about the operating system
 
-I assumed FreeBSD was cheaper. It is not. On identical hardware the two cost the
-same, and by the arithmetic above three cpx32 running jails would cost slightly
-*more* than the k3s cluster, because that cluster's control plane is a smaller
-machine.
-
-The four to one ratio comes from one place: 4,526 Mi of platform means 8 GB
-nodes, and 4 GB nodes are half the price. Every euro of the difference is that
-memory, and the memory is mostly observability.
+I assumed FreeBSD was cheaper. On identical hardware it is not — the €133.08
+above is slightly *more* than the k3s cluster — and the four to one ratio is
+entirely the 4,526 Mi of platform that forces 8 GB nodes, mostly observability.
 
 **So the cost argument is really an observability argument wearing a costume.**
-If you would build the metrics, logs and traces anyway, you have already paid;
-you are only deciding where it runs. If you would not have, then Kubernetes is
-charging you for a decision it made on your behalf, and reasonable people differ
-on whether that is a kindness.
+If you would build the metrics, logs and traces anyway you have already paid
+and are only deciding where they run; if you would not, Kubernetes made that
+call on your behalf and billed you for it.
 
 ## Lesson two: the latency win is real and it is not the argument
 
-I measured FreeBSD against an Ubuntu control on identical hardware, same Caddy
+I measured FreeBSD against an Ubuntu control on identical hardware — same Caddy
 version, byte-identical files, matching certificates, a fresh TCP and TLS
 connection per request:
 
@@ -331,16 +326,12 @@ connection per request:
 # ubuntu    100/s  5.7ms   250/s  5.0ms   500/s  5.2ms
 ```
 
-FreeBSD was faster at every step, at full offered rate and 100% success on both.
-I was pleased with that and I quoted it for weeks.
-
-It is a margin of 0.3 to 1.2 milliseconds against a round trip to the datacentre
-of over a hundred. Nobody should choose a platform for that. And above 500
-connections a second I could not reproduce anything: one run had FreeBSD at
-497/s against the control's 999/s, a later run gave 179/s, and then *more*
-offered load producing *more* throughput, which is not a property a server can
-have. That was the single load generator accumulating TIME_WAIT, and it means I
-do not know where the ceiling is on either box.
+FreeBSD was faster at every step, at full offered rate and 100% success on both,
+and I quoted it for weeks. The margin is 0.3 to 1.2 milliseconds against a round
+trip to the datacentre of over a hundred. Above 500 connections a second nothing
+reproduced: 497/s against the control's 999/s, then 179/s, then *more* offered
+load producing *more* throughput — a single load generator accumulating
+TIME_WAIT, not a property a server can have. Neither box's ceiling is known.
 
 **The performance case for FreeBSD here is real, small, and irrelevant to the
 decision.** The case is the overhead you do not run, not the microseconds you
@@ -348,16 +339,15 @@ save.
 
 ## Lesson three: the thing I would rebuild is the generator
 
-My instinct was that the scheduler was the hard part to give up. It is not. For
+My instinct was that the scheduler was the hard part to give up. It is not: for
 three boxes and ten services, placement is a decision you make once and write
 down, and "rescheduling on node loss" is largely solved by running everything
-everywhere, which is what the blue/green jail pattern already does on one box.
+everywhere, which the blue/green jail pattern already does.
 
-The hard part is the generator, and I did not see that until I looked at the
-ninety-percent-versus-none number again. Kubernetes' real gift to a multi-tenant
-system is that isolation is *objects*, and objects can be templated, diffed,
-admitted and audited. Jails can be templated too. They cannot easily be
-admitted, and auditing them means writing the auditor.
+The hard part is the generator, which I did not see until I looked at the
+ninety-percent-versus-none number again. Kubernetes' real gift is that isolation
+is *objects* — templated, diffed, admitted, audited — and of those four, jails
+give you templating.
 
 **Give up the scheduler cheaply. Give up the generator carefully.**
 

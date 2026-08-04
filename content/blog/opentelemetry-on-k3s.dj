@@ -302,9 +302,9 @@ selling you the diagram instead of the cluster.
 
 ## Three quiet failures
 
-Three things went wrong on the way here. None of them threw an error. Each one
-reported success and kept going, which is the failure mode observability is
-supposed to protect you from and is entirely capable of having itself.
+Three things went wrong on the way here. None threw an error; each reported
+success and kept going — the failure mode observability is supposed to protect
+you from, and is entirely capable of having itself.
 
 ## Lesson one: the trace store that was healthy and empty
 
@@ -312,31 +312,26 @@ An earlier version of the kit installed Tempo, probed it for readiness, scraped
 its metrics and alerted if it went down. Nothing ever sent it a span.
 
 Every check was green. The store was up, responsive, and had received no data at
-all, which from the outside is indistinguishable from a quiet week. It is the
-same shape as an alert rule that loads but never fires, or a backup job that
-reports success having captured nothing — both of which are also written down in
-that repository, and neither of which stopped me from shipping this one.
+all — which from the outside is indistinguishable from a quiet week.
 
 A component's health check answers "is this running". It does not answer "is
 anything using it", and those diverge silently.
 
 ## Lesson two: the endpoint that stopped resolving
 
-Flux derives a Helm release name as `<targetNamespace>-<name>` when you do not
-pin one. The chart then derives every resource name it generates from the
-release name.
+Flux derives an unpinned Helm release name as `<targetNamespace>-<name>`, and
+the chart names every resource it generates after that. So moving a HelmRelease
+between namespaces renamed its Services, and the collector's exporters kept
+sending to the old addresses.
 
-So moving a HelmRelease between namespaces renamed its Services. The collector's
-exporters kept sending to the old addresses. Nothing errored anywhere I was
-looking: the exporter writes to a name that no longer resolves and the data is
-simply gone. It broke three things at once — two Services renamed out from under
-the endpoints pointing at them, and one generated label crossing the 63-byte
-limit, which wedged a release in `uninstalling` and left it unable to remediate,
-because the hook it had to run to uninstall was the invalid object.
+Nothing errored anywhere I was looking: the exporter writes to a name that no
+longer resolves and the data is simply gone. The same rename also pushed a
+generated label past the 63-byte limit, wedging a release in `uninstalling` and
+unable to remediate, because the hook it had to run to uninstall was the invalid
+object.
 
 The fix is two pinned lines, `releaseName` on the release and
-`fullnameOverride` in the values. I hit this twice in one pipeline before pinning
-both.
+`fullnameOverride` in the values.
 
 **An exporter pointed at a hostname is a dependency with no compile step.** The
 only thing that verifies it is data arriving, so the check has to be "did
@@ -345,28 +340,23 @@ anything land", not "is the config right".
 ## Lesson three: I measured a different cluster
 
 The first version of my numbers said 477,140 active series and 131,325 log lines
-an hour. The real figures are 161,507 and 7,613. Wrong by roughly 3× and 17×,
+an hour. The real figures are 161,507 and 7,613 — wrong by roughly 3× and 17×,
 and neither came from this cluster.
 
-`kubectl port-forward` was told to bind `8428` and `9428` — the default ports for
-these two components. I already had tunnels to another cluster bound there. The
-port-forward failed to bind, `curl` connected to the tunnel that already owned
-the port, and every query returned real, plausible, internally consistent data
-about somebody else's cluster.
+`kubectl port-forward` was told to bind `8428` and `9428`, the default ports for
+these two components, where I already had tunnels to another cluster. The bind
+failed, `curl` connected to the tunnel that already owned the port, and every
+query returned real, plausible, internally consistent data about somebody else's
+cluster — caught only because a namespace listing named namespaces that do not
+exist here.
 
-It was caught only because a namespace listing came back naming namespaces that
-do not exist here.
-
-The detail that made it silent: the port-forward was launched with
-`>/dev/null 2>&1`, and `bind: address already in use` goes to stderr. The one
-signal that would have caught it immediately was explicitly discarded.
+It stayed silent because the port-forward was launched with `>/dev/null 2>&1`,
+and `bind: address already in use` goes to stderr. The one signal that would
+have caught it immediately was explicitly discarded.
 
 > Suppressing a command's error output does not make it succeed. For anything
 > that binds a port, bind somewhere unusual, and check *what answered* rather
 > than that something did.
-
-Had those numbers gone into this post instead of into a file I reread, you would
-be reading them right now and they would look completely reasonable.
 
 ## What this buys
 

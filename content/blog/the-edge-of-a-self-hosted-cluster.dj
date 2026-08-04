@@ -5,6 +5,8 @@ date = 2026-08-04
 description = "Websockets through a Gateway API listener, the client address a cloud load balancer throws away, and the honest trade you make by putting a CDN in front of your own hardware. What the k3s platform kit ships at its edge by default, why there is no WAF in it, and three edge failures that reported success on the way up."
 series = "self-hosting"
 part = 3
+hero = "/images/the-edge-of-a-self-hosted-cluster/three-zones.svg"
+hero_alt = "The edge as three trust zones: an optional proxying CDN, the provider load balancer that drops the client address, and the cluster with two Traefik replicas behind one Gateway, with a single websocket drawn crossing all three"
 +++
 
 Inside the cluster, everything is yours. The edge is where that stops: a cloud
@@ -305,66 +307,52 @@ measured. In rough order:
 
 ## Three failures that filed no complaint
 
-Three edge failures, in the order I met them. None crashed. All three reported
-success on the way past, and each surfaced several layers from its cause.
+Three edge failures, in the order I met them. None crashed; all three reported
+success on the way past.
 
 ## Lesson one: the load balancer that never existed
 
-The Service that creates the load balancer carries two provider annotations: a
+The Service that creates the load balancer carries two provider annotations, a
 location and a type. I left one at `CHANGE-ME`.
 
-The Helm release installed. The reconciliation reported success. The pods were
-ready. The cloud controller then rejected the value with "location or network
-zone not found", in a Service event nobody reads, and retried silently for
-**fifty minutes** before I looked.
-
-The result is an ingress with no address, on a cluster where every object you
-would think to check is green. The location must also match where your nodes
-are, and the *type* must be one currently available there: "supported" and
-"available" differ in a provider API, and a merely supported type applies
-cleanly and fails at creation.
+Helm installed it, the reconciliation reported success, the pods were ready. The
+cloud controller rejected the value with "location or network zone not found" in
+a Service event nobody reads, and retried silently for **fifty minutes**: an
+ingress with no address on a cluster where every object you would check is
+green.
 
 **A placeholder that fails loudly is a good placeholder. This one applied.**
 
 ## Lesson two: an email address became a routing problem
 
-The certificate issuers shipped with a placeholder contact address. Let's
-Encrypt rejects that outright:
+The certificate issuers shipped with a placeholder contact address, which Let's
+Encrypt rejects outright:
 
 ```
 Failed to register ACME account: 400 urn:ietf:params:acme:error:invalidContact
 ```
 
-Follow the chain. No ACME account means no certificate. No certificate means
-the Secret the listener's `certificateRef` names never exists. A listener
-referencing a Secret that does not exist makes the whole Gateway
-`Accepted=False` — *"All Listeners must be valid"* — and a Gateway in that
-state accepts no routes at all. The platform reconciliation waits for health,
-so it never finished, and everything behind it never reconciled either.
+No ACME account, no certificate; no certificate, and the Secret the listener's
+`certificateRef` names never exists. A listener referencing a missing Secret
+makes the whole Gateway `Accepted=False` — *"All Listeners must be valid"* — and
+such a Gateway accepts no routes at all, so the platform reconciliation waits
+for health that never comes and nothing behind it reconciles.
 
-An unusable email address, presenting as a routing problem four layers from its
-cause, on a fresh install. The fix was not a better error message, which I do
-not control; it was moving the issuers out of the default apply path, so the
-cost of leaving a placeholder unedited is the feature that needs it, not
-everything downstream.
+The fix was moving the issuers out of the default apply path: an unedited
+placeholder now costs the feature that needs it, not everything downstream.
 
 ## Lesson three: two permissions that sound identical
 
-Gateway API has two cross-namespace mechanisms, both described as
-"cross-namespace permission". They do different jobs.
-
+Gateway API has two mechanisms both described as "cross-namespace permission".
 `allowedRoutes` lives on the listener, the platform sets it, and it decides
-**which namespaces may attach a route** to that listener. `ReferenceGrant`
-lives in the namespace being referenced, its owner writes it, and it decides
-**whether an object may reference an object in another namespace** — a route's
-`backendRef` to a Service elsewhere, a listener's `certificateRef` to a Secret
-elsewhere.
+**which namespaces may attach a route**. `ReferenceGrant` lives in the namespace
+being referenced, its owner writes it, and it decides **whether an object may
+reference one in another namespace** — a route's `backendRef` to a Service
+elsewhere, a listener's `certificateRef` to a Secret elsewhere.
 
-A `ReferenceGrant` does not let anyone attach a route. `allowedRoutes` does not
-let a route reach a Service in another namespace. Assuming either covers the
-other leaves one of the two open, and the failure is quiet in both directions:
-a route that may attach to no listener reports the failure on *itself* and
-nothing at all on the Gateway, so the Gateway looks perfectly healthy.
+Assuming one covers both leaves the other open, quietly: a route that may attach
+to no listener reports the failure on *itself*, nothing on the Gateway, which
+looks perfectly healthy.
 
 **The permission is granted by the party giving something up, not claimed by
 the party taking it.**

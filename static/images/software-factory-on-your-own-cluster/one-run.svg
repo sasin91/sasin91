@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" width="1200" height="620" role="img" aria-label="One agent run as a bounded namespace. A queue of briefs feeds a controller in the platform namespace, which creates one ephemeral namespace per run holding an agent pod and a verification pod. That namespace carries a resource quota, a limit range, restricted pod security, a default-deny network policy and an active deadline. Exactly one arrow leaves it, to an egress proxy in the platform namespace that holds the model key and calls a hosted model outside the cluster. Three further arrows are drawn crossed out: to the cloud metadata endpoint, to a neighbouring run's namespace, and to the Kubernetes API.">
+  <defs>
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="s-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
+      <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+    <marker id="s-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#0f766e, #5eead4)"/>
+    </marker>
+    <marker id="s-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#b91c1c, #f87171)"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="620" rx="24" fill="url(#s-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="619" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="44" font-size="16" fill="var(--diagram-muted, #9a9aa6)">one run · one namespace · one way out</text>
+
+    <rect x="48" y="96" width="180" height="88" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="138" y="130" text-anchor="middle" font-size="14" fill="var(--diagram-text, #e8e8e4)">briefs</text>
+    <text x="138" y="150" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">a queue of things</text>
+    <text x="138" y="168" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">to build</text>
+
+    <rect x="48" y="228" width="180" height="76" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5"/>
+    <text x="138" y="258" text-anchor="middle" font-size="14" fill="light-dark(#5b3fd8, #a78bfa)" font-weight="700">controller</text>
+    <text x="138" y="278" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">platform namespace</text>
+    <text x="138" y="294" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">creates one per run</text>
+    <path d="M 138 188 V 222" fill="none" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.5" marker-end="url(#s-ok)"/>
+
+    <rect x="300" y="96" width="470" height="330" rx="14" fill="var(--diagram-panel, #1b1b26)" fill-opacity="0.4" stroke="light-dark(#0f766e, #5eead4)" stroke-width="2"/>
+    <text x="324" y="124" font-size="13" fill="light-dark(#0f766e, #5eead4)" font-weight="700">tenant-run-4718 · ephemeral</text>
+
+    <rect x="324" y="140" width="200" height="76" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="424" y="170" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">agent pod</text>
+    <text x="424" y="190" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">writes code</text>
+    <text x="424" y="206" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">nobody reviewed</text>
+
+    <rect x="548" y="140" width="196" height="76" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="646" y="170" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">verify pod</text>
+    <text x="646" y="190" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">typecheck · build</text>
+    <text x="646" y="206" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">tests</text>
+    <path d="M 528 178 H 542" fill="none" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.5" marker-end="url(#s-ok)"/>
+
+    <text x="324" y="252" font-size="11" fill="light-dark(#0f766e, #5eead4)">the guarantees, generated with the namespace:</text>
+    <g font-size="11" fill="var(--diagram-muted, #9a9aa6)">
+      <text x="324" y="276">ResourceQuota — a runaway build starves only itself</text>
+      <text x="324" y="296">LimitRange — every container gets a ceiling by default</text>
+      <text x="324" y="316">pod security: restricted — non-root, no escalation</text>
+      <text x="324" y="336">NetworkPolicy: default-deny egress</text>
+      <text x="324" y="356">activeDeadlineSeconds — it ends whether or not it finishes</text>
+      <text x="324" y="376">no shared writable volume between runs</text>
+    </g>
+    <text x="324" y="404" font-size="11" fill="var(--diagram-muted, #6c6c68)">torn down at the end, successful or not</text>
+
+    <rect x="850" y="228" width="220" height="76" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5"/>
+    <text x="960" y="258" text-anchor="middle" font-size="13" fill="light-dark(#0f766e, #5eead4)" font-weight="700">egress proxy</text>
+    <text x="960" y="278" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">holds the model key</text>
+    <text x="960" y="294" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">the run never sees it</text>
+
+    <path d="M 776 266 H 844" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="2" marker-end="url(#s-ok)"/>
+    <text x="782" y="256" font-size="11" fill="light-dark(#0f766e, #5eead4)">the only way out</text>
+
+    <rect x="850" y="96" width="220" height="64" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="960" y="124" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">hosted model</text>
+    <text x="960" y="144" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">outside the cluster · per token</text>
+    <path d="M 960 222 V 166" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5" marker-end="url(#s-ok)"/>
+
+    <g stroke="light-dark(#b91c1c, #f87171)" stroke-width="1.5" fill="none">
+      <path d="M 776 460 H 856" marker-end="url(#s-no)"/>
+      <path d="M 800 452 L 832 468 M 832 452 L 800 468"/>
+      <path d="M 776 510 H 856" marker-end="url(#s-no)"/>
+      <path d="M 800 502 L 832 518 M 832 502 L 800 518"/>
+      <path d="M 776 560 H 856" marker-end="url(#s-no)"/>
+      <path d="M 800 552 L 832 568 M 832 552 L 800 568"/>
+    </g>
+    <path d="M 540 432 V 460 H 770" fill="none" stroke="light-dark(#b91c1c, #f87171)" stroke-width="1.5" stroke-dasharray="3 4"/>
+    <path d="M 540 432 V 510 H 770" fill="none" stroke="light-dark(#b91c1c, #f87171)" stroke-width="1.5" stroke-dasharray="3 4"/>
+    <path d="M 540 432 V 560 H 770" fill="none" stroke="light-dark(#b91c1c, #f87171)" stroke-width="1.5" stroke-dasharray="3 4"/>
+
+    <g font-size="12" fill="var(--diagram-text, #e8e8e4)">
+      <text x="866" y="464">169.254.169.254 · cloud metadata</text>
+      <text x="866" y="514">the run next door</text>
+      <text x="866" y="564">the Kubernetes API</text>
+    </g>
+    <text x="330" y="464" font-size="11" fill="light-dark(#b91c1c, #f87171)">default-deny is what makes</text>
+    <text x="330" y="482" font-size="11" fill="light-dark(#b91c1c, #f87171)">these three arrows dotted</text>
+    <text x="330" y="512" font-size="11" fill="var(--diagram-muted, #6c6c68)">without it they are solid, and the</text>
+    <text x="330" y="530" font-size="11" fill="var(--diagram-muted, #6c6c68)">first one hands out your cloud</text>
+    <text x="330" y="548" font-size="11" fill="var(--diagram-muted, #6c6c68)">credentials to code nobody read</text>
+  </g>
+</svg>

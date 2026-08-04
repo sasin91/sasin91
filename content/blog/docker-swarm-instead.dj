@@ -5,6 +5,8 @@ date = 2026-08-04
 description = "Swarm is still in the Docker Engine, still shipping bug fixes, and still the strongest just-enough-orchestration option for a small fleet. What it genuinely gives you, what it costs you, and the fleet size where the answer flips."
 series = "self-hosting"
 part = 5
+hero = "/images/docker-swarm-instead/spectrum.svg"
+hero_alt = "Three options across a spectrum — three FreeBSD boxes, Docker Swarm, and the k3s platform kit — beneath two axes running in opposite directions: components acting on your behalf increase to the right while things you must write yourself decrease, and Swarm sits where they cross"
 +++
 
 Kubernetes won. That is a fact about industry adoption, not automatically a
@@ -216,76 +218,60 @@ The next jobs:
 
 ## Three bills that follow you across
 
-I collected forty-nine lessons building the k3s kit. Uncomfortably few of them
-care which orchestrator you chose. Swarm keeps you paying two of these and
-genuinely retires the third.
+I collected forty-nine lessons building the k3s kit. Uncomfortably few care
+which orchestrator you chose: Swarm keeps you paying two of these and genuinely
+retires the third.
 
 ## Lesson one: quorum arithmetic is the same arithmetic
 
 I destroyed a cluster by shrinking its control plane. Infrastructure-as-code
-manages servers, not etcd membership: three server resources becoming one is a
-diff the tool applies without comment, and to etcd it is the loss of two of
-three voters. The survivor can never reach a majority, the API server does not
-come back, and what you see is a provisioner timeout, exit status 124.
+manages servers, not etcd membership, so three server resources becoming one is
+a diff applied without comment — and, to etcd, the loss of two of three voters.
+Majority never returns, and the failure surfaces as a provisioner timeout, exit
+status 124.
 
-Swarm is also raft. The [Docker admin
+Swarm is raft too, and [the admin
 guide](https://docs.docker.com/engine/swarm/admin_guide/) publishes the
-identical table: 3 managers tolerate 1 failure, 5 tolerate 2, 7 tolerate 3. The
-same asymmetry applies — growing is safe, shrinking is not — with the same
-consequence when quorum goes: "swarm nodes cannot be added, updated, or
-removed, and new or existing tasks cannot be started, stopped, moved, or
-updated."
-
-One genuine mercy: `docker swarm init --force-new-cluster` is a documented
-recovery path from a surviving manager. Kubernetes has an equivalent in etcd's
-tooling, but it is not one command and not in the orchestrator's own docs.
+identical table: 3 managers tolerate 1 failure, 5 tolerate 2, 7 tolerate 3.
+Growing is safe, shrinking is not, and past quorum "swarm nodes cannot be
+added, updated, or removed, and new or existing tasks cannot be started,
+stopped, moved, or updated." Swarm's one mercy is
+`docker swarm init --force-new-cluster`, a documented recovery path from a
+surviving manager.
 
 > A replica count that a consensus protocol depends on is not a number in your
 > configuration. It is cluster state that happens to be spelled the same way.
 
 ## Lesson two: no namespace means no generator
 
-The most useful thing I measured across a mature multi-tenant cluster was this:
-guarantees emitted by the path that *creates* a tenant were present in over
-ninety percent of namespaces. The same guarantees, written down as
-recommendations, were present in **none**.
-
-Not one. The axis is not enforcement versus suggestion — it is in the generator
-versus not in the generator.
+Across a mature multi-tenant cluster, guarantees emitted by the path that
+*creates* a tenant were present in over ninety percent of namespaces; written
+down as recommendations instead, in **none**. The axis is not enforcement
+versus suggestion — it is in the generator versus not in the generator.
 
 Swarm has no namespace, so there is nothing for a generator to emit. Every
-guarantee you want — a resource budget, an isolation rule, a backup, a
-disruption policy — lives in prose, a runbook, or a shell script somebody
-remembers to run. That is the "none" column, by construction.
-
-For one team this does not matter: the prose and the person are the same
-person. It matters the moment there are two, and it is invisible until the
-second tenant — exactly when it is expensive to fix.
+guarantee you want — a budget, an isolation rule, a backup, a disruption policy
+— lives in prose, a runbook, or a script somebody remembers to run: the "none"
+column by construction, invisible until the second tenant, which is exactly
+when it is expensive to fix.
 
 ## Lesson three: fewer things create resources behind your back
 
-`tofu destroy` walks its own state and removes what it finds. A Kubernetes
-cluster also creates provider resources *at runtime*: the autoscaler creates
-servers, the cloud controller a load balancer for every `LoadBalancer` Service,
-the CSI driver a volume for every claim. None are in the state file, so destroy
-reports success while they keep running and keep billing. Nor are they inert —
-an autoscaler-created server stays attached to the private network, so
-destroying the *network* fails, and the run dies with an error naming the
-network rather than the node holding it.
+`tofu destroy` walks its own state. A Kubernetes cluster also creates provider
+resources *at runtime* — servers from the autoscaler, a load balancer per
+`LoadBalancer` Service, a volume per claim — which are not in that state, so
+destroy reports success while they keep running and keep billing. Nor are they
+inert: an autoscaler-created server stays attached to the private network, so
+destroying the *network* fails, naming the network rather than the node holding
+it. Three CSI volumes and one cloud-controller load balancer had to go by hand
+before the verification cluster would `destroy`.
 
-On the verification cluster the documented teardown removed three CSI volumes
-and one cloud-controller load balancer that OpenTofu knew nothing about. Only
-then could `destroy` complete.
-
-A swarm has far fewer of these: no cloud controller minting load balancers, no
-CSI driver minting volumes per claim, no autoscaler minting nodes. The
-resources on your provider account are, to a much closer approximation, the
-ones you asked for.
+Swarm mints far less on your behalf: no cloud controller, no CSI driver, no
+autoscaler.
 
 **This is the real shape of the Swarm trade.** Not that Swarm is simpler to
-learn, although it is, but that there are fewer components acting on your
-behalf — fewer things doing something correct that you did not ask for and
-cannot see.
+learn, although it is, but that fewer components act on your behalf — fewer
+things doing something correct that you did not ask for and cannot see.
 
 ## The verdict
 

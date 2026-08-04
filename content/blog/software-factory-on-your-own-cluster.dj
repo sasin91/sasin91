@@ -5,6 +5,8 @@ date = 2026-08-04
 description = "Cloudflare ships an open-source AI app-generation platform you can deploy yourself — onto their edge. Doing the same on your own cluster is not an AI problem but a tenancy problem: an agent run needs almost exactly what a tenant namespace already gives you, plus a deadline. The mapping, the capacity arithmetic on a measured cluster, and the parts I would not build."
 series = "self-hosting"
 part = 7
+hero = "/images/software-factory-on-your-own-cluster/one-run.svg"
+hero_alt = "One agent run as a bounded namespace carrying its quota, limits, restricted pod security, default-deny egress and deadline, with exactly one arrow leaving it to an egress proxy holding the model key, and three crossed-out arrows to the metadata endpoint, the run next door and the Kubernetes API"
 +++
 
 A software factory: a service that takes a brief, spawns a sandboxed coding
@@ -309,84 +311,63 @@ platform has ever done.
 
 ## Three things I have already stepped on
 
-I have not run the factory. I have run the platform underneath it, four times,
-and three of its failures land harder when the occupant is generated code than
-when it is a customer.
-
-None of the three announced themselves. That is the property they share and it
-is the only reason they are worth writing down.
+I have not run the factory. I have run the platform underneath it, four times.
+Three of its failures land harder when the occupant is generated code than a
+customer, and none announced itself.
 
 ## Lesson one: the quota rejects the pod and blames the quota
 
 A container that declares no CPU request, in a namespace whose quota constrains
-`requests.cpu`, is **rejected**. Not throttled, not defaulted — rejected, with
-an error message about the quota rather than about the container.
+`requests.cpu`, is **rejected** — not throttled, not defaulted, and with an
+error message about the quota rather than about the container. A namespace
+shipped with a quota and no LimitRange therefore breaks the first pod anyone
+deploys, and reads as broken. The inverse is quieter: no *limit* for a resource
+the quota does not constrain, and the container runs unbounded whatever the
+namespace's stated ceiling says.
 
-So a namespace shipped with a quota and no LimitRange breaks the first pod
-anyone deploys, and reads as a broken namespace.
-
-The inverse is worse and quieter. A container that declares no *limit*, for a
-resource the quota does not constrain, runs unbounded. It competes with every
-other pod on its node for as much as it can take, and the namespace's stated
-ceiling has nothing to do with what it actually consumes.
-
-Now recall what generated Kubernetes manifests look like. They do not have a
-`resources` block. Almost none of them do. Whichever of those two failures you
-get depends entirely on a file the agent did not write and does not know about.
+Generated manifests almost never carry a `resources` block, so which of the two
+you get depends on a file the agent never wrote.
 
 **A quota without a limit range is aspirational.** Generate both together, or
 neither is real.
 
 ## Lesson two: a denied packet looks like a slow one
 
-Under default-deny egress, the first thing to break is name resolution, and it
-breaks as "connection timed out" from inside the application rather than as
-anything that mentions DNS.
-
-I hit the same shape twice on this platform in different clothes. Once as a
-network policy allowing ingress from namespaces labelled `role=gateway`, where
-nothing applied that label — an allowance matching no namespace, so default-deny
-stood, and it surfaced as **HTTP 502** with every object you would think to
-inspect looking correct. Once as instrumentation exporting into a black hole,
-because the collector lives on a cluster address the outbound-internet rule
-explicitly excludes, on a port that is not 443. No error. No rejection. Spans
-discarded at the network layer and a trace store that stays empty for a reason
-nobody would think to look for.
+Under default-deny egress the first thing to break is name resolution, and it
+surfaces as "connection timed out" from inside the application rather than as
+anything mentioning DNS. I hit that shape as a policy allowing ingress from
+namespaces labelled `role=gateway` that nothing applied: an allowance matching
+no namespace, so default-deny stood, and it presented as **HTTP 502** with every
+object you would inspect looking correct.
 
 > A network policy selector naming a label nobody sets is a default-deny with
 > extra steps.
 
-Put an agent in that namespace and it gets worse, because a timeout is the one
-failure every layer above it is built to retry. The agent retries the model
-call. The supervisor retries the run. Nothing reports an error, the deadline
-does its job, and you are billed for a full run that never reached the model at
-all.
+Put an agent in that namespace and it gets worse: a timeout is the one failure
+every layer above is built to retry. The agent retries the model call, the
+supervisor retries the run, nothing reports an error, and you are billed for a
+full run that never reached the model.
 
 **Test the egress path with something that fails loudly, before you put
 something patient in there.**
 
 ## Lesson three: cleanup only knows what it created
 
-`tofu destroy` walks its own state and removes what it finds. The cluster,
-meanwhile, creates things at runtime that were never in that state — the
-autoscaler creates servers, the cloud controller creates a load balancer per
-`LoadBalancer` Service, the CSI driver creates a volume per claim.
+`tofu destroy` walks its own state and removes what it finds; the cluster
+creates things at runtime that were never in it — autoscaler servers, a load
+balancer per `LoadBalancer` Service, a volume per claim. Destroy reports success
+while those keep running and keep billing, and they are not inert: an
+autoscaler-created server stays attached to the private network, so destroying
+the *network* fails, several steps from the node holding it.
 
-So destroy reports success, and those keep running and keep billing. Worse,
-they are not inert: an autoscaler-created server stays attached to the private
-network, so destroying the *network* fails, several steps from the node
-actually holding it.
+I had written "destroy is clean, zero residue" in a README. True and useless —
+those runs had never autoscaled, never served a `LoadBalancer`, never bound a
+claim.
 
-I had previously written "destroy is clean, zero residue" in a README. It was
-true and useless — those runs had never autoscaled, never served a
-`LoadBalancer`, never bound a claim.
-
-The generalisation is the part that matters here. **Your teardown knows about
-the objects your template created, and agent runs create objects your template
-did not.** A generated manifest that provisions a volume, a Service, a
-CronJob — deleting the Job you created does not touch any of it. Deleting the
-namespace does, which is the actual argument for one namespace per run, and it
-is a stronger argument than tidiness.
+**Your teardown knows about the objects your template created, and agent runs
+create objects your template did not.** Deleting the Job does not touch a
+volume, Service or CronJob the generated manifest provisioned; deleting the
+namespace does — the real argument for one namespace per run.
 
 **A teardown is only proven against a run that has actually done something.**
 

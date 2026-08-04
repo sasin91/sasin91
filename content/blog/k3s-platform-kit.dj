@@ -60,8 +60,6 @@ and checked rather than remembered.
 
 ## What it actually is
 
-
-
 A fork-and-edit repository containing the decisions, with the reasoning attached
 to each one.
 
@@ -83,8 +81,6 @@ It ships no example tenant, deliberately. A workload occupying a namespace
 demonstrates nothing the template does not already state.
 
 ## The price, measured
-
-
 
 Three nodes in Falkenstein, one control plane and two agents, plus a load
 balancer. Gross figures include 25% Danish VAT.
@@ -108,8 +104,6 @@ constantly.
 
 ## What you are trading
 
-
-
 Money is the easy part. Here is the rest.
 
 **You own the upgrade path.** Nobody rolls your control plane for you. The kit
@@ -130,8 +124,6 @@ the observability stack is for, and it is why that stack costs what it does.
 If you want none of that, the honest answer is a managed platform.
 
 ## What it uses
-
-
 
 Cluster at rest, running one static site. Measured, not estimated.
 
@@ -165,7 +157,6 @@ the decision to you rather than silently making it.
 
 ## Why VictoriaMetrics
 
-
 Not because Prometheus is bad. Because at the point where you are paying for
 every series out of your own pocket, the memory footprint per series is the
 number that decides your node size, and VictoriaMetrics uses less of it. I did
@@ -186,8 +177,6 @@ exporting directly cannot do it — it does not know which pod it is.
 
 ## Why the dashboard has no public route
 
-
-
 There is no ingress for Grafana in this kit, and that is not an omission.
 
 Read access to the dashboard is read access to every log line, every metric and
@@ -207,8 +196,6 @@ returns 401. I check that because I once ran a dashboard with anonymous access
 at editor privilege behind a comment claiming the inner role was read-only.
 
 ## What is actually proven
-
-
 
 I distrust "production-ready", so here is the line I will actually defend.
 
@@ -239,96 +226,72 @@ found it first.
 
 ## Three garden forks in the grass
 
-
-
-What follows is three lessons, in the order I stepped on them. Each lay flat in
-the grass looking like nothing at all, and each reported success on its way up
-to meet my face.
-
-That is the pattern worth taking away, more than any individual fix: none of
-them announced themselves. A thing that fails loudly is a thing you fix this
-afternoon. These are the other kind.
+Three lessons, in the order I stepped on them. Each lay flat in the grass
+looking like nothing at all, and each reported success on its way up to meet my
+face. That none of them announced itself is the pattern worth taking away, more
+than any individual fix.
 
 ## Lesson one: in Kubernetes, the carriage return strikes back
 
-
-
 Every server reported healthy. SSH worked. The orchestrator was not running.
 
-Git on Windows rewrites text files to CRLF on checkout, and that default applies
-to modules your build tool clones on your behalf. Your own `.gitattributes` does
-not govern somebody else's repository. One of those files was an SELinux policy
-source, compiled *on the node* at first boot. The compiler rejected the carriage
-return, the unit failed, and k3s never started.
+Git on Windows rewrites text files to CRLF on checkout, including in modules
+your build tool clones on your behalf, where your `.gitattributes` has no say.
+One was an SELinux policy source compiled *on the node* at first boot: the
+compiler rejected the carriage return, the unit failed, k3s never started, and
+the only visible symptom was an opaque provisioner error two layers above the
+real one. It came back later wearing a different face — `set -e\r` in every
+remote script, the shell answering `set: -: invalid option`.
 
-The only visible symptom was an opaque provisioner error two layers above the
-real one.
+The conversion is enabled in the **system** git config Git for Windows installs,
+not in anything you set, so `git config --global core.autocrlf` prints nothing
+and the conversion happens anyway.
 
-I fixed it, wrote it down, and hit it again twelve hours later — because I ran
-`init -upgrade` in a shell where the guard was not exported. The second time it
-looked completely different: every remote script arriving with `set -e\r` and
-the shell answering `set: -: invalid option`.
-
-The detail that makes it durable: the conversion is enabled in the **system**
-git config that Git for Windows installs, not in anything you set. So
-`git config --global core.autocrlf` prints nothing, which reads as "not
-enabled", and the conversion happens anyway.
-
-The fix is not a better README line. It is a check that inspects the fetched
-files themselves. **Check the artifact, not the configuration you believe
-produces it.**
+**Check the artifact, not the configuration you believe produces it.**
 
 ## Lesson two: destroy does not simply destroy
 
+`tofu destroy` removes what is in its own state. The cluster creates things at
+runtime that never entered it — the autoscaler creates servers, the cloud
+controller a load balancer per `LoadBalancer` service, the CSI driver a volume
+per claim — so destroy reports success while those keep running and keep
+billing. Nor are they inert: an autoscaler-created server stays attached to the
+private network, so destroying the *network* fails — an error naming the
+network, several steps from the node actually holding it.
 
-
-`tofu destroy` walks its own state and removes what it finds. The cluster,
-meanwhile, creates things at runtime: the autoscaler creates servers, the cloud
-controller creates a load balancer per `LoadBalancer` service, the CSI driver
-creates a volume per claim. None are in that state, because the tool did not
-create them.
-
-So destroy reports success, and those keep running and keep billing.
-
-Worse, they are not inert. An autoscaler-created server stays attached to the
-private network, so destroying the *network* fails — and the run dies with an
-error naming the network, several steps from the node actually holding it.
-
-I had previously written "destroy is clean, zero residue" in the README. It was
-true, and useless: those runs had no autoscaled node, no `LoadBalancer` service
-and no volumes. Nothing existed outside state to be left behind.
+I had written "destroy is clean, zero residue" in the README. True, and
+useless: those runs had no autoscaled node, no `LoadBalancer` service and no
+volumes — nothing existed outside state to be left behind.
 
 **A teardown is only proven against a cluster that has actually done
 something.**
 
 ## Lesson three: thrice forbidden
 
-
-
 "The platform owns the Gateway, tenants own Routes." Written down, reviewed,
-and false on a running cluster for three independent reasons. I found all three
-by deploying one real tenant, and none of them by reading.
+and false on a running cluster for three independent reasons — found by
+deploying one real tenant, not by reading.
 
-1. **Workloads applied at cluster scope.** A tenant manifest that omits
+1. **Workloads applied at cluster scope.** A tenant manifest omitting
    `namespace`, reconciled without a target namespace, is evaluated
    cluster-wide, where a namespaced Role grants nothing. The error named
-   `httproutes` — a resource the Role visibly *does* allow. It sends you to
-   read the Role, which is correct, and to the wrong conclusion.
+   `httproutes` — a resource the Role visibly *does* allow — sending you to read
+   the Role, correctly, and to the wrong conclusion.
 
 2. **No listener a tenant was permitted to attach to.** The HTTP listener was
    same-namespace-only by design; the HTTPS listener carrying the tenant
    selector was commented out pending a certificate issuer. A route attaching
-   to nothing reports a failure on *itself* and nothing at all on the Gateway.
+   to nothing reports the failure on *itself* and nothing on the Gateway.
 
 3. **The gateway namespace never carried the label tenants select on.** Every
    tenant network policy allowed ingress from namespaces labelled
-   `role=gateway`. Nothing applied that label. The allowance matched no
-   namespace, so default-deny stood.
+   `role=gateway`; nothing applied it, so the allowance matched no namespace and
+   default-deny stood.
 
-That third one surfaces as **HTTP 502**. The route is accepted, the service has
-healthy endpoints, the pods are running and serve correct content when you curl
-them from inside the namespace. Every object you would think to inspect looks
-right, and the failure reads as a broken application.
+That third one surfaces as **HTTP 502**: route accepted, endpoints healthy, pods
+serving correct content when you curl them from inside the namespace. Every
+object you would think to inspect looks right, and the failure reads as a broken
+application.
 
 > A network policy selector naming a label nobody sets is a default-deny with
 > extra steps.
@@ -336,7 +299,6 @@ right, and the failure reads as a broken application.
 Each was individually reasonable. The model only exists in the intersection.
 
 ## What a model will not give you
-
 
 **Yes, if** you were going to build this anyway. That is the actual pitch. A
 capable model will produce something like this in an afternoon, and most of it
