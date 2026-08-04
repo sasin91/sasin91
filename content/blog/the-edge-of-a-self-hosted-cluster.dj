@@ -68,10 +68,10 @@ mistake is visible to strangers.
 
 ## Should you put a CDN in front
 
-The triage, before the detail. By "CDN" I mean a *proxying* one — Cloudflare's
-orange cloud, Fastly, CloudFront with a custom origin — that terminates TLS and
-forwards to your origin. A CDN serving static assets from a separate hostname
-changes almost nothing and is out of scope.
+First, what I mean by a CDN: a *proxying* one — Cloudflare's orange cloud,
+Fastly, CloudFront with a custom origin — that terminates TLS and forwards to
+your origin. If yours only serves static assets from a separate hostname, almost
+none of what follows applies to you.
 
 **Probably not, if** your traffic is mostly long-lived connections, or you
 handle health, legal, financial or credential data. In the first case you are

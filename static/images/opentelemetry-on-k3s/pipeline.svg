@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700" role="img" aria-label="A request from a laptop crosses a load balancer into a Traefik pod, which emits a span over OTLP into an OpenTelemetry collector. Inside the collector three stages run in order: memory_limiter, then k8sattributes, then batch. The k8sattributes stage reads pods and namespaces from the Kubernetes API and stamps four labels onto the span: pod name, namespace, node and deployment. The collector then writes to three stores in three different protocols: OTLP to Tempo, Prometheus remote-write to VictoriaMetrics, and OTLP over HTTP to VictoriaLogs.">
+  <defs>
+    <!-- Standalone only: when this SVG is the document root (opened via
+         file://, not inlined), `svg:root` matches and forces color-scheme to
+         dark so the bare light-dark() calls resolve to the same half as the
+         var() chrome fallbacks. It never matches once inlined into a page,
+         where `:root` is <html>, so an unscoped selector would have dragged
+         the whole site dark. -->
+    <style>svg:root { color-scheme: dark; }</style>
+
+    <linearGradient id="o-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
+      <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+
+    <!-- Three flows. Every colour carries a light-dark() pair: these stops were
+         picked against a near-black panel and drop under 3:1 on a light one. -->
+    <linearGradient id="o-req" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="light-dark(#0f766e, #5eead4)"/>
+      <stop offset="100%" stop-color="light-dark(#14918a, #99f6e4)"/>
+    </linearGradient>
+
+    <marker id="o-a-req" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#0f766e, #5eead4)"/>
+    </marker>
+    <marker id="o-a-tel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#b45309, #fbbf24)"/>
+    </marker>
+    <marker id="o-a-id" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#5b3fd8, #a78bfa)"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="700" rx="24" fill="url(#o-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="699" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="48" font-size="16" fill="var(--diagram-muted, #9a9aa6)">one endpoint in · three protocols out · identity added in the middle</text>
+
+    <!-- ========== the request ========== -->
+    <rect x="60" y="104" width="170" height="64" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="145" y="132" text-anchor="middle" font-size="15" fill="var(--diagram-text, #e8e8e4)">your laptop</text>
+    <text x="145" y="152" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9a9aa6)">over the internet</text>
+
+    <rect x="290" y="104" width="180" height="64" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="380" y="132" text-anchor="middle" font-size="15" fill="var(--diagram-text, #e8e8e4)">load balancer</text>
+    <text x="380" y="152" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9a9aa6)">provider</text>
+
+    <rect x="530" y="104" width="220" height="64" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="url(#o-req)" stroke-width="1.5"/>
+    <text x="640" y="130" text-anchor="middle" font-size="15" fill="url(#o-req)" font-weight="700">Traefik</text>
+    <text x="640" y="150" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9a9aa6)">traefik namespace</text>
+
+    <path d="M 234 136 H 284" fill="none" stroke="url(#o-req)" stroke-width="1.5" marker-end="url(#o-a-req)"/>
+    <path d="M 474 136 H 524" fill="none" stroke="url(#o-req)" stroke-width="1.5" marker-end="url(#o-a-req)"/>
+    <text x="800" y="132" font-size="12" fill="var(--diagram-muted, #9a9aa6)">serves the request,</text>
+    <text x="800" y="150" font-size="12" fill="var(--diagram-muted, #9a9aa6)">and emits a span about it</text>
+
+    <!-- ========== span into the collector ========== -->
+    <path d="M 640 172 V 240" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" stroke-dasharray="2 4" marker-end="url(#o-a-tel)"/>
+    <text x="656" y="204" font-size="12" fill="light-dark(#b45309, #fbbf24)">OTLP :4317</text>
+    <text x="656" y="222" font-size="11" fill="var(--diagram-muted, #6c6c68)">the one endpoint an app configures</text>
+
+    <!-- ========== the collector ========== -->
+    <rect x="420" y="242" width="400" height="228" rx="12" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5"/>
+    <text x="444" y="270" font-size="14" fill="light-dark(#b45309, #fbbf24)" font-weight="700">OpenTelemetry collector</text>
+
+    <text x="432" y="313" font-size="11" fill="var(--diagram-muted, #6c6c68)">1</text>
+    <rect x="448" y="286" width="352" height="44" rx="8" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="624" y="313" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">memory_limiter</text>
+
+    <text x="432" y="369" font-size="11" fill="var(--diagram-muted, #6c6c68)">2</text>
+    <rect x="448" y="342" width="352" height="44" rx="8" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5"/>
+    <text x="624" y="369" text-anchor="middle" font-size="13" fill="light-dark(#5b3fd8, #a78bfa)" font-weight="700">k8sattributes</text>
+
+    <text x="432" y="425" font-size="11" fill="var(--diagram-muted, #6c6c68)">3</text>
+    <rect x="448" y="398" width="352" height="44" rx="8" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="624" y="425" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">batch</text>
+
+    <text x="444" y="462" font-size="11" fill="var(--diagram-muted, #6c6c68)">order matters · batch last, or the identity is gone</text>
+
+    <!-- ========== identity lookup ========== -->
+    <rect x="880" y="272" width="250" height="56" rx="10" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5"/>
+    <text x="1005" y="298" text-anchor="middle" font-size="13" fill="light-dark(#5b3fd8, #a78bfa)" font-weight="700">Kubernetes API</text>
+    <text x="1005" y="316" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">pods · namespaces, read only</text>
+
+    <path d="M 804 356 C 842 356 848 302 874 302" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#o-a-id)"/>
+    <path d="M 874 400 C 842 400 842 374 804 374" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#o-a-id)"/>
+
+    <rect x="880" y="348" width="250" height="104" rx="10" fill="var(--diagram-panel, #12121b)" stroke="var(--diagram-rule, #2b2b36)" stroke-width="1"/>
+    <text x="898" y="372" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">k8s.pod.name</text>
+    <text x="898" y="392" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">k8s.namespace.name</text>
+    <text x="898" y="412" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">k8s.node.name</text>
+    <text x="898" y="432" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">k8s.deployment.name</text>
+    <text x="880" y="474" font-size="11" fill="var(--diagram-muted, #6c6c68)">stamped here, not at the source:</text>
+    <text x="880" y="492" font-size="11" fill="var(--diagram-muted, #6c6c68)">the app does not know which pod it is</text>
+
+    <!-- ========== three stores, three protocols ========== -->
+    <rect x="90" y="560" width="240" height="64" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="210" y="586" text-anchor="middle" font-size="14" fill="var(--diagram-text, #e8e8e4)">Tempo</text>
+    <text x="210" y="606" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">traces</text>
+
+    <rect x="480" y="560" width="240" height="64" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="600" y="586" text-anchor="middle" font-size="14" fill="var(--diagram-text, #e8e8e4)">VictoriaMetrics</text>
+    <text x="600" y="606" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">metrics</text>
+
+    <rect x="870" y="560" width="240" height="64" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="990" y="586" text-anchor="middle" font-size="14" fill="var(--diagram-text, #e8e8e4)">VictoriaLogs</text>
+    <text x="990" y="606" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">logs</text>
+
+    <path d="M 520 474 C 400 500 280 516 210 554" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#o-a-tel)"/>
+    <path d="M 620 474 V 554" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#o-a-tel)"/>
+    <path d="M 720 474 C 840 500 930 516 990 554" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#o-a-tel)"/>
+
+    <text x="250" y="516" text-anchor="middle" font-size="11" fill="light-dark(#b45309, #fbbf24)">OTLP</text>
+    <text x="636" y="520" font-size="11" fill="light-dark(#b45309, #fbbf24)">Prometheus remote-write</text>
+    <text x="944" y="516" text-anchor="middle" font-size="11" fill="light-dark(#b45309, #fbbf24)">OTLP/HTTP</text>
+
+    <text x="48" y="660" font-size="12" fill="var(--diagram-muted, #6c6c68)">the application speaks one protocol and never learns what stores it · swapping a store is one file, not a redeploy</text>
+  </g>
+</svg>

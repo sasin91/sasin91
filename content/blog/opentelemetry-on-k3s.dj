@@ -5,6 +5,8 @@ date = 2026-08-04
 description = "Why a collector sits between the applications and the stores on my k3s platform, rather than each application exporting straight to Tempo, VictoriaMetrics and VictoriaLogs. With a real captured trace, the memory it costs, and three failures that reported success."
 series = "self-hosting"
 part = 2
+hero = "/images/opentelemetry-on-k3s/pipeline.svg"
+hero_alt = "A span leaves a Traefik pod over OTLP into a collector, where three stages run in order and the k8sattributes stage stamps pod, namespace, node and deployment onto it from the Kubernetes API, before the collector writes to Tempo, VictoriaMetrics and VictoriaLogs in three different protocols"
 +++
 
 An application can export its telemetry straight to the store. It works, and I
