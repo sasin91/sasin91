@@ -18,19 +18,21 @@ This post is the bill. Not an estimate.
 ## Index
 
 - [What it actually is](#What-it-actually-is)
+- [Should you use it](#Should-you-use-it)
 - [The price, measured](#The-price-measured)
 - [What you are trading](#What-you-are-trading)
 - [What it uses](#What-it-uses)
+- [Why VictoriaMetrics](#Why-VictoriaMetrics)
+- [Why the dashboard has no public route](#Why-the-dashboard-has-no-public-route)
+- [What is actually proven](#What-is-actually-proven)
 - [Three garden forks in the grass](#Three-garden-forks-in-the-grass)
 - [Lesson one: the cluster that never started](#Lesson-one-the-cluster-that-never-started)
 - [Lesson two: destroy does not destroy](#Lesson-two-destroy-does-not-destroy)
 - [Lesson three: three ways to forbid the same thing](#Lesson-three-three-ways-to-forbid-the-same-thing)
-- [Why VictoriaMetrics](#Why-VictoriaMetrics)
-- [Why the dashboard has no public route](#Why-the-dashboard-has-no-public-route)
-- [What is actually proven](#What-is-actually-proven)
-- [Should you use it](#Should-you-use-it)
+- [What a model will not give you](#What-a-model-will-not-give-you)
 
 ## What it actually is
+
 
 A fork-and-edit repository containing the decisions, with the reasoning attached
 to each one.
@@ -52,7 +54,24 @@ to each one.
 It ships no example tenant, deliberately. A workload occupying a namespace
 demonstrates nothing the template does not already state.
 
+## Should you use it
+
+The short version, before the detail.
+
+**Probably not, if** you have one application. Pay for a managed platform, or
+put it on a single box — I run [AthletOS on one FreeBSD
+machine](/blog/athletos-freebsd/) for about €7 a month and it is a better trade
+for that shape.
+
+**Maybe, if** you have several tenants who need isolation from each other, you
+are already paying for the machines, and you want the isolation to be generated
+and checked rather than remembered.
+
+**Yes, if** you were going to build this anyway. That is the real pitch, and
+[the last section](#What-a-model-will-not-give-you) is why.
+
 ## The price, measured
+
 
 Three nodes in Falkenstein, one control plane and two agents, plus a load
 balancer. Gross figures include 25% Danish VAT.
@@ -76,6 +95,7 @@ constantly.
 
 ## What you are trading
 
+
 Money is the easy part. Here is the rest.
 
 **You own the upgrade path.** Nobody rolls your control plane for you. The kit
@@ -97,6 +117,7 @@ If you want none of that, the honest answer is a managed platform, and I would
 not argue with you.
 
 ## What it uses
+
 
 Cluster at rest, running one static site. Measured, not estimated.
 
@@ -128,7 +149,79 @@ That is the default in every Kubernetes monitoring stack I have used. Dropping
 or aggregating those buckets is the cheapest win available, and the kit leaves
 the decision to you rather than silently making it.
 
+## Why VictoriaMetrics
+
+
+Not because Prometheus is bad. Because at the point where you are paying for
+every series out of your own pocket, the memory footprint per series is the
+number that decides your node size, and VictoriaMetrics is markedly better at
+it. It also speaks Prometheus remote-write and PromQL, so nothing downstream
+has to know.
+
+The single-node deployment is genuinely single-node, which suits a platform
+this size. If you outgrow it, the cluster version is a migration rather than a
+rewrite.
+
+The collector in front of it is an OpenTelemetry collector, and that is the
+piece that makes traces worth having: it stamps `k8s.pod.name`,
+`k8s.namespace.name`, `k8s.node.name` and `k8s.deployment.name` onto every
+span. A request I made from my laptop arrives with the exact pod that served it
+attached. That is what lets a trace and a log line meet, and an application
+exporting directly cannot do it — it does not know which pod it is.
+
+## Why the dashboard has no public route
+
+
+There is no ingress for Grafana in this kit, and that is not an omission.
+
+Read access to the dashboard is read access to every log line, every metric and
+every trace on the cluster — including, eventually, something a tenant should
+not have shown you. Every alternative to *not exposing it* is a way of
+defending an internet-facing observability dashboard, and none is as safe as
+not having one.
+
+You reach it with a port-forward. It has no default password; the credential is
+SOPS-encrypted in the repository and Grafana does not start without it. A
+component that will not start is a problem you fix this afternoon. A component
+that started with a known password is a problem you learn about later.
+
+Anonymous access is off at every switch that can enable it, checked in CI, and
+verified at runtime — an unauthenticated API call to the running instance
+returns 401. I check that because I once ran a dashboard with anonymous access
+at editor privilege behind a comment claiming the inner role was read-only.
+
+## What is actually proven
+
+
+I distrust "production-ready", so here is the line I will actually defend.
+
+Verified on live hardware:
+
+- A three-node HA control plane forms, all members ready with etcd.
+- The whole reconciliation chain converges from git with no manual
+  intervention: 9 of 9 kustomizations, 8 of 8 Helm releases.
+- A secret committed encrypted is decrypted in-cluster and consumed.
+- A tenant generated from the template serves traffic over the public internet
+  with a Let's Encrypt certificate the system trust store validates.
+- Traces arrive carrying pod, namespace and node.
+- The hostname admission policy refuses another tenant's hostname, and refuses
+  a route that declares none.
+- Teardown leaves zero servers, load balancers, volumes, networks or addresses
+  — *when you run the cluster-created cleanup first*.
+
+Not verified:
+
+- A restore. The backup job is generated with every tenant and has never been
+  restored from.
+- The autoscaler under real pressure. The test project's quota left no room.
+- A control plane surviving the loss of a member. Three formed and were
+  healthy; I never killed one to watch the other two carry on.
+
+That last list is the honest part. I would rather publish it than discover you
+found it first.
+
 ## Three garden forks in the grass
+
 
 What follows is three lessons, in the order I stepped on them. Each lay flat in
 the grass looking like nothing at all, and each reported success on its way up
@@ -139,6 +232,7 @@ them announced themselves. A thing that fails loudly is a thing you fix this
 afternoon. These are the other kind.
 
 ## Lesson one: the cluster that never started
+
 
 Every server reported healthy. SSH worked. The orchestrator was not running.
 
@@ -167,6 +261,7 @@ produces it.**
 
 ## Lesson two: destroy does not destroy
 
+
 `tofu destroy` walks its own state and removes what it finds. The cluster,
 meanwhile, creates things at runtime: the autoscaler creates servers, the cloud
 controller creates a load balancer per `LoadBalancer` service, the CSI driver
@@ -187,6 +282,7 @@ and no volumes. Nothing existed outside state to be left behind.
 something.**
 
 ## Lesson three: three ways to forbid the same thing
+
 
 "The platform owns the Gateway, tenants own Routes." Written down, reviewed,
 and false on a running cluster for three independent reasons. I found all three
@@ -218,84 +314,7 @@ right, and the failure reads as a broken application.
 
 Each was individually reasonable. The model only exists in the intersection.
 
-## Why VictoriaMetrics
-
-Not because Prometheus is bad. Because at the point where you are paying for
-every series out of your own pocket, the memory footprint per series is the
-number that decides your node size, and VictoriaMetrics is markedly better at
-it. It also speaks Prometheus remote-write and PromQL, so nothing downstream
-has to know.
-
-The single-node deployment is genuinely single-node, which suits a platform
-this size. If you outgrow it, the cluster version is a migration rather than a
-rewrite.
-
-The collector in front of it is an OpenTelemetry collector, and that is the
-piece that makes traces worth having: it stamps `k8s.pod.name`,
-`k8s.namespace.name`, `k8s.node.name` and `k8s.deployment.name` onto every
-span. A request I made from my laptop arrives with the exact pod that served it
-attached. That is what lets a trace and a log line meet, and an application
-exporting directly cannot do it — it does not know which pod it is.
-
-## Why the dashboard has no public route
-
-There is no ingress for Grafana in this kit, and that is not an omission.
-
-Read access to the dashboard is read access to every log line, every metric and
-every trace on the cluster — including, eventually, something a tenant should
-not have shown you. Every alternative to *not exposing it* is a way of
-defending an internet-facing observability dashboard, and none is as safe as
-not having one.
-
-You reach it with a port-forward. It has no default password; the credential is
-SOPS-encrypted in the repository and Grafana does not start without it. A
-component that will not start is a problem you fix this afternoon. A component
-that started with a known password is a problem you learn about later.
-
-Anonymous access is off at every switch that can enable it, checked in CI, and
-verified at runtime — an unauthenticated API call to the running instance
-returns 401. I check that because I once ran a dashboard with anonymous access
-at editor privilege behind a comment claiming the inner role was read-only.
-
-## What is actually proven
-
-I distrust "production-ready", so here is the line I will actually defend.
-
-Verified on live hardware:
-
-- A three-node HA control plane forms, all members ready with etcd.
-- The whole reconciliation chain converges from git with no manual
-  intervention: 9 of 9 kustomizations, 8 of 8 Helm releases.
-- A secret committed encrypted is decrypted in-cluster and consumed.
-- A tenant generated from the template serves traffic over the public internet
-  with a Let's Encrypt certificate the system trust store validates.
-- Traces arrive carrying pod, namespace and node.
-- The hostname admission policy refuses another tenant's hostname, and refuses
-  a route that declares none.
-- Teardown leaves zero servers, load balancers, volumes, networks or addresses
-  — *when you run the cluster-created cleanup first*.
-
-Not verified:
-
-- A restore. The backup job is generated with every tenant and has never been
-  restored from.
-- The autoscaler under real pressure. The test project's quota left no room.
-- A control plane surviving the loss of a member. Three formed and were
-  healthy; I never killed one to watch the other two carry on.
-
-That last list is the honest part. I would rather publish it than discover you
-found it first.
-
-## Should you use it
-
-**Probably not, if** you have one application. Pay for a managed platform, or
-put it on a single box — I run [AthletOS on one FreeBSD
-machine](/blog/athletos-freebsd/) for about €7 a month and it is a better trade
-for that shape.
-
-**Maybe, if** you have several tenants who need isolation from each other, you
-are already paying for the machines, and you want the isolation to be generated
-and checked rather than remembered.
+## What a model will not give you
 
 **Yes, if** you were going to build this anyway. That is the actual pitch. A
 capable model will produce something like this in an afternoon, and most of it
