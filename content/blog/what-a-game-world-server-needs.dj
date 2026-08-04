@@ -115,7 +115,11 @@ breadth, activity and documentation win.
 
 ## The database question
 
-I do not want MySQL, and that is the first place the plan met resistance.
+I would rather not run MySQL. That is a preference and not a technical
+judgement — Oracle owns it, MariaDB has been a drop-in everywhere else I have
+used it, and neither has ever actually bitten me. It is still the first place
+the plan met resistance, and a preference you are unwilling to examine is worth
+knowing about before it starts picking your architecture.
 
 TrinityCore's Linux requirements list **MySQL ≥ 8.0.34**, Boost ≥ 1.74, OpenSSL
 ≥ 3.x, CMake ≥ 3.24 and Clang ≥ 11 or GCC ≥ 11.1
