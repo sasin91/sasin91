@@ -1,6 +1,6 @@
 +++
 path = "blog/k3s-platform-kit"
-title = "The platform is 566 times the size of the app"
+title = "K3s starter kit on Hetzner cloud"
 date = 2026-08-04
 description = "I built a production-shaped k3s platform on Hetzner, then ran it on real hardware until it stopped lying to me. It costs €122 a month, 63% of its memory goes to watching itself, and the application it exists to run is 8 MiB. Here is the whole bill, and the failures that reported success."
 +++
