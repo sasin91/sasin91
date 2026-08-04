@@ -125,8 +125,7 @@ in CI precisely because I do not trust myself to keep them correct by hand.
 **You own knowing when it is wrong.** This is the expensive one, and it is what
 the observability stack is for, and it is why that stack costs what it does.
 
-If you want none of that, the honest answer is a managed platform, and I would
-not argue with you.
+If you want none of that, the honest answer is a managed platform.
 
 ## What it uses
 
