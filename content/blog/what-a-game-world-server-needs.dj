@@ -9,18 +9,15 @@ part = 6
 
 A World of Warcraft server emulator is one of the better distributed-systems
 textbooks lying around in public, and most of it is not distributed at all.
-That is the interesting part.
 
-To be plain about why I am writing this: these projects exist to study game
-server architecture and network protocol design, and that is the only use I am
-discussing. Running an emulator against live retail services, or operating one
-as a commercial service, is neither endorsed nor covered here, and if you run
-anything you are the one responsible for its legality. I will not link to game
-clients or assets, and I will not explain how to get them.
+These projects exist to study game server architecture and network protocol
+design, and that is the only use I am discussing. Running one against live
+retail services, or as a commercial service, is neither endorsed nor covered
+here — if you run anything, its legality is yours to answer for.
 
-What I want to argue is narrower and, I think, more useful. Split the system
-honestly and almost all of it is boring stateless plumbing that belongs in a
-cluster. Exactly one process does not, and it is the one that is the game.
+Split the system honestly and almost all of it is boring stateless plumbing
+that belongs in a cluster. Exactly one process does not, and it is the one that
+is the game.
 
 ::: note
 **Part 6 of 7 of [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)**, a series about building a platform on your own hardware and then arguing about whether to.
@@ -39,7 +36,7 @@ Next: [A software factory on your own cluster](/blog/software-factory-on-your-ow
 - [Why the world server is not a pod](#Why-the-world-server-is-not-a-pod)
 - [What does belong in the cluster](#What-does-belong-in-the-cluster)
 - [The hardware that actually matters](#The-hardware-that-actually-matters)
-- [What I have not proven](#What-I-have-not-proven)
+- [What I would measure next](#What-I-would-measure-next)
 - [Three things I was wrong about before touching a keyboard](#Three-things-I-was-wrong-about-before-touching-a-keyboard)
 - [Lesson one: more cores is the wrong axis](#Lesson-one-more-cores-is-the-wrong-axis)
 - [Lesson two: MariaDB is a preference, not a given](#Lesson-two-MariaDB-is-a-preference-not-a-given)
@@ -58,48 +55,40 @@ Three pieces, and the same three in every project I looked at.
 - **A relational database.** Split across an auth database, a characters
   database and a world (content) database.
 
-The join between the first two is a table, not an API. TrinityCore's auth
-database has a `realmlist` row per realm carrying `address` and `port`, and the
-wiki describes `address` as "the public (WAN) or LAN IP address of the world
-server"
+The join between the first two is a table, not an API: TrinityCore's auth
+database has a `realmlist` row per realm carrying `address` and `port`
 ([realmlist](https://github.com/TrinityCore/tc-wiki/blob/main/database/335/auth/realmlist.md)).
 The client authenticates, receives that address, and opens a raw TCP connection
-straight to the world daemon. Remember that; it constrains the topology later.
+straight to the world daemon.
 
-Worth noting what the *real* thing looked like, because the emulator community
-wrote it down. The CMaNGOS wiki's threading-model page includes a reference
-sketch of the shipped architecture: separate nodes for Login, Connection
-Manager, Realm, Map, a Battlegroup server and several instance servers, "run in
-separate processes (or these days maybe even services) for scalability",
-interconnected by messaging queues
+The commercial article was a distributed system. The CMaNGOS wiki's
+threading-model page sketches the shipped architecture: separate nodes for
+Login, Connection Manager, Realm, Map, a Battlegroup server and several
+instance servers, "run in separate processes (or these days maybe even
+services) for scalability", interconnected by messaging queues
 ([Threading model](https://github.com/cmangos/issues/wiki/Threading-model)).
-So the commercial article genuinely is a distributed system. The open-source
-emulators are not. They collapse Realm, Map and instances into one process, and
-that single decision is the whole subject of this post.
+The open-source emulators collapse Realm, Map and instances into one process,
+and that single decision is the whole subject of this post.
 
 ## Should you run one
 
 **Probably not, if** you want a place to play. Compiling a core, extracting map
-data, importing a content database and keeping all three in sync is a hobby in
-its own right, and it is a different hobby from the one you think you are
-signing up for.
+data, importing a content database and keeping all three in sync is its own
+hobby, and not the one you think you are signing up for.
 
 **Maybe, if** you want to read a large, old, still-living C++ codebase that
-models a world in real time. This is a genuinely good one for that. It has maps, grids,
-visibility, pathfinding, a spell system, an AI scripting layer and a
-persistence layer, all under one roof and all readable.
+models a world in real time: maps, grids, visibility, pathfinding, a spell
+system, an AI scripting layer and a persistence layer, all under one roof and
+all readable.
 
-**Yes, if** you are specifically interested in the shape of the problem —
-single-process simulation with a hard tick budget — and you want a real system
-to measure rather than a toy. That is the case I find defensible, and it is why
-the architecture section below is longer than the hardware one.
+**Yes, if** you are interested in the shape of the problem — single-process
+simulation with a hard tick budget — and want a real system to measure rather
+than a toy.
 
 ## Which core in 2026
 
-I was around this scene years ago. My affection was for MaNGOS, whose code I
-still think was unusually clean for what it was, and I ran Arcemu-lineage
-servers as well. Naming either of those out loud dates me by about a decade, so
-take the nostalgia at a discount and the table at face value.
+I ran MaNGOS and Arcemu-lineage servers a decade ago, so discount the nostalgia
+and take the table at face value.
 
 | Project | Scope | Last commit checked | Stars |
 |---|---|---|---|
@@ -112,28 +101,24 @@ take the nostalgia at a discount and the table at face value.
 All of them are alive, which surprised me. Counts and dates are from the GitHub
 API on 4 August 2026.
 
-TrinityCore's repository description names the exact client build each branch
-targets — master at 12.0.7.68974, 3.3.5 at 3.3.5a.12340, cata_classic at
-4.4.2.60895 — which is a small thing that says a lot about how the project is
-run. AzerothCore is the 3.3.5 specialist: derived from SunwellCore, itself a
-TrinityCore fork, with a module system that lets you add behaviour without
-patching the core. CMaNGOS is where the MaNGOS lineage went. AscEmu is the
-Antrix → Ascent → ArcEmu line, one repository covering several expansions, and
-its README says the quiet part directly: *"This project is for educational
-purpose."*
+TrinityCore's repository description names the client build each branch targets
+— master at 12.0.7.68974, 3.3.5 at 3.3.5a.12340, cata_classic at 4.4.2.60895.
+AzerothCore is the 3.3.5 specialist: a SunwellCore descendant, itself a
+TrinityCore fork, with modules instead of core patches. CMaNGOS carries the
+MaNGOS lineage; AscEmu the Antrix → Ascent → ArcEmu line, whose README says the
+quiet part directly: *"This project is for educational purpose."*
 
-If I were choosing today I would take TrinityCore, and I say that as someone
-whose sentiment points elsewhere. Breadth, activity and documentation win.
+If I were choosing today I would take TrinityCore, against my own sentiment:
+breadth, activity and documentation win.
 
 ## The database question
 
-I do not want MySQL. That is a preference with reasons behind it, and it is the
-first place the plan met resistance.
+I do not want MySQL, and that is the first place the plan met resistance.
 
 TrinityCore's Linux requirements list **MySQL ≥ 8.0.34**, Boost ≥ 1.74, OpenSSL
 ≥ 3.x, CMake ≥ 3.24 and Clang ≥ 11 or GCC ≥ 11.1
 ([Linux Requirements](https://github.com/TrinityCore/tc-wiki/blob/main/install/requirements/linux.md)).
-MariaDB is not on that list. But the build system disagrees slightly with the
+MariaDB is not on that list. But the build system disagrees with the
 documentation: TrinityCore's `FindMySQL.cmake` exports a `MYSQL_FLAVOR`
 variable documented as "Flavor of mysql installation (MySQL or MariaDB)",
 searches for `libmariadb` alongside `libmysql`, and probes the Windows registry
@@ -142,24 +127,22 @@ options behind `#if !defined(MARIADB_VERSION_ID) && MYSQL_VERSION_ID >= 80000`
 in both `MySQLConnection.cpp` and `DBUpdater.cpp`. Somebody has deliberately
 kept the MariaDB path compiling.
 
-AzerothCore went the other way and said so plainly. Its requirements page
-carries a notice that as of **19 September 2024**, "MariaDB and MySQL versions
-5.7 and 8.1 are no longer supported"
+AzerothCore went the other way. Its requirements page carries a notice that as
+of **19 September 2024**, "MariaDB and MySQL versions 5.7 and 8.1 are no longer
+supported"
 ([Requirements](https://github.com/azerothcore/wiki/blob/master/docs/requirements.md)),
 and its supported-versions table lists MySQL 8.0 and 8.4 only, with no MariaDB
 row at all.
 
-CMaNGOS is the friendliest of the three here: its install instructions install
+CMaNGOS is the friendliest of the three: its install instructions install
 `libmariadb-dev` and `mariadb-server` outright on Debian, Fedora, Rocky and
 Arch, and its CMake carries a `POSTGRESQL` option as well.
 
-So the honest summary is: MariaDB is a first-class target on CMaNGOS, a
-tolerated one on TrinityCore, and explicitly dropped on AzerothCore. That is a
-real input to the choice and not one I expected to find.
+MariaDB is a first-class target on CMaNGOS, a tolerated one on TrinityCore, and
+explicitly dropped on AzerothCore. That is a real input to the choice, and not
+one I expected to find.
 
 ## Why the world server is not a pod
-
-Here is the mechanism, from the source rather than from folklore.
 
 TrinityCore's map manager walks every live map once per tick and either updates
 it inline or hands it to a worker pool, then waits for all of them.
@@ -200,14 +183,13 @@ and `MapUpdateInterval = 100`. Both ship `Network.Threads = 1` with the note
 describes three contexts — network, world and map — and says the map context
 "is synchronized every tick against world thread".
 
-I want to be careful about the strength of that claim. What I have established
-is the *design*, from the source and the shipped configuration files. I have
-not profiled a populated server, and I am not asserting a measured ratio of
-tick time spent in the busiest map. The widely-reported behaviour in the
-community — that a crowded capital city pins one core and the rest sit idle —
-is consistent with this code, but consistent is not measured.
+That is the *design*, established from the source and the shipped configuration
+files — not a profile of a running server, and not a measured ratio of tick
+time spent in the busiest map. The widely-reported community behaviour, a
+crowded capital city pinning one core while the rest sit idle, is consistent
+with this code. Consistent is not measured.
 
-Now put that process in a cluster and read the Kubernetes documentation on what
+Put that process in a cluster, and the Kubernetes documentation describes what
 you just agreed to:
 
 > By default, the kubelet uses CFS quota to enforce pod CPU limits. When the
@@ -217,22 +199,22 @@ you just agreed to:
 
 That is from the [CPU Management
 Policies](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/)
-page, and it is describing normal, correct behaviour. Getting exclusive cores
-back requires the `static` policy, and even then only for containers that are
-"both part of a `Guaranteed` pod and have integer CPU `requests`" — everything
-else stays in the shared pool. So the fix exists, it is a node-level kubelet
-configuration, and at that point you have a node dedicated to one pod with
-pinned cores and a memory reservation. You have built a private box with extra
-steps and a control plane that still believes it may evict you.
+page, describing normal, correct behaviour. Getting exclusive cores back
+requires the `static` policy, and even then only for containers that are "both
+part of a `Guaranteed` pod and have integer CPU `requests`" — everything else
+stays in the shared pool. The fix is a node-level kubelet configuration, and at
+the end of it you have a node dedicated to one pod with pinned cores and a
+memory reservation: a private box with extra steps, under a control plane that
+still believes it may evict you.
 
 Add the rest of the mismatch:
 
-- **The state is in RAM and it accumulates.** AzerothCore's own memory page
-  says the server caches world maps as players explore them and never unloads
-  them until restart, ending at 11 GB or more of resident memory, and it
-  recommends at least 16 GB
+- **The state is in RAM and it accumulates.** AzerothCore's memory page says
+  the server caches world maps as players explore them and never unloads them
+  until restart, ending at 11 GB or more of resident memory, and recommends at
+  least 16 GB
   ([Uso de memoria](https://www.azerothcore.org/wiki/es/memory-usage)). A pod
-  restart is not a blip; it is a server restart for every connected player.
+  restart is a server restart for every connected player.
 - **There is no meaningful readiness semantics.** A world server that finishes
   loading is not interchangeable with the one it replaced. Rolling updates,
   the entire point of a Deployment, have nothing to roll to.
@@ -244,22 +226,22 @@ Add the rest of the mismatch:
 
 Everything else, and it is more than you would guess.
 
-- **The auth daemon.** Its durable state lives in the auth database, so the
-  process itself is close to stateless.
+- **The auth daemon.** Its durable state lives in the auth database; the
+  process is close to stateless.
 - **The website, the registration API, the account panel.** Ordinary CRUD over
   the same database.
 - **Item shops, armory pages, ladder and statistics rendering.** Read-mostly
   and cacheable.
 - **Discord bots, status pages, uptime scrapers.** Trivially schedulable.
 - **Backups, database migration jobs, content-database import pipelines.**
-  These are exactly what Jobs and CronJobs are for.
+  Exactly what Jobs and CronJobs are for.
 - **The observability stack.** Metrics, logs and traces for all of the above,
   and for the world box, which can push into the cluster without living in it.
 
-That list is a normal small platform, and it is the shape I described in [the
-k3s starter kit](/blog/k3s-platform-kit/): GitOps delivery, per-tenant
-namespaces, certificates, secrets, observability. None of it is exotic. All of
-it benefits from being reconciled from git rather than remembered.
+That list is a normal small platform, the shape I described in [the k3s starter
+kit](/blog/k3s-platform-kit/): GitOps delivery, per-tenant namespaces,
+certificates, secrets, observability, all reconciled from git rather than
+remembered.
 
 So the honest architecture is a cluster for the platform and one private box
 for the world, with the cluster proxying to it — and the proxy is a TCP
@@ -280,16 +262,16 @@ The part sold to people running servers is a third of the way down the axis
 that governs your tick. The same PassMark page lists an **AMD Ryzen 5 5600G at
 3,179** — effectively that EPYC's single-thread rating — at a listed $184.99
 against $14,813.00. Those prices are PassMark's and they are illustrative, not
-a purchasing recommendation. The direction is the point. Buy clock.
+a purchasing recommendation. The direction is the point: buy clock.
 
 **Then RAM, generously.** AzerothCore's guidance is 4 GB for a handful of
 players, 6 GB at ten, 16 GB at a hundred, and more beyond that, with the advice
-to just start at 16 GB because the map cache only grows. Budget for the steady
-state after a long uptime, not for the first hour.
+to just start at 16 GB because the map cache only grows. Budget for a long
+uptime, not for the first hour.
 
 **Then NVMe for the database.** The world database is read-heavy and largely
-cacheable; the characters database takes writes at every save interval, and it
-is the one that punishes a spinning disk or a network volume. Give it enough
+cacheable; the characters database takes writes at every save interval, and
+punishes a spinning disk or a network volume. Give it enough
 RAM that the InnoDB buffer pool holds the active set — MariaDB's advice is to
 size it to "contain most of the active data set" without pushing the machine
 into swap ([InnoDB Buffer
@@ -299,38 +281,26 @@ Pool](https://mariadb.com/docs/server/server-usage/storage-engines/innodb/innodb
 the players and jitter on the path decide how the game feels; throughput never
 enters it, and no amount of CPU compensates for the wrong datacentre.
 
-What I am deliberately not doing is naming an SKU. I have not benchmarked a
-world server on any of these parts, and a single-thread rating is a proxy, not
-a tick time.
+I am not naming an SKU: a single-thread rating is a proxy, illustrative only,
+not a tick time.
 
-## What I have not proven
+## What I would measure next
 
-I distrust confident architecture posts, including mine, so here is the line I
-will actually defend.
+Everything above is read, not run: TrinityCore's source and shipped
+configuration files, the AzerothCore and CMaNGOS documentation, the Kubernetes
+docs, and PassMark's published ratings. Nothing here is a benchmark, and the
+threading claim in particular is a design established from source, not a
+profile of a running server. Three measurements would settle the rest.
 
-Established from primary sources:
-
-- The three-process split, and the `realmlist` table carrying the world
-  server's address and port.
-- The map update design in TrinityCore: one task per map, a barrier per tick,
-  `MapUpdate.Threads = 1` by default.
-- The documented database requirements of TrinityCore, AzerothCore and
-  CMaNGOS, including AzerothCore dropping MariaDB in September 2024.
-- The Kubernetes CFS-quota and CPU-pinning behaviour, quoted from the docs.
-- The single-thread ratings and CPU specifications cited above, as published.
-
-Not established:
-
-- Any measurement of my own. I have not run a populated world server this
-  decade, and nothing here is a benchmark.
-- How much of a real tick is spent in the busiest map. That is the number the
-  whole argument would rest on, and I do not have it.
-- Whether the auth daemon survives being run with more than one replica behind
-  a load balancer. It looks stateless enough. Looks are not a test.
-- Whether a world server pinned with the `static` CPU manager policy on a
+- **Where a real tick goes.** The share of tick time spent in the busiest map
+  is the number the whole argument rests on, and profiling a populated server
+  would confirm it or kill it. I have not run one this decade.
+- **Whether the auth daemon survives more than one replica** behind a load
+  balancer. It looks stateless enough. Looks are not a test.
+- **Whether a world server pinned with the `static` CPU manager policy** on a
   dedicated node performs indistinguishably from a bare box. I suspect it very
-  nearly does, and I suspect the remaining difference is not worth the
-  operational surface. Both of those are suspicions.
+  nearly does, and that the difference is not worth the operational surface.
+  Both are suspicions until someone times them.
 
 ## Three things I was wrong about before touching a keyboard
 
@@ -343,11 +313,11 @@ are cheap lessons. They were still lessons.
 I assumed a modern core with a thread pool would scale across cores, and that
 the answer to a busy realm was a bigger machine.
 
-The shipped defaults say otherwise more clearly than any argument would.
-TrinityCore's `MapUpdate.Threads` defaults to **1**. The parallelism that does
-exist is across maps and instances, so a hundred dungeon groups spread out
-nicely and one crowded city does not spread at all, and the barrier at the end
-of every tick means idle threads cannot help the map that is late.
+The shipped defaults say otherwise. TrinityCore's `MapUpdate.Threads` defaults
+to **1**, the parallelism that does exist is across maps and instances, so a
+hundred dungeon groups spread out nicely and one crowded city does not spread
+at all, and the barrier at the end of every tick means idle threads cannot help
+the map that is late.
 
 The consequence is a purchasing inversion. **A tick bounded by one thread is
 bounded by clock, not by core count**, and the fastest single thread you can
@@ -387,13 +357,9 @@ publishes its own endpoint has already made your topology decision for you.**
 ## Where the line actually falls
 
 Split the system by whether a process can be killed and replaced without anyone
-noticing.
-
-Everything on the yes side — auth, web, shop, armory, stats, bots, backups,
-jobs — is a normal workload, and putting it in a cluster buys you the ordinary
-things a cluster buys: reconciled configuration, generated isolation, one place
-to look when it breaks. That is the case I made for [the k3s starter
-kit](/blog/k3s-platform-kit/), and none of it changes here.
+noticing. Everything on the yes side — auth, web, shop, armory, stats, bots,
+backups, jobs — is a normal workload, and a cluster buys it reconciled
+configuration, generated isolation and one place to look when it breaks.
 
 The world server is on the no side, alone. It is one long-lived process holding
 a world in memory, advancing it on a clock, bounded by a single thread, talking
