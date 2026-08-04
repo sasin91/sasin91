@@ -21,9 +21,10 @@ This post is the bill. Not an estimate.
 - [The price, measured](#The-price-measured)
 - [What you are trading](#What-you-are-trading)
 - [What it uses](#What-it-uses)
-- [What went wrong: the cluster that never started](#What-went-wrong-the-cluster-that-never-started)
-- [What went wrong: destroy does not destroy](#What-went-wrong-destroy-does-not-destroy)
-- [What went wrong: three ways to forbid the same thing](#What-went-wrong-three-ways-to-forbid-the-same-thing)
+- [Three garden forks in the grass](#Three-garden-forks-in-the-grass)
+- [Lesson one: the cluster that never started](#Lesson-one-the-cluster-that-never-started)
+- [Lesson two: destroy does not destroy](#Lesson-two-destroy-does-not-destroy)
+- [Lesson three: three ways to forbid the same thing](#Lesson-three-three-ways-to-forbid-the-same-thing)
 - [Why VictoriaMetrics](#Why-VictoriaMetrics)
 - [Why the dashboard has no public route](#Why-the-dashboard-has-no-public-route)
 - [What is actually proven](#What-is-actually-proven)
@@ -127,7 +128,17 @@ That is the default in every Kubernetes monitoring stack I have used. Dropping
 or aggregating those buckets is the cheapest win available, and the kit leaves
 the decision to you rather than silently making it.
 
-## What went wrong: the cluster that never started
+## Three garden forks in the grass
+
+What follows is three lessons, in the order I stepped on them. Each lay flat in
+the grass looking like nothing at all, and each reported success on its way up
+to meet my face.
+
+That is the pattern worth taking away, more than any individual fix: none of
+them announced themselves. A thing that fails loudly is a thing you fix this
+afternoon. These are the other kind.
+
+## Lesson one: the cluster that never started
 
 Every server reported healthy. SSH worked. The orchestrator was not running.
 
@@ -154,7 +165,7 @@ The fix is not a better README line. It is a check that inspects the fetched
 files themselves. **Check the artifact, not the configuration you believe
 produces it.**
 
-## What went wrong: destroy does not destroy
+## Lesson two: destroy does not destroy
 
 `tofu destroy` walks its own state and removes what it finds. The cluster,
 meanwhile, creates things at runtime: the autoscaler creates servers, the cloud
@@ -175,7 +186,7 @@ and no volumes. Nothing existed outside state to be left behind.
 **A teardown is only proven against a cluster that has actually done
 something.**
 
-## What went wrong: three ways to forbid the same thing
+## Lesson three: three ways to forbid the same thing
 
 "The platform owns the Gateway, tenants own Routes." Written down, reviewed,
 and false on a running cluster for three independent reasons. I found all three
