@@ -21,8 +21,7 @@ answers are below, and they are what this post is for. This is the edge half of
 [the k3s starter kit](/blog/k3s-platform-kit/).
 
 ::: note
-**Part 3 of 7 — running things on your own hardware.**
-It starts with [K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/).
+**Part 3 of 7 of [Running things on your own hardware](/blog/running-things-on-your-own-hardware/)**, a series about building a platform on your own hardware and then arguing about whether to.
 
 Previous: [OpenTelemetry on a self-hosted k3s cluster](/blog/opentelemetry-on-k3s/)
 

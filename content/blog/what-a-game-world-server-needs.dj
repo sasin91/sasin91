@@ -23,8 +23,7 @@ honestly and almost all of it is boring stateless plumbing that belongs in a
 cluster. Exactly one process does not, and it is the one that is the game.
 
 ::: note
-**Part 6 of 7 — running things on your own hardware.**
-It starts with [K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/).
+**Part 6 of 7 of [Running things on your own hardware](/blog/running-things-on-your-own-hardware/)**, a series about building a platform on your own hardware and then arguing about whether to.
 
 Previous: [Docker Swarm instead of a k3s platform](/blog/docker-swarm-instead/)
 

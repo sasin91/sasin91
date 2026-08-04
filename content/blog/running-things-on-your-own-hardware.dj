@@ -1,0 +1,97 @@
++++
+path = "blog/running-things-on-your-own-hardware"
+title = "Running things on your own hardware"
+date = 2026-08-04
+series = "self-hosting"
+part = 0
+description = "Seven posts about building a Kubernetes platform on Hetzner, running it on real hardware until it stopped lying to me, and then arguing with myself about whether it was worth it. Everything measured rather than estimated, including the parts that did not come out in favour."
++++
+
+I built a k3s platform for Hetzner, ran it on real hardware four times, and
+wrote down what it cost. Then I wrote two posts arguing that you probably
+should not do it.
+
+Both halves are honest, which is the point. Most writing about self-hosting is
+either a tutorial with the failures edited out, or a warning from someone who
+never finished. This is neither: it is one platform, measured, with the bill and
+the arguments against it in the same series.
+
+The headline numbers, so you can decide whether to read further. Three nodes and
+a load balancer cost **€122.45 a month**. The platform itself — delivery,
+certificates, ingress, monitoring, upgrades — occupies about **4.5 GiB** before
+any workload of yours runs, and that figure barely moves as you add tenants,
+which is the entire argument for the shape. Getting there produced **49 written
+lessons**, and almost every one of them is a thing that *reported success* while
+being wrong.
+
+## Where to start
+
+**If you have not decided whether to do this at all**, read the two challenges
+first — [three FreeBSD boxes](/blog/three-freebsd-boxes-instead-of-k3s/) and
+[Docker Swarm](/blog/docker-swarm-instead/). They are the honest alternatives
+and both of them beat Kubernetes for a real range of situations. If either one
+convinces you, you have saved yourself the rest of the series and I would call
+that a good outcome.
+
+**If you have decided and want the thing**, start at [the kit
+itself](/blog/k3s-platform-kit/) and read forward. Parts two and three are the
+pieces people discover they needed afterwards.
+
+**If you want to see it pointed at something**, the last two parts take two
+awkward workloads — a game world server and a factory that runs code written by
+a language model — and ask what actually fits in a cluster and what does not.
+
+## The seven parts
+
+1. **[K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/)** — what the
+   platform is, what it costs, and the three failures that taught it the most.
+   The one to read if you read only one.
+
+2. **[OpenTelemetry on a self-hosted k3s
+   cluster](/blog/opentelemetry-on-k3s/)** — why a collector sits between your
+   applications and the stores. An application knows what it *is*; it does not
+   know which pod it is running in, and that gap is the whole reason.
+
+3. **[The edge of a self-hosted
+   cluster](/blog/the-edge-of-a-self-hosted-cluster/)** — websockets against
+   rolling deployments, what a cloud load balancer does to the client address,
+   and whether to put a CDN in front of your own origin.
+
+4. **[Three FreeBSD boxes instead of a k3s
+   cluster](/blog/three-freebsd-boxes-instead-of-k3s/)** — the first argument
+   against. I run both, and the money turns out not to be about the operating
+   system at all.
+
+5. **[Docker Swarm instead of a k3s
+   platform](/blog/docker-swarm-instead/)** — the second argument against.
+   Including whether Swarm is actually dead, which is mostly a case of two
+   different products sharing a name.
+
+6. **[What a game world server actually
+   needs](/blog/what-a-game-world-server-needs/)** — split a game server
+   honestly and almost all of it belongs in a cluster. Exactly one process does
+   not, and it is the one that is the game.
+
+7. **[A software factory on your own
+   cluster](/blog/software-factory-on-your-own-cluster/)** — running code a
+   language model wrote, at scale, on hardware you own. That is a tenancy
+   problem before it is an AI problem.
+
+## What ties them together
+
+Every one of these was written against a cluster that existed. The cluster is
+gone now — I tore it down and verified the account was empty — but the numbers
+were taken while it was up, and where I could not measure something I say so
+rather than estimating it.
+
+That last habit is the most useful thing in the series, and it is why several
+posts carry a section listing what they have **not** proven. A restore has never
+been performed. No CDN has ever fronted this cluster. The game world server was
+never profiled under load. Those absences are more informative than another
+paragraph of confident prose would have been.
+
+The platform is at
+[hcloud-k3s-platform-kit](https://github.com/sasin91/hcloud-k3s-platform-kit),
+MIT, with the reasoning attached to every decision and the lessons in a file of
+their own. If you take one thing from any of this, take that file — it is the
+part I would keep if I had to throw the rest away.
