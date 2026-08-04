@@ -119,8 +119,11 @@ yourself rather than trusting either me or the README.
 
 ## A sandbox is a tenant with a shorter life
 
-Left, what a tenant namespace in the kit generates. Right, what it stops when
-the occupant is an agent rather than a customer.
+The pleasant surprise was that I did not need a new isolation model. The one the
+kit already generates for a tenant is the one an agent run needs — it just needs
+to live for minutes instead of months. On the left is what a tenant namespace
+gets by default; on the right is what each of those things stops once the
+occupant is a language model rather than a customer.
 
 | Tenant guarantee | What it stops for an agent run |
 |---|---|
@@ -135,22 +138,30 @@ The last row is the one nobody thinks of: a `LoadBalancer` Service provisions a
 real load balancer at the provider and bills for it, from inside the namespace.
 An agent that has read a lot of Kubernetes examples will write one.
 
-Three things a tenant does not need and a run does. **A deadline** —
-`activeDeadlineSeconds` on the Job; an agent that has lost the plot does not
-crash, it keeps going, and "keeps going" is the failure mode that bills.
-**Guaranteed teardown** — delete the namespace, not the pod, so cleanup is one
-object deletion with nothing to enumerate. **Ephemeral storage limits** — left
-unset in the tenant template, because a low ceiling kills image-heavy workloads
-at runtime rather than at admission; for agent runs that inverts, since
-`npm install` writes to the container's writable layer and a container writing
-unboundedly there can evict itself *and its neighbours* off a node. Set it.
+Three things a run needs that a tenant does not.
 
-One correction: `restricted` pod security does **not** give you a read-only root
-filesystem. It gives you non-root, no privilege escalation, all capabilities
-dropped, `RuntimeDefault` seccomp, no host namespaces and a restricted set of
-volume types. `readOnlyRootFilesystem` is a separate field — and a build needs
-somewhere to write anyway, so the real shape is a read-only root plus a sized
-`emptyDir`, not a profile you switch on.
+The first is a deadline. An agent that has lost the plot does not crash — it
+keeps going, and keeping going is the failure mode that bills. Put
+`activeDeadlineSeconds` on the Job and it ends whether or not it has finished.
+
+The second is teardown you can rely on, which is easier than it sounds if you
+delete the namespace rather than the pod. One object goes, and there is nothing
+to enumerate and nothing to find orphaned a week later.
+
+The third inverts a tenant default, which is why it is worth spelling out. The
+template leaves ephemeral storage unset, on the grounds that a low ceiling kills
+image-heavy workloads at runtime rather than refusing them at admission. For
+agent runs that reasoning runs backwards: `npm install` writes to the
+container's writable layer, and a container writing there without a bound can
+evict itself *and its neighbours* off the node. Set a limit.
+
+I had one thing wrong going in, and it is worth saying because I have seen it
+assumed elsewhere. `restricted` pod security does **not** give you a read-only
+root filesystem. It gives you non-root, no privilege escalation, all
+capabilities dropped, `RuntimeDefault` seccomp, no host namespaces and a
+restricted set of volume types. `readOnlyRootFilesystem` is a separate field —
+and a build needs somewhere to write regardless, so what you actually want is a
+read-only root plus a sized `emptyDir`, not a profile you switch on and trust.
 
 ## How many sandboxes fit
 
@@ -303,10 +314,12 @@ Then the token cost of a real run. I quote no figure in this post because I have
 none from a system I ran, and that is the gap I would close before saying
 anything about what this costs.
 
-After that: watch `activeDeadlineSeconds` escalate against a container that
-ignores `SIGTERM` mid-`npm install`; check the Cloudflare figures against an
-account rather than documentation, starting with the instance-type table their
-own README disagrees with; and restore from a backup, which nothing on this
+After that, three smaller ones. I would like to watch `activeDeadlineSeconds`
+escalate against a container that ignores `SIGTERM` half way through an
+`npm install`, because that is the case where a deadline stops being a
+guarantee. I would check the Cloudflare figures against a real account rather
+than their documentation, starting with the instance-type table their own README
+disagrees with. And I would restore from a backup, which nothing on this
 platform has ever done.
 
 ## Three things I have already stepped on
