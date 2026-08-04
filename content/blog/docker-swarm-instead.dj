@@ -1,7 +1,7 @@
 +++
 path = "blog/docker-swarm-instead"
 title = "Docker Swarm instead of a k3s platform"
-date = 2026-08-04
+date = 2026-08-08
 description = "Swarm mode is still in the Docker Engine, still shipping bug fixes, and still dismissed because people confuse it with a different product that was removed in 2023. It is the strongest just-enough-orchestration option for a small fleet. Here is what it genuinely gives you, what it costs you, and the fleet size where the answer flips."
 +++
 
@@ -18,6 +18,15 @@ platform kit](/blog/k3s-platform-kit/). The other end of that spectrum is
 [three FreeBSD boxes and no orchestrator at
 all](/blog/three-freebsd-boxes-instead-of-k3s/). Swarm is the middle of it, and it is
 the one I think is genuinely under-rated.
+
+::: note
+**Part 5 of 7 — running things on your own hardware.**
+It starts with [K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/).
+
+Previous: [Three FreeBSD boxes instead of a k3s cluster](/blog/three-freebsd-boxes-instead-of-k3s/)
+
+Next: [What a game world server actually needs](/blog/what-a-game-world-server-needs/)
+:::
 
 ## Index
 

@@ -17,6 +17,19 @@ Then I ran it on real hardware, four times, until it stopped lying to me.
 
 This post is the bill. Not an estimate.
 
+::: note
+**Part 1 of 7 — running things on your own hardware.**
+
+The rest of the series, in order:
+
+2. [OpenTelemetry on a self-hosted k3s cluster](/blog/opentelemetry-on-k3s/)
+3. [The edge of a self-hosted cluster](/blog/the-edge-of-a-self-hosted-cluster/)
+4. [Three FreeBSD boxes instead of a k3s cluster](/blog/three-freebsd-boxes-instead-of-k3s/)
+5. [Docker Swarm instead of a k3s platform](/blog/docker-swarm-instead/)
+6. [What a game world server actually needs](/blog/what-a-game-world-server-needs/)
+7. [A software factory on your own cluster](/blog/software-factory-on-your-own-cluster/)
+:::
+
 ## Index
 
 - [What it actually is](#What-it-actually-is)

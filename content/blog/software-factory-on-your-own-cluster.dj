@@ -1,7 +1,7 @@
 +++
 path = "blog/software-factory-on-your-own-cluster"
 title = "A software factory on your own Kubernetes cluster"
-date = 2026-08-04
+date = 2026-08-10
 description = "Cloudflare ships an open-source AI app-generation platform you can deploy yourself — onto their edge. Doing the same on your own cluster is not an AI problem, it is a tenancy problem, and the isolation an agent run needs is almost exactly what a tenant namespace already gives you. Here is the mapping, the capacity arithmetic on a measured cluster, and the parts I would not build."
 +++
 
@@ -18,6 +18,13 @@ It also maps, almost line for line, onto per-tenant isolation — which means if
 you already have [a k3s platform with real tenancy](/blog/k3s-platform-kit/),
 you have most of it. The parts you do not have are a deadline and a guaranteed
 teardown, and those are the two the agents actually need.
+
+::: note
+**Part 7 of 7 — running things on your own hardware.**
+It starts with [K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/).
+
+Previous: [What a game world server actually needs](/blog/what-a-game-world-server-needs/)
+:::
 
 ## Index
 

@@ -1,7 +1,7 @@
 +++
 path = "blog/opentelemetry-on-k3s"
 title = "OpenTelemetry on a self-hosted k3s cluster"
-date = 2026-08-04
+date = 2026-08-05
 description = "Why a collector sits between the applications and the stores on my k3s platform, rather than each application exporting straight to Tempo, VictoriaMetrics and VictoriaLogs. With a real captured trace, the memory it costs, and three failures that reported success."
 +++
 
@@ -16,6 +16,15 @@ hanging off it.
 
 The numbers come from the same three-node verification cluster as [the k3s
 starter kit](/blog/k3s-platform-kit/). Measured on live hardware, not estimated.
+
+::: note
+**Part 2 of 7 — running things on your own hardware.**
+It starts with [K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/).
+
+Previous: [K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/)
+
+Next: [The edge of a self-hosted cluster](/blog/the-edge-of-a-self-hosted-cluster/)
+:::
 
 ## Index
 

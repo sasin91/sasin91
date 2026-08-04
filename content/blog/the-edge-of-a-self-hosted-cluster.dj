@@ -1,7 +1,7 @@
 +++
 path = "blog/the-edge-of-a-self-hosted-cluster"
 title = "The edge of a self-hosted cluster"
-date = 2026-08-04
+date = 2026-08-06
 description = "Websockets through a Gateway API listener, the client address a cloud load balancer throws away, and the honest trade you make by putting a CDN in front of your own hardware. What the k3s platform kit ships at its edge by default, why there is no WAF in it, and three edge failures that reported success on the way up."
 +++
 
@@ -17,6 +17,15 @@ in front of any of it.
 The short answers are yes, the load balancer ate it, and probably not. The long
 answers are below, and they are what this post is for. This is the edge half of
 [the k3s starter kit](/blog/k3s-platform-kit/).
+
+::: note
+**Part 3 of 7 — running things on your own hardware.**
+It starts with [K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/).
+
+Previous: [OpenTelemetry on a self-hosted k3s cluster](/blog/opentelemetry-on-k3s/)
+
+Next: [Three FreeBSD boxes instead of a k3s cluster](/blog/three-freebsd-boxes-instead-of-k3s/)
+:::
 
 ## Index
 
