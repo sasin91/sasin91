@@ -1,0 +1,374 @@
++++
+path = "blog/docker-swarm-instead"
+title = "Docker Swarm instead of a k3s platform"
+date = 2026-08-04
+description = "Swarm mode is still in the Docker Engine, still shipping bug fixes, and still dismissed because people confuse it with a different product that was removed in 2023. It is the strongest just-enough-orchestration option for a small fleet. Here is what it genuinely gives you, what it costs you, and the fleet size where the answer flips."
++++
+
+Kubernetes won. That is a fact about industry adoption, and it is not
+automatically a fact about your three servers.
+
+There is a smaller orchestrator that has been sitting inside the Docker Engine
+the whole time — scheduling, rolling updates, rollback, secrets, overlay
+networking, service discovery — and most people have written it off over what
+turns out to be a name collision.
+
+This is the second of two posts about what I would use *instead of* [the k3s
+platform kit](/blog/k3s-platform-kit/). The other end of that spectrum is
+[three FreeBSD boxes and no orchestrator at
+all](/blog/three-freebsd-boxes-instead-of-k3s/). Swarm is the middle of it, and it is
+the one I think is genuinely under-rated.
+
+## Index
+
+- [What Swarm mode actually is](#What-Swarm-mode-actually-is)
+- [Is it still maintained](#Is-it-still-maintained)
+- [Should you use it](#Should-you-use-it)
+- [The comparison](#The-comparison)
+- [What a compose file buys you](#What-a-compose-file-buys-you)
+- [What you give up](#What-you-give-up)
+- [What I have not measured](#What-I-have-not-measured)
+- [Three bills that follow you across](#Three-bills-that-follow-you-across)
+- [Lesson one: quorum arithmetic is the same arithmetic](#Lesson-one-quorum-arithmetic-is-the-same-arithmetic)
+- [Lesson two: no namespace means no generator](#Lesson-two-no-namespace-means-no-generator)
+- [Lesson three: fewer things create resources behind your back](#Lesson-three-fewer-things-create-resources-behind-your-back)
+- [The verdict](#The-verdict)
+
+## What Swarm mode actually is
+
+It is a mode of the daemon you are already running. There is nothing to
+install.
+
+{title="the whole of day zero"}
+```bash
+docker swarm init
+docker swarm join --token <worker-token> <manager-ip>:2377
+docker stack deploy -c compose.yml myapp
+```
+
+What that turns on, from [the Docker
+documentation](https://docs.docker.com/engine/swarm/):
+
+- **A declarative service model.** You state replica counts and desired state;
+  the manager reconciles toward it and reschedules tasks when nodes go away.
+- **Overlay networking** across hosts, with automatic address assignment, plus
+  internal DNS and load balancing between services.
+- **A [routing mesh](https://docs.docker.com/engine/swarm/ingress/)** — every
+  node accepts connections on a published port and forwards to a node actually
+  running the task, "even if there's no task running on the node".
+- **[Rolling updates](https://docs.docker.com/engine/swarm/services/)** with
+  `--update-parallelism`, `--update-delay`, and both manual and automatic
+  rollback on a failure ratio.
+- **[Secrets](https://docs.docker.com/engine/swarm/secrets/)** stored in the
+  encrypted raft log, distributed over mutual TLS, and mounted into an
+  in-memory filesystem at `/run/secrets` — never as environment variables,
+  which the docs call "a conscious decision, because environment variables can
+  unintentionally be leaked between containers". Up to 500 kB each.
+- **Mutual TLS between nodes by default**, with no flag to remember.
+
+That list is not a subset of Kubernetes that has been thinned out for
+beginners. It is the set of things that turn out to matter on a small fleet,
+and it is roughly a dozen CLI verbs.
+
+## Is it still maintained
+
+This is the question that decides the post, so I want to be exact about it.
+
+**There are two things called Swarm and people conflate them constantly.**
+Classic Swarm — the standalone product with an external key/value store — was
+[deprecated in v20.10 and removed in
+v23.0](https://docs.docker.com/engine/deprecated/). Swarm *mode*, built into
+the engine, is not on that page at all. The documentation says it in one line:
+"Do not confuse Docker Swarm mode with Docker Classic Swarm which is no longer
+actively developed."
+
+Almost every "Swarm is dead" claim I have read is the removed product being
+reported as the live one.
+
+Here is the dated evidence that the live one is alive. Docker Engine 29.0.0
+shipped on 10 November 2025 and 29.7.1 on 31 July 2026. [Swarm fixes appear in
+that series repeatedly](https://docs.docker.com/engine/release-notes/29/):
+raft snapshot corruption when swarm state is large (29.5) · stale VIP DNS
+records not removed during rolling updates (29.5) · service updates failing on
+an existing VIP alias (29.6) · tasks rejected when an image could not be pulled
+but was already present locally (29.6) · a daemon panic removing ingress ports
+after a failed listener bind (29.7). The most recent commit on
+[moby/swarmkit](https://github.com/moby/swarmkit) at the time of writing is
+dated 4 August 2026.
+
+Now the counterweight, on the same evidence. The last week of swarmkit commits
+is Go 1.25 idioms, linter fixes, a removed dependency and a corrected godoc
+link. That is the profile of a codebase being kept correct, not one being
+extended. Both readings are honest and they are not in conflict: **Swarm is
+maintained, and it is not being grown.**
+
+Mirantis is the other half of the story. They acquired Docker Enterprise in
+November 2019, initially committed to two years of Swarm support, and then in
+[February
+2020](https://www.mirantis.com/blog/mirantis-will-continue-to-support-and-develop-docker-swarm/)
+dropped the end date entirely, because "our customers want continued support of
+Swarm without an implied end date". Their [product
+page](https://www.mirantis.com/software/swarm/) still says they "continue to
+maintain, enhance, fully test, and support Swarm" with a dedicated team.
+
+I weight a bug fix from last month far above a vendor commitment from 2020, and
+you should too. But the vendor commitment is not nothing, and the bug fixes are
+real.
+
+## Should you use it
+
+The short version, before the detail.
+
+**Probably not, if** you have one application on one box. An orchestrator is
+overhead you have not earned yet — I run [AthletOS on a single FreeBSD
+machine](/blog/athletos-freebsd/) for about €7 a month and it is a better trade
+for that shape.
+
+**Maybe, if** you have three to ten machines running stateless HTTP services,
+one team, compose files you already wrote, and nobody whose job title contains
+the word platform. This is the sweet spot and it is a real one.
+
+**Probably not, if** you need several teams to deploy independently without
+being able to read each other's secrets. Swarm has no namespace, and everything
+you would build the isolation out of is missing rather than merely
+inconvenient.
+
+**No, if** the reason you are here is a database operator, a certificate
+controller, a log pipeline or any other thing you were expecting to install
+rather than write.
+
+## The comparison
+
+Nothing in this table is a benchmark. It is a capability inventory, with
+measurements only where I actually have them.
+
+| | Swarm mode | The k3s kit |
+|---|---|---|
+| Install | a mode of a daemon you run · `docker swarm init` | node layer, then 9 Kustomizations and 8 Helm releases |
+| Scheduling, restart, rolling update, rollback | yes | yes |
+| Service discovery, L4 balancing | routing mesh, built in | Service, kube-proxy |
+| HTTP routing: host, path, TLS | **not in the mesh** — L4 only; run a proxy in front | Gateway API + cert-manager, in the kit |
+| Secrets | encrypted raft log, in-memory mount, 500 kB, **immutable** | Secret objects, SOPS + age encrypted in git |
+| Autoscaling | **none** — replicated or global, scaled by hand | cluster autoscaler shipped; HPA available |
+| Extension model | **none** | CRDs — the kit installs **81** before a tenant exists |
+| Admission / policy | **none** | admission policy; the kit refuses a hostname claim with one |
+| Tenancy primitive | overlay network attachment | namespace + quota + limits + NetworkPolicy + pod security + RBAC |
+| Off-the-shelf components | write the compose file yourself | [Artifact Hub](https://artifacthub.io) lists **21,340** packages |
+| Control-plane quorum | raft · 3 managers tolerate 1 loss | etcd · 3 members tolerate 1 loss |
+| Manifest format | legacy Compose v3, via `docker stack deploy` | Kubernetes YAML |
+| Platform footprint at rest | inside `dockerd` · **not measured here** | **4,526 Mi · 194m** across 43 pods, measured |
+| Size of the thing you maintain | a compose file and a join token | 122 tracked files · 27,182 lines |
+
+The bolded absences are the argument. The bolded numbers on the right are the
+price of not having them.
+
+One row deserves its own sentence, because it is the one people get wrong in
+Swarm's favour: **the routing mesh is layer 4.** It does not do host-based or
+path-based routing and it does not terminate TLS. The Docker documentation's
+own answer for that is to put HAProxy in front of it. So the certificate story,
+the virtual-host story and the redirect story are yours to build and operate,
+and they are not small.
+
+## What a compose file buys you
+
+This is the genuine pitch and it is stronger than the sceptics allow. The file
+you already use in development is *nearly* the deployment artefact. Services,
+images, environment, networks, volumes, dependencies — all of it carries over,
+and the parts you add are a `deploy:` block with a replica count and an update
+policy.
+
+Now the caveat, because it has teeth. `docker stack deploy` consumes [the
+legacy Compose file version
+3](https://docs.docker.com/engine/swarm/stack-deploy/), not the current
+[Compose Specification](https://docs.docker.com/reference/compose-file/legacy-versions/)
+that merged 2.x and 3.x and that every other tool in the ecosystem now reads.
+The legacy formats are documented as "no longer being actively maintained".
+`build` is ignored outright — the deploy prints `Ignoring unsupported options:
+build` — so you push images to a registry first, and the registry is a thing
+you now run or pay for.
+
+"Your compose file is already a Swarm stack" is therefore true in the way that
+matters and false in the details. Budget an afternoon, not a week, and budget
+the registry properly.
+
+## What you give up
+
+**There is no extension mechanism.** This is the single largest structural
+difference and everything else follows from it. The CustomResourceDefinition is
+why the operator ecosystem exists; the kit installs 81 CRDs before a tenant
+exists, which is simultaneously the cost of Kubernetes and the reason anything
+off-the-shelf works at all. Swarm has no equivalent. Every stateful thing you
+would have handed to an operator — failover, backup, restore, major-version
+upgrade — is yours, written by you, operated by you.
+
+**There is no admission stage.** The kit refuses a route claiming another
+tenant's hostname at admission, and refuses one declaring no hostname. In Swarm
+there is nowhere to put a rule of that shape. Whatever you would have enforced,
+you now check in CI and hope nobody applies by hand.
+
+**There is no autoscaling.** Services are replicated or global. Capacity
+follows demand when a human types `docker service scale`.
+
+**There is no namespace.** Isolation between workloads is which overlay network
+they attach to. The documentation describes network attachment and encryption
+and nothing else — no per-tenant budget, no policy layer above the network.
+That is fine for one team and it is not a multi-tenancy model.
+
+**There are fewer people to ask.** Artifact Hub lists 21,340 packages,
+essentially all of them Kubernetes. The 2025 Stack Overflow developer survey
+put Docker at 71.1% and Kubernetes at 28.5% — and did not list Swarm as an
+option at all. That last figure is evidence about what the survey's authors
+assumed, not about the install base, and I am reporting it as exactly that. But
+the shape of the problem is real: when something breaks at 02:00, the number of
+people who have seen your error message before is much smaller.
+
+## What I have not measured
+
+I have run the k3s kit on real hardware four times. I have not run Swarm at
+this scale, and I am not going to fill in the empty cell in that table with a
+plausible number.
+
+Specifically unproven, by me:
+
+- **Swarm's footprint at rest.** Swarm mode runs inside `dockerd` rather than
+  as a fleet of control-plane pods, so it is structurally much smaller than
+  4,526 Mi. *How much* smaller I do not know, and neither does anyone quoting a
+  figure they did not measure.
+- **Behaviour under node loss**, on either side. The kit's HA control plane
+  formed and was healthy; I never killed a member to watch the others carry on,
+  and I have not done the equivalent to a swarm.
+- **The install base.** Nobody publishes one. Every claim about Swarm's
+  popularity, in either direction, is somebody's impression.
+- **Whether it is viable in five years.** I do not know. Neither does anyone
+  citing a commitment made in 2020.
+
+## Three bills that follow you across
+
+I collected forty-nine lessons building the k3s kit, and the uncomfortable
+thing about re-reading them with Swarm in mind is how few of them care which
+orchestrator you chose. Here are three, re-asked. Swarm keeps you paying two of
+them and genuinely retires the third.
+
+## Lesson one: quorum arithmetic is the same arithmetic
+
+I destroyed a cluster by shrinking its control plane. Infrastructure-as-code
+manages servers; it does not manage etcd membership. Three server resources
+becoming one is a diff the tool applies without comment, and to etcd it is the
+loss of two of three voters. The survivor can never reach a majority again. The
+API server does not come back, and what you are shown is a provisioner timeout,
+exit status 124, which mentions none of this.
+
+Swarm does not save you from that, because Swarm is also raft. The [Docker
+admin guide](https://docs.docker.com/engine/swarm/admin_guide/) publishes the
+identical table: 3 managers tolerate 1 failure, 5 tolerate 2, 7 tolerate 3. And
+the same asymmetry applies — growing is safe, shrinking is not — with the same
+consequence when quorum goes: "swarm nodes cannot be added, updated, or
+removed, and new or existing tasks cannot be started, stopped, moved, or
+updated."
+
+There is one genuine mercy. Swarm ships `docker swarm init --force-new-cluster`
+as a documented recovery path from a surviving manager. Kubernetes has an
+equivalent in etcd's tooling, but it is not one command and it is not in the
+orchestrator's own docs.
+
+> A replica count that a consensus protocol depends on is not a number in your
+> configuration. It is cluster state that happens to be spelled the same way.
+
+That lesson is orchestrator-independent. Swarm charges it too.
+
+## Lesson two: no namespace means no generator
+
+The most useful thing I measured across a mature multi-tenant cluster was this:
+guarantees emitted by the path that *creates* a tenant were present in over
+ninety percent of namespaces. The same guarantees, written down as
+recommendations, were present in **none**.
+
+Not one. The axis is not enforcement versus suggestion — it is in the generator
+versus not in the generator.
+
+Swarm has no namespace, so there is nothing for a generator to emit. Every
+guarantee you want — a resource budget, an isolation rule, a backup, a
+disruption policy — lives in prose, in a runbook, or in a shell script somebody
+remembers to run. That is the "none" column, by construction.
+
+For one team this genuinely does not matter, because the prose and the person
+are the same person. It matters the moment there are two teams, and it matters
+in a way that is invisible until the second tenant, which is exactly when it is
+expensive to fix.
+
+## Lesson three: fewer things create resources behind your back
+
+Here is the one where Swarm is straightforwardly better, and it surprised me.
+
+`tofu destroy` walks its own state and removes what it finds. But a Kubernetes
+cluster creates provider resources *at runtime*: the autoscaler creates
+servers, the cloud controller creates a load balancer for every `LoadBalancer`
+Service, the CSI driver creates a volume for every claim. None of those are in
+the state file, because the tool did not create them. So destroy reports
+success and they keep running and keep billing — and they are not inert either.
+An autoscaler-created server stays attached to the private network, so
+destroying the *network* fails, and the run dies with an error naming the
+network rather than the node holding it.
+
+On the verification cluster the documented teardown removed three CSI volumes
+and one cloud-controller load balancer that OpenTofu knew nothing about. Only
+then could `destroy` complete.
+
+A swarm has far fewer of these. There is no cloud controller minting load
+balancers, no CSI driver minting volumes per claim, no autoscaler minting
+nodes. The resources on your provider account are, to a much closer
+approximation, the ones you asked for.
+
+**This is the real shape of the Swarm trade.** It is not that Swarm is simpler
+to learn, although it is. It is that there are fewer components acting on your
+behalf, which means fewer things doing something correct that you did not ask
+for and cannot see.
+
+## The verdict
+
+Pick Swarm — genuinely, not as a consolation — if all of these hold:
+
+- **Three to ten machines**, and you are not planning to double that this year.
+- **One team.** Everyone who deploys may read everything.
+- **Stateless HTTP services**, with your databases managed elsewhere or on a
+  box you tend by hand.
+- **Compose files you already maintain.**
+- **Nobody whose job is the platform.** If there is such a person, they will
+  build Kubernetes eventually anyway, and you may as well not pay for it twice.
+
+Under those conditions Swarm is not the lesser choice. It is the correct one,
+and the k3s kit is roughly 4.5 GiB of memory and 27,000 lines of repository
+solving problems you do not have.
+
+**The answer flips on team shape before it flips on fleet size**, and that is
+the part people get backwards. Twenty machines running one team's stateless
+services is still comfortably Swarm. Four machines shared by three teams who
+must not read each other's secrets is not, at any size, because the thing you
+need is the namespace and everything generated with it — and that is not a
+feature Swarm is missing, it is a model Swarm does not have.
+
+The other two triggers are just as sharp. The day you want a component you did
+not write — a Postgres operator, a certificate controller, a log pipeline with
+a maintainer — you are shopping in a market with 21,340 packages in it, and
+none of them are for you. And the day capacity has to follow demand without
+someone typing a command, Swarm has no answer at all.
+
+If none of those days are coming, the honest cost of Swarm is not technical.
+It is that you are increasingly alone: fewer components, fewer answers, and a
+maintenance signal that says *kept correct* rather than *being grown*. For a
+small fleet that is a defensible trade and I would make it. For a platform you
+expect to hand to someone else in three years, I would not.
+
+And if even that is more machinery than your problem deserves, the answer is
+not a smaller orchestrator. It is [no orchestrator at
+all](/blog/three-freebsd-boxes-instead-of-k3s/).
+
+<!-- HERO: A three-column spectrum, left to right — "three FreeBSD boxes" (no
+orchestrator, hand-tended, one box drawn with jails inside), "Docker Swarm"
+(three nodes, one marked manager, a routing mesh band across all three, one
+compose file feeding in), "k3s platform kit" (a cluster boundary containing
+Flux, Gateway, cert-manager and an observability block, with 81 CRDs and 4,526
+Mi annotated). A single axis beneath labelled with what increases left to
+right: components acting on your behalf. And a second axis labelled with what
+decreases: things you must write yourself. The point of the diagram is that
+those two axes move in opposite directions and Swarm sits at the crossing. -->
