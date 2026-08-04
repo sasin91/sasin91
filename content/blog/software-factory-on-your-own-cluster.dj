@@ -13,13 +13,21 @@ A software factory: a service that takes a brief, spawns a sandboxed coding
 agent per variant, lets it write an application, verifies the result, and
 reports back.
 
-Generating the application is the easy part. The moment it works you are
-running untrusted code that a language model wrote, at scale, on hardware you
-pay for. That is a sandboxing and resource-isolation problem before it is an AI
-problem, and it maps almost line for line onto per-tenant isolation. If you
-already have [a k3s platform with real tenancy](/blog/k3s-platform-kit/), you
-have most of it; what you lack is a deadline and a guaranteed teardown, which
-are the two the agents actually need.
+**Do not build it if the hosted shape fits.** Cloudflare's VibeSDK exists, it is
+MIT, and about $30 a month of subscriptions plus usage is less than the first day
+you would spend on this. That is the honest answer for most people and it is the
+first thing I should say.
+
+What follows is for the case where it does not fit — because the briefs cannot
+leave your network, or the generated apps have to reach systems inside it, or you
+are already running a multi-tenant cluster and this is a job template away.
+
+Generating the application is the easy part. The moment it works you are running
+untrusted code that a language model wrote, at scale, on hardware you pay for.
+That is a sandboxing and resource-isolation problem before it is an AI problem,
+and it maps almost line for line onto per-tenant isolation. If you already have
+[a k3s platform with real tenancy](/blog/k3s-platform-kit/), you have most of it;
+what you lack is a deadline and a guaranteed teardown.
 
 ::: note
 **Part 7 of 7 of [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)**, a series about building a platform on your own hardware and then arguing about whether to.
@@ -308,9 +316,8 @@ care about.** Quotas are capacity boundaries, not security boundaries. They
 stop accidents. They do not stop anything deliberate that fits inside the
 numbers.
 
-**I would not build it at all if the hosted shape fits.** VibeSDK exists, it is
-MIT, and $30 a month of subscriptions plus usage is less than the first day you
-spend on this.
+And, as at the top: **I would not build it at all if the hosted shape fits.**
+Everything above is what it costs to be in the case where it does not.
 
 ## What I would measure next
 
