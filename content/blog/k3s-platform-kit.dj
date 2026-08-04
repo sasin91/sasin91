@@ -13,11 +13,12 @@ Creating a Kubernetes cluster is a solved problem. What comes after — delivery
 secrets, certificates, tenancy, observability, backups — is not, and that is
 where the cost lives.
 
-So I built the part that comes after, as a kit you can fork:
+This is that part, as a repository you fork:
 [hcloud-k3s-platform-kit](https://github.com/sasin91/hcloud-k3s-platform-kit).
-Then I ran it on real hardware, four times, until it stopped lying to me.
+Every number below was measured over four build-and-teardown cycles on real
+hardware.
 
-This post is the bill. Not an estimate.
+Whether it is for you, first.
 
 ::: note
 **Part 1 of 7 of [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)**, a series about building a platform on your own hardware and then arguing about whether to.
@@ -29,8 +30,8 @@ Next: [OpenTelemetry on a self-hosted k3s cluster](/blog/opentelemetry-on-k3s/)
 
 ## Index
 
-- [What it actually is](#What-it-actually-is)
 - [Should you use it](#Should-you-use-it)
+- [What it actually is](#What-it-actually-is)
 - [The price, measured](#The-price-measured)
 - [What you are trading](#What-you-are-trading)
 - [What it uses](#What-it-uses)
@@ -43,7 +44,22 @@ Next: [OpenTelemetry on a self-hosted k3s cluster](/blog/opentelemetry-on-k3s/)
 - [Lesson three: thrice forbidden](#Lesson-three-thrice-forbidden)
 - [What a model will not give you](#What-a-model-will-not-give-you)
 
+## Should you use it
+
+**Probably not, if** you have one application. Pay for a managed platform, or
+put it on a single box — I run [AthletOS on one FreeBSD
+machine](/blog/athletos-freebsd/) for about €7 a month and it is a better trade
+for that shape.
+
+**Maybe, if** you have several tenants who need isolation from each other, you
+are already paying for the machines, and you want the isolation to be generated
+and checked rather than remembered.
+
+**Yes, if** you were going to build this anyway. That is the real pitch, and
+[the last section](#What-a-model-will-not-give-you) is why.
+
 ## What it actually is
+
 
 
 A fork-and-edit repository containing the decisions, with the reasoning attached
@@ -66,23 +82,8 @@ to each one.
 It ships no example tenant, deliberately. A workload occupying a namespace
 demonstrates nothing the template does not already state.
 
-## Should you use it
-
-The short version, before the detail.
-
-**Probably not, if** you have one application. Pay for a managed platform, or
-put it on a single box — I run [AthletOS on one FreeBSD
-machine](/blog/athletos-freebsd/) for about €7 a month and it is a better trade
-for that shape.
-
-**Maybe, if** you have several tenants who need isolation from each other, you
-are already paying for the machines, and you want the isolation to be generated
-and checked rather than remembered.
-
-**Yes, if** you were going to build this anyway. That is the real pitch, and
-[the last section](#What-a-model-will-not-give-you) is why.
-
 ## The price, measured
+
 
 
 Three nodes in Falkenstein, one control plane and two agents, plus a load
@@ -108,6 +109,7 @@ constantly.
 ## What you are trading
 
 
+
 Money is the easy part. Here is the rest.
 
 **You own the upgrade path.** Nobody rolls your control plane for you. The kit
@@ -128,6 +130,7 @@ the observability stack is for, and it is why that stack costs what it does.
 If you want none of that, the honest answer is a managed platform.
 
 ## What it uses
+
 
 
 Cluster at rest, running one static site. Measured, not estimated.
@@ -162,6 +165,7 @@ the decision to you rather than silently making it.
 
 ## Why VictoriaMetrics
 
+
 Not because Prometheus is bad. Because at the point where you are paying for
 every series out of your own pocket, the memory footprint per series is the
 number that decides your node size, and VictoriaMetrics uses less of it. I did
@@ -183,6 +187,7 @@ exporting directly cannot do it — it does not know which pod it is.
 ## Why the dashboard has no public route
 
 
+
 There is no ingress for Grafana in this kit, and that is not an omission.
 
 Read access to the dashboard is read access to every log line, every metric and
@@ -202,6 +207,7 @@ returns 401. I check that because I once ran a dashboard with anonymous access
 at editor privilege behind a comment claiming the inner role was read-only.
 
 ## What is actually proven
+
 
 
 I distrust "production-ready", so here is the line I will actually defend.
@@ -234,6 +240,7 @@ found it first.
 ## Three garden forks in the grass
 
 
+
 What follows is three lessons, in the order I stepped on them. Each lay flat in
 the grass looking like nothing at all, and each reported success on its way up
 to meet my face.
@@ -243,6 +250,7 @@ them announced themselves. A thing that fails loudly is a thing you fix this
 afternoon. These are the other kind.
 
 ## Lesson one: in Kubernetes, the carriage return strikes back
+
 
 
 Every server reported healthy. SSH worked. The orchestrator was not running.
@@ -273,6 +281,7 @@ produces it.**
 ## Lesson two: destroy does not simply destroy
 
 
+
 `tofu destroy` walks its own state and removes what it finds. The cluster,
 meanwhile, creates things at runtime: the autoscaler creates servers, the cloud
 controller creates a load balancer per `LoadBalancer` service, the CSI driver
@@ -293,6 +302,7 @@ and no volumes. Nothing existed outside state to be left behind.
 something.**
 
 ## Lesson three: thrice forbidden
+
 
 
 "The platform owns the Gateway, tenants own Routes." Written down, reviewed,
@@ -327,6 +337,7 @@ Each was individually reasonable. The model only exists in the intersection.
 
 ## What a model will not give you
 
+
 **Yes, if** you were going to build this anyway. That is the actual pitch. A
 capable model will produce something like this in an afternoon, and most of it
 will work — the shapes are conventional and the tools are the obvious ones. It
@@ -337,3 +348,4 @@ of the manifests.
 Forty-nine of those are written down in the repository, each stated as a
 mechanism with the failure it produced. That file is the part I would keep if I
 had to throw the rest away.
+
