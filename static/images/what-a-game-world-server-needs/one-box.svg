@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480" width="1200" height="480" role="img" aria-label="The plain emulator shape on one machine: a player logs in to the auth daemon, which reads the auth schema and hands back a realm list containing an address. The player then connects to the world daemon, which reads the characters and world schemas. All three schemas live in one database on the same box.">
+  <defs>
+    <!-- Standalone only: `svg:root` matches when this file is opened directly,
+         not when it is inlined into a page, where `:root` is <html>. An
+         unscoped selector would drag the whole site dark. -->
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="g1-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
+      <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+    <marker id="g1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#0f766e, #5eead4)"/>
+    </marker>
+    <marker id="g1-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#b45309, #fbbf24)"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="480" rx="24" fill="url(#g1-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="479" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="46" font-size="16" fill="var(--diagram-muted, #9a9aa6)">the shape as it ships · two daemons and one database, on one machine</text>
+
+    <rect x="60" y="190" width="180" height="68" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="150" y="220" text-anchor="middle" font-size="15" fill="var(--diagram-text, #e8e8e4)">player</text>
+    <text x="150" y="240" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9a9aa6)">the client</text>
+
+    <rect x="350" y="96" width="250" height="68" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5"/>
+    <text x="475" y="126" text-anchor="middle" font-size="15" fill="light-dark(#0f766e, #5eead4)" font-weight="700">authserver</text>
+    <text x="475" y="146" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9a9aa6)">login · hands out the realm list</text>
+
+    <rect x="350" y="286" width="250" height="68" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5"/>
+    <text x="475" y="316" text-anchor="middle" font-size="15" fill="light-dark(#b45309, #fbbf24)" font-weight="700">worldserver</text>
+    <text x="475" y="336" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9a9aa6)">the game itself</text>
+
+    <rect x="740" y="86" width="320" height="290" rx="12" fill="var(--diagram-panel, #1b1b26)" fill-opacity="0.55" stroke="var(--diagram-rule, #2b2b36)" stroke-width="1"/>
+    <text x="764" y="114" font-size="13" fill="var(--diagram-muted, #9a9aa6)">MariaDB · one server</text>
+
+    <rect x="764" y="130" width="272" height="52" rx="8" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="900" y="153" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">auth</text>
+    <text x="900" y="171" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">accounts · realm list</text>
+
+    <rect x="764" y="196" width="272" height="52" rx="8" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="900" y="219" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">characters</text>
+    <text x="900" y="237" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">who you are · what you own</text>
+
+    <rect x="764" y="262" width="272" height="52" rx="8" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="900" y="285" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">world</text>
+    <text x="900" y="303" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">the map · read mostly</text>
+
+    <text x="764" y="344" font-size="11" fill="var(--diagram-muted, #6c6c68)">three schemas, one process serving them</text>
+
+    <path d="M 244 206 C 300 206 300 130 344 130" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5" marker-end="url(#g1-a)"/>
+
+    <path d="M 344 152 C 300 152 300 214 244 214" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#g1-a)"/>
+
+    <path d="M 244 246 C 300 246 300 320 344 320" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#g1-b)"/>
+
+    <path d="M 604 134 C 680 134 690 156 754 156" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5" marker-end="url(#g1-a)"/>
+    <path d="M 604 310 C 680 310 690 222 754 222" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#g1-b)"/>
+    <path d="M 604 330 C 680 330 700 288 754 288" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#g1-b)"/>
+
+    <text x="60" y="306" font-size="11" fill="light-dark(#0f766e, #5eead4)">1 · log in to the auth daemon</text>
+    <text x="60" y="328" font-size="11" fill="var(--diagram-muted, #9a9aa6)">2 · it returns a realm list — an address</text>
+    <text x="60" y="350" font-size="11" fill="light-dark(#b45309, #fbbf24)">3 · connect to that address</text>
+    <text x="48" y="438" font-size="12" fill="var(--diagram-muted, #6c6c68)">the auth daemon is an ordinary stateless service · the world daemon holds the map in memory and does not want to be moved</text>
+  </g>
+</svg>

@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" width="1200" height="660" role="img" aria-label="The same system split. Behind one load balancer: a cluster holding replicated auth daemons and the web front end, both talking to a shared database of accounts, characters and guilds. Outside the cluster, each world daemon sits on its own machine with its own read-mostly world database, and reaches back into the cluster's shared database for character and guild data.">
+  <defs>
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="g2-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
+      <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+    <marker id="g2-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#0f766e, #5eead4)"/>
+    </marker>
+    <marker id="g2-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#b45309, #fbbf24)"/>
+    </marker>
+    <marker id="g2-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#5b3fd8, #a78bfa)"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="660" rx="24" fill="url(#g2-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="659" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="44" font-size="16" fill="var(--diagram-muted, #9a9aa6)">split by what can move · everything stateless in the cluster, the world on its own box</text>
+
+    <rect x="48" y="76" width="150" height="56" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="123" y="100" text-anchor="middle" font-size="14" fill="var(--diagram-text, #e8e8e4)">players</text>
+    <text x="123" y="118" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">and the website</text>
+
+    <rect x="250" y="76" width="180" height="56" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5"/>
+    <text x="340" y="100" text-anchor="middle" font-size="14" fill="light-dark(#0f766e, #5eead4)" font-weight="700">load balancer</text>
+    <text x="340" y="118" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">one address</text>
+    <path d="M 202 104 H 244" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5" marker-end="url(#g2-a)"/>
+
+    <rect x="48" y="176" width="560" height="404" rx="16" fill="none" stroke="var(--diagram-rule, #2b2b36)" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="72" y="204" font-size="13" fill="var(--diagram-muted, #9a9aa6)">the cluster · everything that can be rescheduled</text>
+
+    <rect x="76" y="224" width="230" height="72" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5"/>
+    <text x="191" y="252" text-anchor="middle" font-size="14" fill="light-dark(#0f766e, #5eead4)" font-weight="700">authserver ×3</text>
+    <text x="191" y="272" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">stateless · replace at will</text>
+
+    <rect x="76" y="320" width="230" height="72" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="191" y="348" text-anchor="middle" font-size="14" fill="var(--diagram-text, #e8e8e4)">web · armory · shop</text>
+    <text x="191" y="368" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">ordinary HTTP</text>
+
+    <rect x="356" y="252" width="228" height="140" rx="10" fill="var(--diagram-panel, #12121b)" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5"/>
+    <text x="470" y="284" text-anchor="middle" font-size="14" fill="light-dark(#5b3fd8, #a78bfa)" font-weight="700">shared database</text>
+    <text x="470" y="310" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">accounts</text>
+    <text x="470" y="330" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">characters</text>
+    <text x="470" y="350" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">guilds · mail · auction</text>
+    <text x="470" y="374" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #6c6c68)">one truth for all realms</text>
+
+    <path d="M 310 260 H 350" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#g2-c)"/>
+    <path d="M 310 356 C 330 356 330 330 350 330" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#g2-c)"/>
+    <path d="M 300 132 C 300 160 200 190 191 218" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5" marker-end="url(#g2-a)"/>
+
+    <rect x="648" y="176" width="504" height="404" rx="16" fill="none" stroke="var(--diagram-rule, #2b2b36)" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="672" y="204" font-size="13" fill="var(--diagram-muted, #9a9aa6)">outside the cluster · one box per realm, never rescheduled</text>
+
+    <rect x="672" y="224" width="200" height="88" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5"/>
+    <text x="772" y="254" text-anchor="middle" font-size="14" fill="light-dark(#b45309, #fbbf24)" font-weight="700">worldserver</text>
+    <text x="772" y="274" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">realm 1 · high clock</text>
+    <text x="772" y="294" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">map resident in RAM</text>
+
+    <rect x="912" y="224" width="216" height="88" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="1020" y="258" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">world DB</text>
+    <text x="1020" y="278" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">static content, local</text>
+    <text x="1020" y="296" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">read mostly</text>
+    <path d="M 876 268 H 906" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#g2-b)"/>
+
+    <rect x="672" y="360" width="200" height="88" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5"/>
+    <text x="772" y="390" text-anchor="middle" font-size="14" fill="light-dark(#b45309, #fbbf24)" font-weight="700">worldserver</text>
+    <text x="772" y="410" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">realm 2</text>
+    <text x="772" y="430" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">its own box</text>
+
+    <rect x="912" y="360" width="216" height="88" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="1020" y="394" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">world DB</text>
+    <text x="1020" y="414" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">static content, local</text>
+    <path d="M 876 404 H 906" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#g2-b)"/>
+
+    <path d="M 430 104 C 620 104 700 160 740 218" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5" marker-end="url(#g2-a)"/>
+    <text x="452" y="148" font-size="11" fill="light-dark(#0f766e, #5eead4)">players reach the realm directly</text>
+    <text x="452" y="164" font-size="11" fill="var(--diagram-muted, #6c6c68)">the realm list hands out its address</text>
+
+    <path d="M 666 300 C 620 300 600 316 590 322" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#g2-c)"/>
+    <path d="M 666 400 C 620 400 600 350 590 340" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#g2-c)"/>
+    <text x="596" y="470" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">every realm reads and writes the same</text>
+    <text x="596" y="486" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">characters and guilds</text>
+
+    <text x="48" y="616" font-size="12" fill="var(--diagram-muted, #6c6c68)">the split is not by tier · it is by what survives being moved. Everything on the left can be killed mid-request. Nothing on the right can.</text>
+  </g>
+</svg>

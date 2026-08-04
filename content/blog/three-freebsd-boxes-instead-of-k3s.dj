@@ -2,7 +2,7 @@
 path = "blog/three-freebsd-boxes-instead-of-k3s"
 title = "Three FreeBSD boxes instead of a k3s cluster"
 date = 2026-08-04
-description = "I run FreeBSD in production and I also wrote the k3s kit, so this is an argument with myself. Three jailed boxes behind a load balancer cost a fraction of a three node cluster and give up the scheduler, the rollout and the admission control. Here is where I think the line actually falls, with the measured numbers from both sides."
+description = "I run FreeBSD in production and I also wrote the k3s kit, so this is an argument with myself: three jailed boxes behind a load balancer against a three node cluster, giving up the scheduler, the rollout and the admission control, with the measured numbers from both sides."
 series = "self-hosting"
 part = 4
 +++
@@ -11,15 +11,11 @@ I published [a k3s platform kit](/blog/k3s-platform-kit/) with the bill attached
 and I run [a production app on one FreeBSD box](/blog/athletos-freebsd/) for
 about €7 a month. Both are mine. They disagree.
 
-So here is the question I keep not answering: for the shape of workload most
-people actually have — a handful of services, one operator, a private network —
-is a three node k3s cluster better than three FreeBSD boxes running jails behind
-a load balancer?
-
-I do not think it is. I think the crossover is much further out than the
-industry default assumes, and I think I can say roughly where it is. I also
-think the FreeBSD answer loses badly past that point, and not for the reasons
-people usually give.
+For the workload most people have — a handful of services, one operator, a
+private network — is a three node k3s cluster better than three
+FreeBSD boxes running jails behind a load balancer? I do not think it is. The
+crossover is much further out than the industry default assumes — and past it,
+FreeBSD loses badly, for reasons that are not the usual ones.
 
 ::: note
 **Part 4 of 7 of [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)**, a series about building a platform on your own hardware and then arguing about whether to.
@@ -35,13 +31,10 @@ Next: [Docker Swarm instead of a k3s platform](/blog/docker-swarm-instead/)
 - [Which one should you run](#Which-one-should-you-run)
 - [The money and where it goes](#The-money-and-where-it-goes)
 - [What jails give you](#What-jails-give-you)
-- [What bhyve adds and what it costs](#What-bhyve-adds-and-what-it-costs)
-- [What you lose without Kubernetes](#What-you-lose-without-Kubernetes)
-- [What you lose with Kubernetes](#What-you-lose-with-Kubernetes)
+- [What each side gives up](#What-each-side-gives-up)
 - [Failover is the part you build](#Failover-is-the-part-you-build)
 - [The real divide is tenancy](#The-real-divide-is-tenancy)
-- [Where I think the line is](#Where-I-think-the-line-is)
-- [What I have not proven](#What-I-have-not-proven)
+- [What I would test next](#What-I-would-test-next)
 - [Three arguments I lost with myself](#Three-arguments-I-lost-with-myself)
 - [Lesson one: the money was never about the operating system](#Lesson-one-the-money-was-never-about-the-operating-system)
 - [Lesson two: the latency win is real and it is not the argument](#Lesson-two-the-latency-win-is-real-and-it-is-not-the-argument)
@@ -56,40 +49,37 @@ A load balancer in front. On each box, jails for the services, `pf` for the
 packet filter, Caddy terminating TLS, and ZFS boot environments so an operating
 system upgrade is a reboot away from being undone.
 
-That is the entire control plane, and I am using the term loosely, because there
-is not one. No API server, no etcd, no scheduler, no reconciler, no CRDs. A jail
-is a row in `jail.conf` and a dataset on disk.
+That is the entire control plane, loosely speaking, because there is not one. No
+API server, no etcd, no scheduler, no reconciler, no CRDs. A jail is a row in
+`jail.conf` and a dataset on disk.
 
-The delivery model on the single box version is two jails, blue and green, both
-running all the time, both registered with Caddy. A deploy takes one out of the
-pool, swaps a symlink, waits for it to answer, and only then touches the other.
-**Five seconds, never a moment without a healthy backend.** Extend that to three
-boxes and the shape is the same, except now something has to drive it across
-three machines, and that something is a script you write.
-
-Hold that thought. It is most of the argument.
+The single box delivery model is two jails, blue and green, both running and
+both registered with Caddy. A deploy takes one out of the pool, swaps a symlink,
+waits for it to answer, then touches the other: **five seconds, never a moment
+without a healthy backend.** Across three boxes the shape is the same, except
+that a script you write has to drive it — which is most of the argument.
 
 ## Which one should you run
 
-The triage first, before the detail.
+**Three FreeBSD boxes, if** you have under ten services or tenants, one person
+authoring the isolation, and tenants who are not mutually hostile — your own
+services, or customers who would not be a security incident if they could see
+each other's traffic. Less money, less memory, far less attention.
 
-**Three FreeBSD boxes, if** you have somewhere under ten services or tenants,
-one person authoring the isolation, and tenants who are not mutually hostile —
-your own services, or customers who would not be a security incident if they
-could see each other's traffic. Less money, less memory, far less
-attention.
-
-**Either, if** you are between roughly ten and thirty tenants belonging to one
-organisation. This band is genuinely ambiguous and anyone who tells you
-otherwise is selling something. Pick the one your team can debug at 02:00.
+**Either, if** you are between roughly ten and thirty tenants in one
+organisation. Shape matters more than count: three tenants who are strangers is
+a Kubernetes problem, twenty services in one team is not. Pick the one your team
+can debug at 02:00.
 
 **Kubernetes, if** the tenants are strangers to each other, or more than one
 human authors the isolation, or workloads have to survive a node dying without
-you being awake. None of those is "scale" in the sense of traffic, and none of
-them arrives gradually enough to notice.
+you awake. None of those is "scale" in the sense of traffic, and none arrives
+gradually enough to notice.
 
-**Neither, if** you have one application. Put it on one box. I did, and would
+**Neither, if** you have one application. Put it on one box; I did, and would
 again.
+
+I hold the ten loosely and the "second author" firmly.
 
 ## The money and where it goes
 
@@ -108,102 +98,84 @@ observability stack, a separate line on the invoice.
 
 The FreeBSD side, at the size class I actually run: three CX23 at about €7 each
 is roughly €21, plus the same lb11 at €9.36. Call it **€30 a month**. The €7 is
-the figure I published for that box rather than one I re-derived here, so treat
-the total as approximate — but the ratio is about four to one and that is not
-subtle.
+the figure I published for that box, not one I re-derived here, so treat the
+total as approximate. The ratio is about four to one.
 
-Now the honest correction, because that is not like for like. Put the FreeBSD
-boxes on the same hardware and the difference vanishes: three cpx32 is €44.36
-each by the arithmetic above, €133.08, plus the load balancer. Slightly *more*
-than the k3s cluster, because that cluster's control plane is a smaller machine.
+That is not like for like, though. Put the FreeBSD boxes on the same hardware
+and the difference vanishes: three cpx32 is €44.36 each by the arithmetic above,
+€133.08, plus the load balancer. Slightly *more* than the k3s cluster, because
+that cluster's control plane is a smaller machine.
 
 So the saving is not FreeBSD. **The saving is that the FreeBSD boxes fit in
-4 GB and the k3s nodes do not.** Which brings us to the actual number.
+4 GB and the k3s nodes do not.**
 
 ## What jails give you
 
 A jail is a kernel-enforced restriction on a set of processes: its own root
-directory, its own users, its own set of visible processes and sockets, and with
-`vnet`, its own network stack. It is not a virtual machine and it is not
-emulation. There is no guest kernel, no device model, no image layer. The cost
-of a jail over a bare process is close enough to nothing that I have never been
-able to make it show up in a measurement.
+directory, its own users, its own visible processes and sockets, and with
+`vnet`, its own network stack. No guest kernel, no device model, no image layer.
+The cost of a jail over a bare process is close enough to nothing that I have
+never made it show up in a measurement.
 
 What that buys:
 
-- **Process and filesystem isolation** with no runtime daemon between you and
-  the process. `ps` on the host sees everything; `ps` in the jail sees the jail.
-- **ZFS as the packaging format.** A jail root is a dataset. Clone it, snapshot
-  it, roll it back, `zfs send` it to another box. The rollback story is the same
-  one the backups use, which is unusual and good.
+- **Process and filesystem isolation** with no runtime daemon in between. `ps`
+  on the host sees everything; `ps` in the jail sees the jail.
+- **ZFS as the packaging format.** A jail root is a dataset: clone it, snapshot
+  it, roll it back, `zfs send` it to another box, with the same tooling as the
+  backups.
 - **Boot environments** for the host itself. `bectl` clones the root dataset, you
   activate the clone, and a bad upgrade is a reboot rather than an incident.
-  Kubernetes has no equivalent because the node is meant to be disposable — a
-  fine answer with a scheduler and a spare node, and no answer at all with three
-  boxes that have state on them.
-- **No control plane to be down.** Nothing whose failure stops you starting a
-  service. I underrate this every time and then remember it at the worst moment.
+  Kubernetes has no equivalent because the node is meant to be disposable — fine
+  with a scheduler and a spare node, no answer at all with three boxes holding
+  state.
+- **Nothing whose failure stops you starting a service**, because there is no
+  control plane to be down.
 
-The limit is hard and worth stating plainly: a jail shares the host kernel.
-Different kernel, different operating system, or anything wanting `/dev/kvm` is
-not a jail question.
+The limit is hard: a jail shares the host kernel. Different kernel, different
+operating system, or anything wanting `/dev/kvm` is a `bhyve` question — a full
+hypervisor, with dedicated RAM per guest, a virtual disk, a boot sequence and
+its own kernel to patch. Ten jails on a 4 GB box is plausible; ten bhyve guests
+is not, and that is where the near-zero overhead argument stops being true.
 
-## What bhyve adds and what it costs
+On Hetzner Cloud bhyve is not on the menu at all, which I found out by accident.
+Installing FreeBSD there had to run under QEMU in **TCG emulation** — roughly
+half an hour of software emulation — because Hetzner Cloud has no nested
+virtualisation and exposes no hardware virtualisation to the guest, and bhyve
+needs that support. If you want it you are buying a dedicated server and the
+cost comparison above is void. The escape hatch that "just use jails" arguments
+assume is not there on the cheap tier.
 
-`bhyve` is the answer when you need a real kernel — a Linux workload the binary
-compatibility layer will not carry, a database appliance, a Windows guest. It is
-a full hypervisor and behaves like one: dedicated RAM per guest, a virtual disk,
-a boot sequence, its own kernel to patch. That is a genuine capability jails do
-not have, and it is where the near-zero overhead argument stops being true. Ten
-jails on a 4 GB box is plausible. Ten bhyve guests is not.
-
-There is a sharper constraint on Hetzner Cloud, and I hit it by accident. When I
-installed FreeBSD there, the install had to run under QEMU in **TCG emulation**
-— roughly half an hour of software emulation — because Hetzner Cloud has no
-nested virtualisation and exposes no hardware virtualisation to the guest. bhyve
-needs that support.
-
-So on a Hetzner Cloud VPS, bhyve is not on the menu. If you want it you are
-buying a dedicated server and the cost comparison above is void. This is the
-most commonly skipped detail in "just use jails" arguments: the escape hatch you
-were counting on is not there on the cheap tier.
-
-## What you lose without Kubernetes
-
-I want to be precise here, because the FreeBSD case is usually made by people
-who have not run the other thing, and the list is real.
+## What each side gives up
 
 **No scheduler.** Jails run where you put them. If box two is at 90% memory and
-box three is idle, that is yours to notice and yours to fix. No bin-packing, no
-resource requests, no "this needs 2 GB, find it somewhere".
+box three is idle, that is yours to notice and fix.
 
-**No rescheduling on node loss.** This is the big one. If a box dies its jails
-stay down until you, or something you wrote, brings them up elsewhere — which
-means the data has to already be over there. Kubernetes does it without you. Not
-instantly: the default node-failure and eviction timers are measured in minutes
-rather than seconds, and a workload on a read-write-once volume still waits for
-a detach. But it happens while you are asleep, and that is not nothing.
+**No rescheduling on node loss**, the big one. If a box dies its jails stay down
+until you, or something you wrote, bring them up elsewhere — which means the
+data has to already be over there. Kubernetes does it without you. Not instantly
+— the default node-failure and eviction timers are minutes rather than seconds,
+and a read-write-once volume still waits for a detach — but while you are
+asleep.
 
 **No declarative rollout across machines.** A Deployment is a desired state a
 controller drives towards, surviving its own restart. My blue/green symlink swap
 is a script, and a script that dies halfway leaves the world halfway.
 
-**No admission control.** Nothing rejects a bad configuration at write time. A
+**No admission control.** Nothing rejects a bad configuration at write time; a
 `jail.conf` with a wrong IP is a wrong IP. The k3s kit has a hostname admission
-policy that refuses another tenant's hostname and refuses a route declaring
-none. Reproducing that means a CI check against a file — later, and only if the
-file is the source of truth.
+policy that refuses another tenant's hostname and a route declaring none.
+Reproducing that means a CI check against a file — later, and only if the file
+is the source of truth.
 
-**No ecosystem.** No operator for your database, no cert-manager, no autoscaler,
-no cluster-wide backup tool that already knows how to find your volumes. You
-assemble the equivalents from `sanoid`, `syncoid`, Caddy's automatic
-certificates and shell. They will work, and they will be yours to maintain.
+**No ecosystem.** No database operator, no cert-manager, no autoscaler, no
+cluster-wide backup tool that knows where your volumes are. You assemble the
+equivalents from `sanoid`, `syncoid`, Caddy's automatic certificates and shell,
+and then you maintain them.
 
-## What you lose with Kubernetes
-
-The other column, also measured. This is the table from [part
-one](/blog/k3s-platform-kit/), reproduced here because the comparison is
-meaningless without it — cluster at rest, one tenant serving a static site.
+The other column is also measured. This is the table from [part
+one](/blog/k3s-platform-kit/) — cluster at rest, one tenant serving a static
+site.
 
 | Namespace | Pods | CPU | Memory |
 |---|---|---|---|
@@ -222,80 +194,58 @@ As I put it in [part one](/blog/k3s-platform-kit/):
 
 In exchange: metrics, logs and traces already wired to datasources, 42
 provisioned dashboards, and a trace arriving with the exact pod that served the
-request attached. That is worth real money when you need it.
+request.
 
-But hold the 4,526 Mi against three CX23. Twelve gigabytes in total, and the
-platform wants 4.5 of them before anything of yours runs — and it does not
-spread evenly, because the observability stack's 2,858 Mi lands somewhere. It
-does not fit comfortably on 4 GB nodes. That is why the cluster is on 8 GB
-agents, and that is the entire cost difference.
+Hold the 4,526 Mi against three CX23: twelve gigabytes in total, and the
+platform wants 4.5 of them before anything of yours runs, unevenly, because the
+observability stack's 2,858 Mi lands somewhere. That is why the cluster is on
+8 GB agents, and that is the entire cost difference. The overhead alone is 566
+times the workload I measured it carrying.
 
 Two more line items. **81 CustomResourceDefinitions**, ten of them Gateway API,
 installed before a tenant exists — every one an API type that can change across
-an upgrade. And **161,507 active time series** on a three node cluster running
-one static site, of which two control-plane histograms are 27%, unqueried. That
-is the default in every Kubernetes monitoring stack I have used, and the cost
-lands whether or not anyone looks.
+an upgrade. And **161,507 active time series** on a three node cluster serving
+one static site, of which two control-plane histograms are 27%, unqueried. The
+cost lands whether or not anyone looks.
 
 Then the part in no table: the upgrade treadmill, and a large surface of things
-that fail while reporting success. I wrote 49 of those down in the kit's lessons
-file. My favourite is still a reconciliation that could not apply the fix for
-its own failure, because it was waiting for the broken thing to become healthy.
-Committing the repair did nothing. Something outside the loop had to break the
-tie.
+that fail while reporting success — 49 of them written down in the kit's lessons
+file.
 
-::: note
-## The comparison is not overhead versus no overhead
-
-FreeBSD has an equivalent of the observability bill; I just have not paid it.
-Three boxes with no metrics is cheaper than three nodes with metrics, and that
-is not a fair fight. The fair version is: on the FreeBSD side you choose what to
-instrument and pay per choice, on the Kubernetes side you get all of it and pay
-up front. Which of those is better depends entirely on whether you would have
-made the choices.
-:::
+Three boxes with no metrics against three nodes with metrics is not a fair
+fight, though: FreeBSD has an equivalent of that bill, and I have not paid it.
 
 ## Failover is the part you build
 
-This is where I have to be careful, because CARP gets quoted in these arguments
-as though it were an answer to Kubernetes rescheduling. It is not the same
-thing, and the difference matters.
+CARP gets quoted in these arguments as though it were an answer to Kubernetes
+rescheduling. It is not.
 
-CARP shares a virtual IP address between hosts on the same broadcast domain.
-One host holds it as master, the others sit in backup, and when the master's
-advertisements stop, a backup takes the address over. With `pfsync` replicating
+CARP shares a virtual IP address between hosts on the same broadcast domain: one
+holds it as master, the others sit in backup, and when the master's
+advertisements stop a backup takes the address over. With `pfsync` replicating
 the packet filter's state table, connections in flight can survive the handover
-instead of being reset.
+instead of being reset. It **moves an address, fast, without anyone being
+awake.** What it does not do:
 
-What it does: **moves an address, fast, without anyone being awake.**
-
-What it does not do:
-
-- **It does not check your application.** A box whose Caddy has wedged but whose
-  kernel is happily advertising stays master. You can wire a health check into
-  the demotion counter so a failing service demotes itself — something you
+- **Check your application.** A box whose Caddy has wedged but whose kernel is
+  happily advertising stays master. You can wire a health check into the
+  demotion counter so a failing service demotes itself — something you
   configure, not something you get.
-- **It does not move data.** Postgres on the dead box is still on the dead box.
-  Replication is a separate decision with separate failure modes, and it is the
-  one that determines whether failover is actually safe.
-- **It does not restart anything.** Kubernetes rescheduling starts your workload
-  somewhere else. CARP hands an address to a machine that had better already be
-  running the service. In practice everything runs everywhere all the time,
-  which is fine at three boxes and expensive as a general policy.
-- **It assumes layer two.** CARP advertisements are multicast and want hosts
-  adjacent on one segment. Cloud private networks are frequently routed rather
-  than switched, and the provider's own answer is usually a floating IP moved by
-  an API call — different mechanism, different timing. I have not verified which
-  applies on Hetzner Cloud, and if you are planning on CARP there, test that
-  first rather than last.
+- **Move data.** Postgres on the dead box is still on the dead box. Replication
+  is a separate decision with separate failure modes, and it determines whether
+  failover is safe at all.
+- **Restart anything.** Kubernetes rescheduling starts your workload somewhere
+  else; CARP hands an address to a machine that had better already be running
+  the service.
+- **Cross layer two.** CARP advertisements are multicast and want hosts adjacent
+  on one segment. Cloud private networks are frequently routed rather than
+  switched, and the provider's own answer is usually a floating IP moved by an
+  API call — different mechanism, different timing. I have not verified which
+  applies on Hetzner Cloud.
 
-None of that makes CARP bad. It makes it a component where the Kubernetes
-equivalent is a behaviour you inherit. The FreeBSD failover story is real and
-assembled, and the assembly is unpaid work you do once and then own.
+CARP is a component; the Kubernetes equivalent is a behaviour you inherit.
 
 ## The real divide is tenancy
-
-Everything above is arguable. This part I think is not.
 
 I once measured guarantees across a mature multi-tenant cluster. Guarantees
 generated by the provisioning path — quota, limits, network policy, disruption
@@ -305,70 +255,46 @@ documentation, were present in **none**.
 
 Not "fewer". None.
 
-The axis is not enforcement versus suggestion. It is *in the generator versus
-not in the generator*. And Kubernetes is unusually good at being a generator
-target, because every guarantee is an object with a name, a namespace and a
-schema, and something at the door checks it.
+The axis is not enforcement versus suggestion; it is *in the generator versus
+not in the generator*. Kubernetes is unusually good at being a generator target,
+because every guarantee is an object with a name, a namespace and a schema, and
+something at the door checks it.
 
-You can build a jail generator. `jail.conf` is text, `pf` rules are text, a ZFS
-dataset layout is a script, and putting all of it behind one template with a CI
-check is a weekend and not a research project. I would enjoy that weekend.
+You can build a jail generator — `jail.conf` is text, `pf` rules are text, a ZFS
+dataset layout is a script — and a template with a CI check over all of it is a
+weekend, not a research project. Harder to reproduce by hand:
 
-What is harder to reproduce by hand:
-
-- A check that finds what **predates** the generator. Generation is prospective.
-  The jail you created before the template learned about egress rules stays
-  uncovered forever, and no improvement to the template will find it.
+- A check that finds what **predates** the generator. Generation is prospective;
+  the jail you created before the template learned about egress rules stays
+  uncovered forever.
 - Runtime refusal. CI checks the file; nothing checks the running system unless
   you write the thing that does.
 - The second author. One person holds the invariants in their head accurately.
-  Two people hold two slightly different versions of them, and the divergence
-  surfaces months later as a customer seeing another customer's data.
+  Two people hold two slightly different versions, and the divergence surfaces
+  months later as a customer seeing another customer's data.
 
-That last one is why I put "more than one human authors the isolation" in the
-triage above rather than a tenant count. It is the sharper predictor.
+The second author is the sharper predictor, which is why it is in the triage
+rather than a tenant count. It is also the one thing Kubernetes wins on that is
+load-bearing: isolation gets generated and checked instead of remembered.
+Everything else it gives you is nice.
 
-## Where I think the line is
+## What I would test next
 
-I said I would not cop out, so:
+The FreeBSD numbers are measured for *one* box; the three box configuration this
+argument is about is designed, not deployed. In the order I would work through
+it:
 
-**Below about ten services or tenants, with one operator, three FreeBSD boxes
-win on every axis I care about.** Cost, memory, latency, comprehensibility, time
-to first deploy, and the number of components that can fail while reporting
-success. It is not close. The k3s platform overhead alone is 566 times the
-workload I measured it carrying, and that ratio only improves with tenants you
-do not have yet.
-
-**Above about thirty, or at the second author, or at the first mutually
-distrusting tenant, Kubernetes wins** — and it wins on exactly one thing, which
-is that isolation gets generated and checked instead of remembered. Everything
-else it gives you is nice. That one is load-bearing.
-
-Between ten and thirty it is a judgement call and I will not pretend otherwise.
-If pushed I would say the count matters less than the shape: three tenants who
-are strangers is a Kubernetes problem, and twenty services belonging to one team
-is not.
-
-I hold the ten loosely and the "second author" firmly.
-
-## What I have not proven
-
-The k3s numbers are measured. The FreeBSD numbers in this post are measured for
-*one* box. The three box configuration this whole argument is about is a design
-I have reasoned through and not run.
-
-Specifically:
-
-- I have not run CARP or `pfsync` on Hetzner Cloud, and the layer two assumption
-  is the load-bearing uncertainty in the failover section.
-- I have not measured jail density. "Ten jails on a 4 GB box is plausible" is
-  arithmetic, not an observation.
-- I have not built the jail generator I claim is a weekend, so its cost is an
-  estimate by someone with an interest in it being small.
-- bhyve I have not run at all, for the reason in that section.
-- The k3s figures come from one cluster on one day. Prices, instance
-  availability and series counts all moved during the two days it took to
-  collect them.
+- **CARP and `pfsync` on this provider's network.** The layer two assumption is
+  the load-bearing uncertainty in the failover section; until it is tested, the
+  failover story is a drawing.
+- **Jail density.** "Ten jails on a 4 GB box is plausible" is arithmetic. I want
+  the observation.
+- **The jail generator**, which I claim is a weekend and have an interest in
+  being small.
+- **bhyve**, which I have not run at all, for the reason above.
+- **A second reading of the cluster.** The k3s figures are one cluster on one
+  day, and prices, instance availability and series counts all moved during the
+  two days it took to collect them.
 
 ## Three arguments I lost with myself
 
@@ -437,20 +363,15 @@ admitted, and auditing them means writing the auditor.
 
 ## The uncomfortable part
 
-I wrote the kit and I would still put a new project on one FreeBSD box, and a
-growing one on three. That is not a contradiction I have resolved; it is the
-honest state of my opinion, and the [k3s post](/blog/k3s-platform-kit/) says the
-same thing in its own triage section, which is where the argument started.
+The Kubernetes default is priced for a problem most people do not have yet, and
+it is very good at making that problem feel imminent. Three FreeBSD boxes are
+priced for the problem you have, and very bad at telling you when you have
+outgrown them — because nothing breaks. It just quietly becomes your full time
+job to remember what is where.
 
-The Kubernetes default is not wrong. It is priced for a problem most people do
-not have yet, and it is very good at making that problem feel imminent. Three
-FreeBSD boxes are priced for the problem you have, and very bad at telling you
-when you have outgrown them — because nothing breaks. It just quietly becomes
-your full time job to remember what is where.
-
-Pick the one whose failure mode you would rather have. Mine is forgetting. I
-have decided I can live with that until the second author shows up.
+Pick the failure mode you would rather have. Mine is forgetting, and I can live
+with it until the second author shows up.
 
 ``` =html
-<p class="colophon">Every k3s figure above was measured on a live cluster. Every FreeBSD figure was measured on one box. The three box configuration is a design, not a deployment, and the post says so where it matters.</p>
+<p class="colophon">Every k3s figure above was measured on a live cluster; every FreeBSD figure on one box.</p>
 ```

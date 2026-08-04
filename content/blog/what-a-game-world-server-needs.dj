@@ -5,6 +5,8 @@ date = 2026-08-04
 description = "An open-source WoW emulator splits into an auth daemon, a world daemon and a relational database. Everything except the world daemon is an ordinary service that belongs in a cluster — the world daemon is a long-lived, memory-resident process whose tick is bounded by a single thread. Here is what that shape wants from hardware, and why it fits a Kubernetes cluster worse than people assume."
 series = "self-hosting"
 part = 6
+hero = "/images/what-a-game-world-server-needs/one-box.svg"
+hero_alt = "The plain emulator shape on one machine: a player logs in to the auth daemon, which reads the auth schema and hands back a realm list; the player then connects to the world daemon, which reads the characters and world schemas"
 +++
 
 A World of Warcraft server emulator is one of the better distributed-systems
@@ -223,6 +225,9 @@ Add the rest of the mismatch:
   otherwise.
 
 ## What does belong in the cluster
+
+![The same system split: behind one load balancer, a cluster holding replicated auth daemons and the web front end over a shared database of accounts, characters and guilds; outside it, each world daemon on its own machine with its own read-mostly world database, reaching back into the shared database for characters and guilds.](/images/what-a-game-world-server-needs/split.svg)
+
 
 Everything else, and it is more than you would guess.
 

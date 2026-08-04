@@ -7,18 +7,15 @@ series = "self-hosting"
 part = 3
 +++
 
-Inside the cluster, everything is yours. The edge is where that stops being
-true: a cloud load balancer you did not write, a proxy shared by every tenant,
-a certificate authority with an opinion, and — if you take the offer — a CDN
-that terminates TLS before you ever see the request.
+Inside the cluster, everything is yours. The edge is where that stops: a cloud
+load balancer you did not write, a proxy shared by every tenant, a certificate
+authority with an opinion, and — if you take the offer — a CDN that terminates
+TLS before you ever see the request. This is the edge half of [the k3s starter
+kit](/blog/k3s-platform-kit/).
 
 Three questions come up every time. Do websockets work through a Gateway API
-ingress. Where did the client's IP address go. Should there be a WAF or a CDN
-in front of any of it.
-
-The short answers are yes, the load balancer ate it, and probably not. The long
-answers are below, and they are what this post is for. This is the edge half of
-[the k3s starter kit](/blog/k3s-platform-kit/).
+ingress (yes). Where did the client's IP address go (the load balancer ate it).
+Should there be a WAF or a CDN in front of any of it (probably not).
 
 ::: note
 **Part 3 of 7 of [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)**, a series about building a platform on your own hardware and then arguing about whether to.
@@ -31,13 +28,12 @@ Next: [Three FreeBSD boxes instead of a k3s cluster](/blog/three-freebsd-boxes-i
 ## Index
 
 - [What the edge is made of](#What-the-edge-is-made-of)
-- [Should you put a CDN in front](#Should-you-put-a-CDN-in-front)
 - [Websockets: the upgrade works and nothing else does](#Websockets-the-upgrade-works-and-nothing-else-does)
 - [The client address you no longer have](#The-client-address-you-no-longer-have)
-- [What a CDN costs you](#What-a-CDN-costs-you)
+- [Should you put a CDN in front](#Should-you-put-a-CDN-in-front)
 - [WAF: theirs, yours, or neither](#WAF-theirs-yours-or-neither)
 - [What the kit does by default](#What-the-kit-does-by-default)
-- [What I have not proven](#What-I-have-not-proven)
+- [What I would test next](#What-I-would-test-next)
 - [Three failures that filed no complaint](#Three-failures-that-filed-no-complaint)
 - [Lesson one: the load balancer that never existed](#Lesson-one-the-load-balancer-that-never-existed)
 - [Lesson two: an email address became a routing problem](#Lesson-two-an-email-address-became-a-routing-problem)
@@ -46,71 +42,35 @@ Next: [Three FreeBSD boxes instead of a k3s cluster](/blog/three-freebsd-boxes-i
 
 ## What the edge is made of
 
-Four things, in order, and it is worth being able to name all four before
-debugging any of them.
+Four things, in order.
 
 - **A provider load balancer**, created because a `Service` of type
   `LoadBalancer` exists. On Hetzner it terminates the TCP connection and opens
-  a new one to a node. That detail costs you the client address; see below.
-- **Traefik**, two replicas, spread across nodes by a *required* anti-affinity
-  rule and held there by a disruption budget of `minAvailable: 1`. It serves
-  Gateway API and nothing else — no `Ingress`, no `IngressRoute`, no
-  experimental channel.
-- **One Gateway**, owned by the platform, in the `traefik` namespace. It owns
-  the addresses, the ports, the certificates, and the decision about which
-  namespaces may attach anything at all.
+  a new one to a node — the detail that costs you the client address.
+- **Traefik**, two replicas on different nodes, serving Gateway API only — no
+  `Ingress`, no `IngressRoute`, no experimental channel.
+- **One Gateway**, owned by the platform, in the `traefik` namespace, owning
+  the addresses, the ports, the certificates, and which namespaces may attach
+  anything at all.
 - **cert-manager**, the only thing in the cluster that obtains a certificate.
 
 Measured on a live cluster at rest, that whole edge is 2 pods, 4m of CPU and
-150 Mi of memory. It is not the expensive part of the platform; the
-observability stack is. But it is the part that is public, and the part where a
-mistake is visible to strangers.
-
-## Should you put a CDN in front
-
-First, what I mean by a CDN: a *proxying* one — Cloudflare's orange cloud,
-Fastly, CloudFront with a custom origin — that terminates TLS and forwards to
-your origin. If yours only serves static assets from a separate hostname, almost
-none of what follows applies to you.
-
-**Probably not, if** your traffic is mostly long-lived connections, or you
-handle health, legal, financial or credential data. In the first case you are
-adding a party with timers you cannot read to a protocol whose whole problem is
-timers. In the second, a proxying CDN sees the plaintext of every request and
-response, which puts it inside your compliance scope as a processor. That is
-not a risk to mitigate, it is the operating model.
-
-**Maybe, if** you want caching in front of a single-region origin, or bot
-management, which is genuinely hard to build. Both are real. Neither is
-urgent enough to accept the rest of the trade blind.
-
-**Yes, if** volumetric DDoS is a live threat to you. On a small cluster this is
-the single strongest argument, and it is not close. The alternative to
-absorbing an attack is not degraded service — it is your provider null-routing
-the address, and you have no move at that point.
-
-Note that the split does not have to be all-or-nothing. Proxy the web hostname,
-leave the websocket hostname unproxied. That is not a compromise; it is the
-configuration Cloudflare itself recommends for work that exceeds its HTTP
-ceiling.
+150 Mi of memory — not the expensive part of the platform, the observability
+stack is, but the public part, where a mistake is visible to strangers.
 
 ## Websockets: the upgrade works and nothing else does
 
-A websocket starts as an ordinary HTTP/1.1 request carrying `Upgrade:
-websocket`, the server answers `101`, and the same TCP connection carries
-frames from then on. To a reverse proxy that is a request which never ends.
-There is no separate listener, no separate port, no separate route kind.
-`HTTPRoute` is correct and sufficient, and ingress-nginx states the same thing
-in one line: *"Support for websockets is provided by NGINX out of the box. No
-special configuration required."*
+A websocket is an ordinary HTTP/1.1 request carrying `Upgrade: websocket`,
+answered with `101`; the same TCP connection then carries frames. To a reverse
+proxy it is a request that never ends — no separate listener, port or route
+kind. `HTTPRoute` is correct and sufficient, and ingress-nginx says the same:
+*"Support for websockets is provided by NGINX out of the box. No special
+configuration required."* So if a websocket never connects, the cause is TLS,
+routing, or your application. If it connects and then dies, it is one of these.
 
-So if your websocket never connects, the cause is TLS, routing, or your
-application. If it connects and then dies, it is one of the following.
-
-**Timeouts, which are set for a different kind of traffic.** A proxy cannot
-tell an idle websocket from a hung backend, so every "this is taking too long"
-timer applies to a connection that is *supposed* to take long. From the primary
-docs:
+**Timeouts set for a different kind of traffic.** A proxy cannot tell an idle
+websocket from a hung backend, so every "this is taking too long" timer applies
+to a connection *supposed* to take long. From the primary docs:
 
 | Proxy | Setting | Default |
 |---|---|---|
@@ -120,100 +80,98 @@ docs:
 | Traefik | `respondingTimeouts.writeTimeout` | 0s |
 | Traefik | `respondingTimeouts.idleTimeout` | 180s |
 
-ingress-nginx is explicit about the fix: *"A more adequate value to support
-websockets is a value higher than one hour (3600)."* Raise those on the
-entrypoint carrying long-lived traffic, and not globally — a raised read
-timeout everywhere is also a raised tolerance for a hung backend everywhere.
+ingress-nginx is explicit about the fix — *"A more adequate value to support
+websockets is a value higher than one hour (3600)."* — but raise it only on the
+entrypoint carrying long-lived traffic: a raised read timeout everywhere is a
+raised tolerance for a hung backend everywhere.
 
-**But send heartbeats anyway, and treat that as the primary defence.** RFC 6455
-has Ping and Pong frames for exactly this. A ping every 30 seconds resets every
-idle timer in the path, including the ones you do not know about — a corporate
-proxy, a mobile carrier's NAT, a CDN. A raised timeout protects you from the
-proxies you configured. A heartbeat protects you from the ones you did not know
-were there. If you only get one, take the heartbeat.
+**Heartbeats, which are the primary defence.** RFC 6455 has Ping and Pong
+frames for exactly this, and a ping every 30 seconds resets every idle timer in
+the path — including a corporate proxy's, a carrier NAT's or a CDN's, which is
+why heartbeats rather than raised timeouts are the defence that carries.
 
-**Sticky routing is usually the wrong instinct.** Separate two things: *which
-pod serves this connection* is not a problem — one connection is one TCP stream
-to one pod for its whole life, and there is nothing to be sticky about. *Which
-pod serves the next connection* is the real question, and it only matters if a
-server holds session state in its own memory. If state is in Redis, Postgres or
-a pub/sub bus, any replica can serve any reconnect, and affinity is dead weight
-that also ruins your load distribution.
-
-If you do reach for it, know what each mechanism actually keys on. A `Service`
-with `sessionAffinity: ClientIP` keys on the client IP — which, behind a proxy,
-is the same address for everyone, so all users collapse onto one backend.
-Gateway API's `sessionPersistence` is GEP-1619 and still in the Experimental
-state. Cookie stickiness works in a browser and silently does not work for a
-native mobile client or a Go service client, because those usually send no
-cookies unless you wrote the cookie jar yourself.
+**Sticky routing, which is usually the wrong instinct.** One connection is one
+TCP stream to one pod for its whole life; the next connection needs the same
+pod only if the server keeps session state in memory, and with state in Redis
+or Postgres affinity is dead weight that ruins load distribution. Each
+mechanism also fails its own way: `sessionAffinity: ClientIP` behind a proxy is
+one address for everyone, collapsing all users onto one backend;
+`sessionPersistence` is GEP-1619, still Experimental; cookie stickiness does
+nothing for native mobile or Go clients, which send no cookies.
 
 **And the one that actually bites: a reverse proxy is a shared restart
-domain.** It terminates every connection through it, so restarting it destroys
-them all at once. Graceful shutdown does not save you here, because a grace
-period is a deadline rather than a reprieve: Kubernetes gives a pod a
-termination period that *"defaults to 30 seconds"*, and Traefik's
-`graceTimeOut` defaults to 10s, during which *"no new requests are accepted"*.
-A 200 ms request finishes inside that. A six-hour session never will.
+domain.** Restarting it destroys every connection through it at once, and a
+grace period is a deadline rather than a reprieve: Kubernetes gives a pod a
+termination period that *"defaults to 30 seconds"*, Traefik's `graceTimeOut`
+defaults to 10s, during which *"no new requests are accepted"*. A 200 ms
+request finishes inside that; a six-hour session never will. A disruption
+budget and node anti-affinity stop the whole edge going at once but save no
+individual connection: worst case is one disconnect per replica as the rollout
+walks through, then every client reconnects in the same second — so exponential
+backoff **with jitter**.
 
-A disruption budget and node anti-affinity are what stop the whole edge going
-at once — they turn "two replicas" into "two replicas are still running an hour
-from now", and they are why the ingress in this kit runs more than one replica
-at all. What they do not do is save an individual connection. During a rolling
-update a client can reconnect onto a replica that has not been replaced yet and
-be dropped again when its turn comes, so worst case is one disconnect per
-replica. Then every client reconnects in the same second. Exponential backoff
-**with jitter** is not a nicety; without it the recovery outage is longer than
-the restart that caused it.
-
-The rule I ended up writing down: **do not put long-lived connection protocols
-behind the same proxy as short-lived ones.** The short-lived traffic has
-effectively infinite tolerance for restarts, so it sets the schedule, and
-nobody is choosing to disrupt the websockets — nobody is thinking about them at
-all. If sessions are measured in hours *and* a reconnect is user-visible, run a
-second gateway deployment. Same chart, different Deployment, separate restart
-domain, one more pod per replica. It is the cheapest correct answer.
+Hence the rule: **do not put long-lived connection protocols behind the same
+proxy as short-lived ones.** Short-lived traffic tolerates restarts, so it sets
+the schedule. If sessions run to hours *and* a reconnect is user-visible, run a
+second gateway deployment: same chart, separate restart domain, one more pod
+per replica.
 
 ## The client address you no longer have
 
-Behind a Hetzner load balancer, every request arrives from the load balancer.
-Not because of `externalTrafficPolicy` — the provider's balancer terminates the
-connection and opens a new one, so no policy setting recovers the address here.
-Recovering it needs PROXY protocol, which is two changes that must be made
-together: the annotation on the Service, and `proxyProtocol.trustedIPs` on the
-entrypoint. Enable the annotation alone and every request breaks. Enable the
-entrypoint alone, or trust a range wider than the balancer, and a client can
-forge its own address.
+Behind a Hetzner load balancer, every request arrives from the load balancer —
+not because of `externalTrafficPolicy` but because the balancer terminates the
+connection and opens a new one, so no policy setting recovers the address.
+Recovering it needs PROXY protocol, two changes made together: the annotation
+on the Service, and `proxyProtocol.trustedIPs` on the entrypoint. The
+annotation alone breaks every request. The entrypoint alone, or a trusted range
+wider than the balancer, lets a client forge its own address.
 
-That asymmetry is the point. **Rate limiting, IP allowlists and abuse
-investigation are not degraded when the address is wrong — they are inverted.**
-A rate limiter keyed on one uniform address either never fires or blocks
-everyone. An allowlist for an admin path compares against the proxy's address
-and therefore allows the entire internet. The audit log is full of a single
-value that looks authoritative and means nothing.
+**Rate limiting, IP allowlists and abuse investigation are not degraded when
+the address is wrong — they are inverted.** A rate limiter keyed on one uniform
+address either never fires or blocks everyone. An allowlist for an admin path
+compares against the proxy's address and therefore allows the entire internet.
 
-Add a CDN and the same problem reappears one layer out, as headers. Cloudflare
-sets `CF-Connecting-IP` and `True-Client-IP` and appends to `X-Forwarded-For`,
-and recommends the first two because they *"have a consistent format containing
-only one IP address"*, where `X-Forwarded-For` is a list every hop appends to.
-
-But a header is a string the client chose. If your gateway trusts
-`CF-Connecting-IP` from any source, anyone who can reach your origin directly
-sets it to whatever they like — Cloudflare says so plainly for stacked setups:
-*"its value can be spoofed to any value"*. Trust has to be conditioned on the
-source address of the TCP connection, restricted to the CDN's published ranges.
-Traefik has `forwardedHeaders.trustedIPs` for exactly that, and also
+Add a CDN and the problem reappears one layer out, as headers. Cloudflare sets
+`CF-Connecting-IP` and `True-Client-IP` and appends to `X-Forwarded-For`,
+recommending the first two because they *"have a consistent format containing
+only one IP address"*. But a header is a string the client chose: trust
+`CF-Connecting-IP` from any source and anyone reaching your origin directly
+sets it to whatever they like — Cloudflare says so plainly for stacked setups,
+*"its value can be spoofed to any value"*. Condition trust on the source
+address of the TCP connection, restricted to the CDN's published ranges.
+Traefik has `forwardedHeaders.trustedIPs` for that, and also
 `forwardedHeaders.insecure`, of which its own documentation says: *"We
 recommend to use this option only for tests purposes, not in production."*
 
 **Trusting from the wrong source is strictly worse than not trusting at all**,
-because it converts a missing feature into a working bypass. Which is why
+because it converts a missing feature into a working bypass — which is why
 header trust and the origin firewall are one change, not two.
 
-## What a CDN costs you
+## Should you put a CDN in front
 
-Five rows change the moment you turn it on, and three of them fail with no
-error at the time and no alert afterwards.
+By CDN I mean a *proxying* one — Cloudflare's orange cloud, Fastly, CloudFront
+with a custom origin — that terminates TLS and forwards to your origin. If
+yours only serves static assets from a separate hostname, almost none of this
+applies.
+
+**Probably not, if** your traffic is mostly long-lived connections, or you
+handle health, legal, financial or credential data: the first adds a party with
+timers you cannot read to a protocol whose whole problem is timers, the second
+puts a party that sees the plaintext of every request and response inside your
+compliance scope as a processor — not a risk to mitigate, the operating model.
+
+**Maybe, if** you want caching in front of a single-region origin, or bot
+management, which is genuinely hard to build.
+
+**Yes, if** volumetric DDoS is a live threat. On a small cluster that is the
+strongest argument by far: the alternative to absorbing an attack is your
+provider null-routing the address, and you have no move then.
+
+It need not be all-or-nothing — proxy the web hostname, leave the websocket
+hostname unproxied, which is what Cloudflare itself recommends for work
+exceeding its HTTP ceiling.
+
+Five rows change the moment you turn it on, three of them silently.
 
 | | Before | After |
 |---|---|---|
@@ -223,83 +181,72 @@ error at the time and no alert afterwards.
 | Who can reach your origin | Anyone | Anyone, until you close it |
 | Who is in the request path | You | You and them |
 
-**Certificates move to DNS-01.** An HTTP-01 challenge is a fetch — Let's
-Encrypt only allows it on port 80, follows up to 10 redirects, and *"cannot be
-used to issue wildcard certificates"*. Once the hostname resolves to the CDN,
-that fetch lands on the CDN, and whether it reaches cert-manager's solver pod
-is decided in someone else's dashboard. It is not impossible; plenty of people
-run it. It is that a bot rule, a cache rule or an "Always Use HTTPS" toggle
-added months later breaks it, and the breakage is delayed until renewal and
-silent. DNS-01 never touches the request path. Mitigate its credential risk
-with CNAME delegation rather than careful handling: point `_acme-challenge` at
-a throwaway zone and scope the credential to that zone alone, so a leak buys an
-attacker certificates for nothing you own.
+**Certificates move to DNS-01.** HTTP-01 is a fetch — Let's Encrypt only
+allows it on port 80, follows up to 10 redirects, and it *"cannot be used to
+issue wildcard certificates"* — so once the hostname resolves to the CDN,
+whether that fetch reaches cert-manager's solver pod is decided in someone
+else's dashboard, and a bot rule, cache rule or "Always Use HTTPS" toggle added
+months later breaks it, discovered at renewal. DNS-01 never touches the request
+path. Contain its credential risk with CNAME delegation: point
+`_acme-challenge` at a throwaway zone, scoped to that zone alone, so a leak
+buys certificates for nothing you own.
 
 **Origin concealment is not a control.** The address leaks through historical
-DNS, through any unproxied record in the same zone, through outbound
-connections your origin makes, and through Certificate Transparency — every
-hostname you get a certificate for is a public record. Treat the origin address
-as public and defend it: a firewall restricted to the CDN's ranges, refreshed
-automatically. Hetzner's Cloud Firewalls default the right way for this — *"If
-you do not set any rule, all inbound traffic will automatically be blocked"* —
-so the change is an explicit allow rather than a deny bolted onto an open
-default.
+DNS, any unproxied record in the same zone, outbound connections your origin
+makes, and Certificate Transparency — every hostname you certify is a public
+record. Defend it instead with a firewall restricted to the CDN's ranges,
+refreshed automatically; Hetzner's Cloud Firewalls default the right way, *"If
+you do not set any rule, all inbound traffic will automatically be blocked"*.
 
-**And the firewall alone is not enough, which is the non-obvious part.** An
-allowlist of a shared CDN's ranges permits every other customer of that CDN.
-Anyone can sign up, point their zone at your address and arrive from an allowed
-range. Cloudflare's answer is Authenticated Origin Pulls, and the caveat is the
-whole point: global AOP proves *Cloudflare*, not *your account*. Only per-zone
-AOP with your own certificate distinguishes you. A CDN-range firewall plus
-global AOP looks like two independent controls and is one.
+**The firewall alone is not enough.** An allowlist of a shared CDN's ranges
+permits every other customer of that CDN: anyone can sign up, point their zone
+at your address and arrive from an allowed range. Cloudflare's answer is
+Authenticated Origin Pulls, and the caveat is the point — global AOP proves
+*Cloudflare*, not *your account*, so only per-zone AOP with your own
+certificate distinguishes you, and firewall plus global AOP looks like two
+independent controls and is one.
 
-Two more costs that are easy to skip past. Their outage is your outage, for
-every hostname you proxied, and you cannot engineer around it from inside the
-cluster. And failover is ordered: you must open the origin firewall **first**,
-then unproxy the DNS record, or you are down between the two steps — bounded by
-TTL, not by how fast you type. Write that runbook before you need it.
+Two more costs: their outage is your outage for every hostname you proxied, and
+failover is ordered — open the origin firewall **first**, then unproxy the DNS
+record, or you are down between the steps, bounded by TTL rather than by how
+fast you type.
 
-What you get is real: DDoS absorbed before it reaches a link you pay for, TLS
-terminated near the user with HTTP/3 you maintain none of, a global cache in
-front of a single-region origin, and bot management. The free tier is genuinely
-useful. The managed rulesets people mean when they say "we have a WAF" are on
-the paid plans.
+What you get is real, and the free tier is genuinely useful: DDoS absorbed
+before it reaches a link you pay for, TLS terminated near the user with HTTP/3
+you maintain none of, a global cache, bot management. The managed rulesets
+people mean by "we have a WAF" are on the paid plans.
 
 ## WAF: theirs, yours, or neither
 
-**Theirs** runs at the edge, so blocked traffic never costs you bandwidth, CPU
-or a pod, and it sees real client addresses natively with no forwarded-header
-configuration to get wrong. Against: you cannot read the rules, test them
-offline, reproduce a block locally, or version them next to what they protect.
-Every "the WAF is blocking our API" incident becomes an out-of-band
-investigation in a dashboard rather than a diff.
+**Theirs** runs at the edge, so blocked traffic costs you no bandwidth, CPU or
+pod, and it sees real client addresses natively. Against: you cannot read the
+rules, test them offline, reproduce a block locally, or version them next to
+what they protect, so every "the WAF is blocking our API" incident becomes a
+dashboard investigation rather than a diff.
 
-**Yours** puts the rules in git, identical in staging and production, with no
-vendor dependency and a detection mode you can read with full request context.
-The credible open-source engine is OWASP Coraza, and you should read its own
-maturity table before planning around it: the Caddy plugin and proxy-Wasm are
-stable, and the **Traefik plugin is documented as preview**. For a
-Traefik-fronted cluster that means the WAF would be less mature than the proxy
-it runs inside. That is a reason to decline, and it is not a criticism of
-Coraza — it is reading the label. Do not route around it via ingress-nginx and
-ModSecurity either: the maintainers have announced maintenance mode, with
-*"1.13 in all likelihood ... the last minor release"* and a migration expected
-to take about two years.
+**Yours** puts the rules in git, identical in staging and production, with a
+detection mode you can read with full request context. The credible open-source
+engine is OWASP Coraza, whose own maturity table is worth reading first: the
+Caddy plugin and proxy-Wasm are stable, the **Traefik plugin is documented as
+preview**, so for a Traefik-fronted cluster the WAF would be less mature than
+the proxy it runs inside. Nor is ingress-nginx with ModSecurity a way round
+that — the maintainers have announced maintenance mode, with *"1.13 in all
+likelihood ... the last minor release"* and a migration expected to take about
+two years.
 
-**Neither** is the option I think is usually the best value. Most of what a
-Core Rule Set install catches in practice is caught by request size limits,
-per-route rate limits, blocking obviously hostile paths and agents, and a short
-list of targeted rules for the framework you actually run. That is a few dozen
-lines, it produces almost no false positives, and you understand every one of
-them. CRS in blocking mode without a tuning period will break legitimate
-traffic — uploads, rich-text bodies, anything with SQL-like strings in a
-legitimate field — and the standard outcome is that somebody disables it during
-an incident and it never comes back on. You are then left with the cost, the
+**Neither** is usually the best value. Request size limits, per-route rate
+limits, blocking obviously hostile paths and agents, and a short list of
+targeted rules for the framework you run catch most of what a Core Rule Set
+install catches in practice: a few dozen lines, almost no false positives,
+every one understood. CRS in blocking mode without a tuning period breaks
+legitimate traffic — uploads, rich-text bodies, anything with SQL-like strings
+in a legitimate field — and the standard outcome is somebody disabling it
+during an incident and never turning it back on, leaving you the cost, the
 config and none of the protection.
 
 One ordering constraint if you do self-host: a WAF sees the CDN's address for
-every request until forwarded-header trust is correct. Client addresses first,
-WAF second, or its rate limiting and IP rules are wrong from the day it ships.
+every request until forwarded-header trust is correct, so client addresses
+first, WAF second, or its rate limiting and IP rules are wrong from day one.
 
 ## What the kit does by default
 
@@ -307,58 +254,54 @@ WAF second, or its rate limiting and IP rules are wrong from the day it ships.
 replica.** An ingress controller with a built-in ACME resolver keeps
 certificate state in a local file, so two replicas race: both notice a missing
 certificate, both order it, and the account's issuance limits pay for it. The
-universal workaround is to pin the ingress to one replica — which makes the
-most traffic-critical component in the cluster a single point of failure in
-exchange for a problem cert-manager does not have. cert-manager issues into a
-Secret and any number of replicas read it. The constraint disappears rather
-than being managed.
+universal workaround, pinning the ingress to one replica, makes the most
+traffic-critical component in the cluster a single point of failure to solve a
+problem cert-manager does not have — it issues into a Secret that any number of
+replicas read.
 
-Then go and hunt the effects, because that is where these things hide. The
-single replica is why the disruption budget was disabled in every guide that
-copied it. Remove the cause and the budget can come back, along with a required
-anti-affinity rule so the two replicas are not both on the node that is about
-to reboot. The kit fails CI if a certificate resolver reappears in the Traefik
-values, because a comment saying "no ACME here" is not evidence of it.
+Then hunt the effects. That single replica is why the disruption budget was
+disabled in every guide that copied it; remove the cause and the budget comes
+back at `minAvailable: 1`, with a *required* anti-affinity rule so the two
+replicas are not both on the node about to reboot. The kit fails CI if a
+certificate resolver reappears in the Traefik values, because a comment saying
+"no ACME here" is not evidence of it.
 
-**There is no WAF, and a proxying CDN is opt-in.** Not because either is a bad
-idea, but because turning the CDN on is four changes made together — DNS-01
+**There is no WAF, and a proxying CDN is opt-in** — not because either is a bad
+idea, but because turning the CDN on is four changes made together: DNS-01
 issuance, forwarded-header trust, an origin firewall with per-zone AOP, and an
-explicit WAF decision with a named owner. Items one to three are not defence in
-depth if only some are done; each is what makes the next meaningful. Shipping
-that as a default would ship the appearance of it.
+explicit WAF decision with a named owner. Shipping it on by default would ship
+the appearance of them.
 
-**The experimental Gateway API channel is off**, which means no `TCPRoute` or
-`TLSRoute` through this proxy. That is partly the API's own warning about
-breaking changes, and partly the restart domain: routing raw TCP through the
-shared gateway looks like it solves the long-lived-connection problem because
-the protocol is no longer HTTP, and it does not. It solves multiplexing, not
-lifetime.
+**The experimental Gateway API channel is off**, so no `TCPRoute` or `TLSRoute`
+through this proxy — partly the API's own breaking-change warning, partly the
+restart domain: routing raw TCP through the shared gateway looks like it solves
+the long-lived-connection problem because the protocol is no longer HTTP, but
+it solves multiplexing, not lifetime.
 
-## What I have not proven
+## What I would test next
 
-The list I would rather publish than have you find.
+The websocket and CDN sections are read from primary documentation, not
+measured. In rough order:
 
-- **I have not watched a `101` come back through this gateway.** Traefik has no
-  websocket configuration surface, which is consistent with "nothing to
-  configure", and that is how the kit is written — but I could not find a
-  current Traefik documentation page stating it either way, and I have not
-  measured it.
-- **Whether Traefik's `readTimeout`, documented as covering "reading the entire
-  request", applies to a connection that has been upgraded** is not stated
-  anywhere I could find. Do not assume either answer. Open a connection, send
-  nothing, and time how long it survives.
-- **Cloudflare's websocket idle timeout is unpublished.** Their docs say only
-  that they close a connection when no data is transmitted for a period, and
-  that Enterprise customers can have a custom value. The widely repeated
-  "100 seconds" figure is not in their documentation and I could not verify it
-  from a primary source. The HTTP path *is* documented: a 125-second proxy read
-  timeout and a 30-second write timeout, which kills long-polling fallbacks and
-  slow API calls, and which a heartbeat does not help with.
-- **The PROXY protocol path on this provider is not what the kit ships.** It is
-  two commented-out blocks with a warning above them, and I have not run it.
-- **No CDN has been in front of this cluster.** Everything in the CDN sections
-  is read from primary documentation and reasoned about, not measured. I would
-  treat it as a checklist to verify, not as a report.
+- **Watch a `101` come back through this gateway.** Traefik has no websocket
+  configuration surface, consistent with "nothing to configure", and the kit is
+  written that way — but no current Traefik documentation page I could find
+  states it either way, so it wants observing rather than assuming.
+- **Time an idle upgraded connection.** Whether Traefik's `readTimeout`,
+  documented as covering "reading the entire request", still applies after an
+  upgrade is not stated anywhere I could find. Open a connection, send nothing,
+  see how long it survives.
+- **Measure Cloudflare's websocket idle timeout**, which is unpublished: their
+  docs say only that they close a connection when no data is transmitted for a
+  period, and that Enterprise customers can have a custom value. The widely
+  repeated "100 seconds" figure is not in their documentation and I could not
+  verify it from a primary source. The HTTP path *is* documented — a 125-second
+  proxy read timeout and a 30-second write timeout, which kills long-polling
+  fallbacks and slow API calls, and which a heartbeat does not help with.
+- **Run the PROXY protocol path**, which the kit ships as two commented-out
+  blocks with a warning above them.
+- **Put a CDN in front and find out what it breaks.** None ever has, so the CDN
+  sections are a checklist to verify, not a report.
 
 ## Three failures that filed no complaint
 
@@ -376,10 +319,10 @@ zone not found", in a Service event nobody reads, and retried silently for
 **fifty minutes** before I looked.
 
 The result is an ingress with no address, on a cluster where every object you
-would think to check is green. Worth knowing too: the location must match where
-your nodes actually are, and the *type* must be one currently available there —
-"supported" and "available" are different things in a provider API, and a type
-that is merely supported applies cleanly and fails at creation.
+would think to check is green. The location must also match where your nodes
+are, and the *type* must be one currently available there: "supported" and
+"available" differ in a provider API, and a merely supported type applies
+cleanly and fails at creation.
 
 **A placeholder that fails loudly is a good placeholder. This one applied.**
 
@@ -399,18 +342,16 @@ referencing a Secret that does not exist makes the whole Gateway
 state accepts no routes at all. The platform reconciliation waits for health,
 so it never finished, and everything behind it never reconciled either.
 
-An unusable email address presented as a routing problem, four layers from its
-cause. On a fresh install, with nothing to indicate which file to open.
-
-The fix was not a better error message, which I do not control. It was moving
-the issuers out of the default apply path entirely, so the cost of leaving a
-placeholder unedited is the feature that needs it — rather than everything
-downstream of it.
+An unusable email address, presenting as a routing problem four layers from its
+cause, on a fresh install. The fix was not a better error message, which I do
+not control; it was moving the issuers out of the default apply path, so the
+cost of leaving a placeholder unedited is the feature that needs it, not
+everything downstream.
 
 ## Lesson three: two permissions that sound identical
 
-Gateway API has two cross-namespace mechanisms, both described as "cross-namespace
-permission", and they do different jobs.
+Gateway API has two cross-namespace mechanisms, both described as
+"cross-namespace permission". They do different jobs.
 
 `allowedRoutes` lives on the listener, the platform sets it, and it decides
 **which namespaces may attach a route** to that listener. `ReferenceGrant`
@@ -423,27 +364,17 @@ A `ReferenceGrant` does not let anyone attach a route. `allowedRoutes` does not
 let a route reach a Service in another namespace. Assuming either covers the
 other leaves one of the two open, and the failure is quiet in both directions:
 a route that may attach to no listener reports the failure on *itself* and
-nothing at all on the Gateway, so the Gateway looks perfectly healthy — from
-its side, nothing happened.
+nothing at all on the Gateway, so the Gateway looks perfectly healthy.
 
-The direction of the grant is the part worth keeping. **The permission is
-granted by the party giving something up, not claimed by the party taking it.**
+**The permission is granted by the party giving something up, not claimed by
+the party taking it.**
 
 ## Where I land
 
 For a small self-hosted cluster serving ordinary short-lived HTTP to a regional
-audience: **no CDN, no WAF, and spend the effort on the two things that are
-free.** Get client addresses right, because everything you would build on top
-of them is inverted rather than merely absent until you do. Then write the few
-dozen lines of size limits, rate limits and targeted rules that catch most of
-what a generic ruleset catches, with none of the tuning debt.
-
-Put a proxying CDN in front the day volumetric DDoS becomes a real threat to
-you, and accept that it is four changes rather than one toggle. Do not put one
-in front of long-lived connections at all — give those a hostname that stays
-unproxied, or a gateway of their own.
-
-And whichever you pick, measure it rather than reading about it. Open a
-websocket, send nothing, and write down how long it survives. Do that again
-after every ingress change. That number is worth more than any table on this
-page, including mine.
+audience: **no CDN, no WAF.** Spend the effort on the two things that are free
+— client addresses, because everything built on top of them is inverted rather
+than merely absent until you do, and the few dozen lines of size limits, rate
+limits and targeted rules. Add a proxying CDN the day volumetric DDoS becomes a
+real threat, in front of the short-lived traffic only, and measure it after
+every ingress change.
