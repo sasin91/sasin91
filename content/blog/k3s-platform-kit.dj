@@ -1,0 +1,300 @@
++++
+path = "blog/k3s-platform-kit"
+title = "The platform is 566 times the size of the app"
+date = 2026-08-04
+description = "I built a production-shaped k3s platform on Hetzner, then ran it on real hardware until it stopped lying to me. It costs €122 a month, 63% of its memory goes to watching itself, and the application it exists to run is 8 MiB. Here is the whole bill, and the failures that reported success."
++++
+
+Creating a Kubernetes cluster is a solved problem. What comes after — delivery,
+secrets, certificates, tenancy, observability, backups — is not, and that is
+where the cost lives.
+
+So I built the part that comes after, as a kit you can fork:
+[hcloud-k3s-platform-kit](https://github.com/sasin91/hcloud-k3s-platform-kit).
+Then I ran it on real hardware, four times, until it stopped lying to me.
+
+This post is the bill. Not an estimate.
+
+## Index
+
+- [What it actually is](#What-it-actually-is)
+- [The price, measured](#The-price-measured)
+- [What you are trading](#What-you-are-trading)
+- [The 566x problem](#The-566x-problem)
+- [What went wrong: the cluster that never started](#What-went-wrong-the-cluster-that-never-started)
+- [What went wrong: destroy does not destroy](#What-went-wrong-destroy-does-not-destroy)
+- [What went wrong: three ways to forbid the same thing](#What-went-wrong-three-ways-to-forbid-the-same-thing)
+- [Why VictoriaMetrics](#Why-VictoriaMetrics)
+- [Why the dashboard has no public route](#Why-the-dashboard-has-no-public-route)
+- [What is actually proven](#What-is-actually-proven)
+- [Should you use it](#Should-you-use-it)
+
+## What it actually is
+
+A fork-and-edit repository containing the decisions, with the reasoning attached
+to each one.
+
+- **OpenTofu** for the nodes, consuming
+  [terraform-hcloud-kube-hetzner](https://github.com/mysticaltech/terraform-hcloud-kube-hetzner)
+  as a pinned dependency. Not a fork of it — that project solves cluster
+  creation and none of it is reimplemented.
+- **Flux** for delivery, with the controller manifests committed rather than
+  bootstrapped. No personal access token, nothing written back to your repo.
+- **SOPS and age** for secrets. Exactly one secret in the whole system is
+  applied by hand and cannot be encrypted.
+- **Gateway API** for routing, with the platform owning the Gateway and tenants
+  owning Routes.
+- **VictoriaMetrics, VictoriaLogs, Tempo**, and an OpenTelemetry collector.
+- **A namespace per tenant**, generated with its quota, limits, network policy,
+  disruption budget, backup job, pod security level and RBAC.
+
+It ships no example tenant, deliberately. A workload occupying a namespace
+demonstrates nothing the template does not already state.
+
+## The price, measured
+
+Three nodes in Falkenstein, one control plane and two agents, plus a load
+balancer. Gross figures include 25% Danish VAT.
+
+| Item | Type | €/month |
+|---|---|---|
+| Control plane × 1 | cpx22, 2 vCPU / 4 GB | 24.36 |
+| Agents × 2 | cpx32, 4 vCPU / 8 GB | 88.72 |
+| Load balancer | lb11 | 9.36 |
+| **Total** | | **122.45** |
+
+The kit's *default* shape is three control planes and two agents, for real
+quorum. That is **€171.17**, before the autoscaler adds a node.
+
+For comparison, a managed control plane from the large providers is roughly
+€70–75 a month on its own, before a single worker node, and their worker nodes
+cost multiples of Hetzner's for the same specification. You are not saving
+money by *avoiding* managed Kubernetes at this size — you are saving it by
+being on Hetzner at all. Those are different decisions and they get conflated
+constantly.
+
+## What you are trading
+
+Money is the easy part. Here is the rest.
+
+**You own the upgrade path.** Nobody rolls your control plane for you. The kit
+ships the system-upgrade-controller and pinned upgrade plans, which means the
+mechanism exists and the decision is still yours.
+
+**You own the day it breaks.** There is no support contract behind this. When
+etcd loses quorum at 02:00, the runbook is a file you wrote.
+
+**You own the security posture.** Pod security levels, network policies,
+admission rules, RBAC — every one of them is a line in your repository that
+somebody has to keep correct. The kit generates them per tenant and checks them
+in CI precisely because I do not trust myself to keep them correct by hand.
+
+**You own knowing when it is wrong.** This is the expensive one, and it is what
+the observability stack is for, and it is why that stack costs what it does.
+
+If you want none of that, the honest answer is a managed platform, and I would
+not argue with you.
+
+## The 566x problem
+
+Cluster at rest, running one static site. Measured, not estimated.
+
+| Namespace | Pods | CPU | Memory |
+|---|---|---|---|
+| observability | 19 | 141m | 2,858 Mi |
+| flux-system | 4 | 9m | 596 Mi |
+| kube-system | 11 | 33m | 580 Mi |
+| cert-manager | 6 | 6m | 286 Mi |
+| traefik | 2 | 4m | 150 Mi |
+| system-upgrade | 1 | 1m | 56 Mi |
+| **platform total** | 43 | **194m** | **4,526 Mi** |
+| **the actual application** | 2 | 2m | **8 Mi** |
+
+The platform is 566 times the memory of the workload it exists to run, and
+**63% of the platform is the part that watches it**.
+
+CPU is a rounding error — 194m of 9,400m allocatable, about 2%. Memory is what
+you are buying.
+
+It gets better with more tenants, and only with more tenants. A single
+application on this shape is an absurd trade, and anyone showing you a
+"production-ready Kubernetes platform" without this table is selling something.
+
+There is a related number I find harder to defend. The cluster carries
+**161,507 active time series** while running one static site. Two histograms
+from the control plane —
+`apiserver_request_duration_seconds_bucket` and
+`etcd_request_duration_seconds_bucket` — are **27% of all series on the
+cluster**, and nothing queries them. That is the default configuration of every
+Kubernetes monitoring stack I have used, and it is a per-series cost you pay
+whether or not anyone ever looks.
+
+## What went wrong: the cluster that never started
+
+Every server reported healthy. SSH worked. The orchestrator was not running.
+
+Git on Windows rewrites text files to CRLF on checkout, and that default applies
+to modules your build tool clones on your behalf. Your own `.gitattributes` does
+not govern somebody else's repository. One of those files was an SELinux policy
+source, compiled *on the node* at first boot. The compiler rejected the carriage
+return, the unit failed, and k3s never started.
+
+The only visible symptom was an opaque provisioner error two layers above the
+real one.
+
+I fixed it, wrote it down, and hit it again twelve hours later — because I ran
+`init -upgrade` in a shell where the guard was not exported. The second time it
+looked completely different: every remote script arriving with `set -e\r` and
+the shell answering `set: -: invalid option`.
+
+The detail that makes it durable: the conversion is enabled in the **system**
+git config that Git for Windows installs, not in anything you set. So
+`git config --global core.autocrlf` prints nothing, which reads as "not
+enabled", and the conversion happens anyway.
+
+The fix is not a better README line. It is a check that inspects the fetched
+files themselves. **Check the artifact, not the configuration you believe
+produces it.**
+
+## What went wrong: destroy does not destroy
+
+`tofu destroy` walks its own state and removes what it finds. The cluster,
+meanwhile, creates things at runtime: the autoscaler creates servers, the cloud
+controller creates a load balancer per `LoadBalancer` service, the CSI driver
+creates a volume per claim. None are in that state, because the tool did not
+create them.
+
+So destroy reports success, and those keep running and keep billing.
+
+Worse, they are not inert. An autoscaler-created server stays attached to the
+private network, so destroying the *network* fails — and the run dies with an
+error naming the network, several steps from the node actually holding it.
+
+I had previously written "destroy is clean, zero residue" in the README. It was
+true, and useless: those runs had no autoscaled node, no `LoadBalancer` service
+and no volumes. Nothing existed outside state to be left behind.
+
+**A teardown is only proven against a cluster that has actually done
+something.**
+
+## What went wrong: three ways to forbid the same thing
+
+"The platform owns the Gateway, tenants own Routes." Written down, reviewed,
+and false on a running cluster for three independent reasons. I found all three
+by deploying one real tenant, and none of them by reading.
+
+1. **Workloads applied at cluster scope.** A tenant manifest that omits
+   `namespace`, reconciled without a target namespace, is evaluated
+   cluster-wide, where a namespaced Role grants nothing. The error named
+   `httproutes` — a resource the Role visibly *does* allow. It sends you to
+   read the Role, which is correct, and to the wrong conclusion.
+
+2. **No listener a tenant was permitted to attach to.** The HTTP listener was
+   same-namespace-only by design; the HTTPS listener carrying the tenant
+   selector was commented out pending a certificate issuer. A route attaching
+   to nothing reports a failure on *itself* and nothing at all on the Gateway.
+
+3. **The gateway namespace never carried the label tenants select on.** Every
+   tenant network policy allowed ingress from namespaces labelled
+   `role=gateway`. Nothing applied that label. The allowance matched no
+   namespace, so default-deny stood.
+
+That third one surfaces as **HTTP 502**. The route is accepted, the service has
+healthy endpoints, the pods are running and serve correct content when you curl
+them from inside the namespace. Every object you would think to inspect looks
+right, and the failure reads as a broken application.
+
+> A network policy selector naming a label nobody sets is a default-deny with
+> extra steps.
+
+Each was individually reasonable. The model only exists in the intersection.
+
+## Why VictoriaMetrics
+
+Not because Prometheus is bad. Because at the point where you are paying for
+every series out of your own pocket, the memory footprint per series is the
+number that decides your node size, and VictoriaMetrics is markedly better at
+it. It also speaks Prometheus remote-write and PromQL, so nothing downstream
+has to know.
+
+The single-node deployment is genuinely single-node, which suits a platform
+this size. If you outgrow it, the cluster version is a migration rather than a
+rewrite.
+
+The collector in front of it is an OpenTelemetry collector, and that is the
+piece that makes traces worth having: it stamps `k8s.pod.name`,
+`k8s.namespace.name`, `k8s.node.name` and `k8s.deployment.name` onto every
+span. A request I made from my laptop arrives with the exact pod that served it
+attached. That is what lets a trace and a log line meet, and an application
+exporting directly cannot do it — it does not know which pod it is.
+
+## Why the dashboard has no public route
+
+There is no ingress for Grafana in this kit, and that is not an omission.
+
+Read access to the dashboard is read access to every log line, every metric and
+every trace on the cluster — including, eventually, something a tenant should
+not have shown you. Every alternative to *not exposing it* is a way of
+defending an internet-facing observability dashboard, and none is as safe as
+not having one.
+
+You reach it with a port-forward. It has no default password; the credential is
+SOPS-encrypted in the repository and Grafana does not start without it. A
+component that will not start is a problem you fix this afternoon. A component
+that started with a known password is a problem you learn about later.
+
+Anonymous access is off at every switch that can enable it, checked in CI, and
+verified at runtime — an unauthenticated API call to the running instance
+returns 401. I check that because I once ran a dashboard with anonymous access
+at editor privilege behind a comment claiming the inner role was read-only.
+
+## What is actually proven
+
+I distrust "production-ready", so here is the line I will actually defend.
+
+Verified on live hardware:
+
+- A three-node HA control plane forms, all members ready with etcd.
+- The whole reconciliation chain converges from git with no manual
+  intervention: 9 of 9 kustomizations, 8 of 8 Helm releases.
+- A secret committed encrypted is decrypted in-cluster and consumed.
+- A tenant generated from the template serves traffic over the public internet
+  with a Let's Encrypt certificate the system trust store validates.
+- Traces arrive carrying pod, namespace and node.
+- The hostname admission policy refuses another tenant's hostname, and refuses
+  a route that declares none.
+- Teardown leaves zero servers, load balancers, volumes, networks or addresses
+  — *when you run the cluster-created cleanup first*.
+
+Not verified:
+
+- A restore. The backup job is generated with every tenant and has never been
+  restored from.
+- The autoscaler under real pressure. The test project's quota left no room.
+- A control plane surviving the loss of a member. Three formed and were
+  healthy; I never killed one to watch the other two carry on.
+
+That last list is the honest part. I would rather publish it than discover you
+found it first.
+
+## Should you use it
+
+**Probably not, if** you have one application. Pay for a managed platform, or
+put it on a single box — I run [AthletOS on one FreeBSD
+machine](/blog/athletos-freebsd/) for about €7 a month and it is a better trade
+for that shape.
+
+**Maybe, if** you have several tenants who need isolation from each other, you
+are already paying for the machines, and you want the isolation to be generated
+and checked rather than remembered.
+
+**Yes, if** you were going to build this anyway. That is the actual pitch. A
+capable model will produce something like this in an afternoon, and most of it
+will work — the shapes are conventional and the tools are the obvious ones. It
+will not produce the list of things that **report success**, because that list
+only comes from running it on real hardware and reading the API server instead
+of the manifests.
+
+Forty-nine of those are written down in the repository, each stated as a
+mechanism with the failure it produced. That file is the part I would keep if I
+had to throw the rest away.
