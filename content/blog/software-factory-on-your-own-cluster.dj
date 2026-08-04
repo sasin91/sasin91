@@ -171,10 +171,10 @@ Divide the remainder by a per-sandbox memory request:
 
 | Memory per sandbox | Sandboxes, by aggregate arithmetic |
 |---|---|
-| 8 GiB — Cloudflare's `standard-3` | 1 |
-| 4 GiB | 3 |
-| 2 GiB | 6 |
 | 1 GiB | 13 |
+| 2 GiB | 6 |
+| 4 GiB | 3 |
+| 8 GiB — Cloudflare's `standard-3` | 1 |
 
 Three caveats, all of which make the real number smaller than the table:
 
