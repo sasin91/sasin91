@@ -76,7 +76,7 @@ The triage first, before the detail.
 **Three FreeBSD boxes, if** you have somewhere under ten services or tenants,
 one person authoring the isolation, and tenants who are not mutually hostile —
 your own services, or customers who would not be a security incident if they
-could see each other's traffic. Less money, less memory, considerably less
+could see each other's traffic. Less money, less memory, far less
 attention.
 
 **Either, if** you are between roughly ten and thirty tenants belonging to one

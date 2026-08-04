@@ -162,12 +162,12 @@ the decision to you rather than silently making it.
 
 ## Why VictoriaMetrics
 
-
 Not because Prometheus is bad. Because at the point where you are paying for
 every series out of your own pocket, the memory footprint per series is the
-number that decides your node size, and VictoriaMetrics is markedly better at
-it. It also speaks Prometheus remote-write and PromQL, so nothing downstream
-has to know.
+number that decides your node size, and VictoriaMetrics uses less of it. I did
+not benchmark the two here, so treat that as the reason I chose it rather than
+a measurement of it. It also speaks Prometheus remote-write and PromQL, so
+nothing downstream has to know.
 
 The single-node deployment is genuinely single-node, which suits a platform
 this size. If you outgrow it, the cluster version is a migration rather than a
