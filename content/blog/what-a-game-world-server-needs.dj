@@ -215,7 +215,8 @@ Add the rest of the mismatch:
   the server caches world maps as players explore them and never unloads them
   until restart, ending at 11 GB or more of resident memory, and recommends at
   least 16 GB
-  ([Uso de memoria](https://www.azerothcore.org/wiki/es/memory-usage)). A pod
+  ([AzerothCore's memory-usage page](https://www.azerothcore.org/wiki/es/memory-usage);
+  the English version of it 404s, and only the Spanish translation is live). A pod
   restart is a server restart for every connected player.
 - **There is no meaningful readiness semantics.** A world server that finishes
   loading is not interchangeable with the one it replaced. Rolling updates,
