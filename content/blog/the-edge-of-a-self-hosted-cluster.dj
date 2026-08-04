@@ -2,7 +2,7 @@
 path = "blog/the-edge-of-a-self-hosted-cluster"
 title = "The edge of a self-hosted cluster"
 date = 2026-08-04
-description = "Websockets through a Gateway API listener, the client address a cloud load balancer throws away, and the honest trade you make by putting a CDN in front of your own hardware. What the k3s platform kit ships at its edge by default, why there is no WAF in it, and three edge failures that reported success on the way up."
+description = "Websockets through a Gateway API listener, the client address a cloud load balancer throws away, and the honest trade you make by putting a CDN in front of your own origin. What the k3s platform kit ships at its edge by default, why there is no WAF in it, and three edge failures that reported success on the way up."
 series = "self-hosting"
 part = 3
 hero = "/images/the-edge-of-a-self-hosted-cluster/three-zones.svg"
@@ -20,7 +20,7 @@ ingress (yes). Where did the client's IP address go (the load balancer ate it).
 Should there be a WAF or a CDN in front of any of it (probably not).
 
 ::: note
-**Part 3 of 7 of [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)**, a series about building a platform on your own hardware and then arguing about whether to.
+**Part 3 of 7 of [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)**, a series about self-hosting a platform, and about whether you should.
 
 Previous: [OpenTelemetry on a self-hosted k3s cluster](/blog/opentelemetry-on-k3s/)
 

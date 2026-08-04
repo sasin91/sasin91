@@ -30,7 +30,7 @@ and it maps almost line for line onto per-tenant isolation. If you already have
 what you lack is a deadline and a guaranteed teardown.
 
 ::: note
-**Part 7 of 7 of [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)**, a series about building a platform on your own hardware and then arguing about whether to.
+**Part 7 of 7 of [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)**, a series about self-hosting a platform, and about whether you should.
 
 Previous: [What a game world server actually needs](/blog/what-a-game-world-server-needs/)
 :::
@@ -107,7 +107,8 @@ including 20M requests, 60M CPU-ms and 1,000 scripts.
 So "deploy your own" means onto *their* platform: the container, the dispatch
 namespace, the wildcard certificate and the gateway holding your model keys are
 all theirs. A reasonable trade, and one I would take for most workloads — but
-not the same claim as running it on your own hardware, and the two get conflated
+not the same claim as running it on infrastructure you control, and the two get
+conflated
 constantly.
 
 The number worth carrying forward is the sandbox size Cloudflare picked for

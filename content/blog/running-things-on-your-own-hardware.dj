@@ -7,8 +7,8 @@ part = 0
 description = "You want to run your own things and the advice all assumes you already picked a side. Here is the decision first: what to choose at one machine, at a handful, and at the point where tenants must not see each other — with the real monthly cost of each, and where to start on the one you pick."
 +++
 
-So you want to stop renting and run your own things, and every guide assumes
-you already know whether you want Kubernetes.
+So you want to self-host, and every guide assumes you already know whether you
+want Kubernetes.
 
 I have been there. Here is the decision first, the reasoning after.
 
@@ -73,8 +73,8 @@ and what does not.
 
 - **[A software factory on your own
   cluster](/blog/software-factory-on-your-own-cluster/)** — running code a
-  language model wrote, on hardware you own, is a tenancy problem before it is
-  an AI problem.
+  language model wrote, on machines you are paying for, is a tenancy problem
+  before it is an AI problem.
 
 ## What you are actually signing up for
 
