@@ -404,5 +404,3 @@ almost exactly, [one box](/blog/athletos-freebsd/).
 The mistake is not choosing Kubernetes. The mistake is assuming the whole
 system has one shape. It has two, and the cheapest architecture is the one that
 admits it.
-
-<!-- HERO: A split diagram. Left two thirds: a cluster boundary containing small, replicated, stateless boxes — auth daemon, website, registration API, item shop, armory, Discord bot, backup CronJob, observability collector — all drawn as multiples to signal replicas. Right third, outside the cluster boundary: a single large box labelled "world server", with a thick TCP arrow from a game client passing THROUGH the cluster edge as a plain passthrough (not an HTTP route) straight to it, and a thin arrow from the world box back into the cluster for metrics. Both sides connect down to a shared database (auth / characters / world). Inside the world box, show the tick: several map objects, one thread each, ending at a barrier — with one map visibly wider than the others to show the tick is bounded by the slowest single map. -->

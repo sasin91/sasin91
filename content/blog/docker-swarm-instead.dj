@@ -372,13 +372,3 @@ expect to hand to someone else in three years, I would not.
 And if even that is more machinery than your problem deserves, the answer is
 not a smaller orchestrator. It is [no orchestrator at
 all](/blog/three-freebsd-boxes-instead-of-k3s/).
-
-<!-- HERO: A three-column spectrum, left to right — "three FreeBSD boxes" (no
-orchestrator, hand-tended, one box drawn with jails inside), "Docker Swarm"
-(three nodes, one marked manager, a routing mesh band across all three, one
-compose file feeding in), "k3s platform kit" (a cluster boundary containing
-Flux, Gateway, cert-manager and an observability block, with 81 CRDs and 4,526
-Mi annotated). A single axis beneath labelled with what increases left to
-right: components acting on your behalf. And a second axis labelled with what
-decreases: things you must write yourself. The point of the diagram is that
-those two axes move in opposite directions and Swarm sits at the crossing. -->

@@ -450,5 +450,3 @@ have decided I can live with that until the second author shows up.
 ``` =html
 <p class="colophon">Every k3s figure above was measured on a live cluster. Every FreeBSD figure was measured on one box. The three box configuration is a design, not a deployment, and the post says so where it matters.</p>
 ```
-
-<!-- HERO: A two-column side-by-side. Left column "three FreeBSD boxes": a load balancer on top, three identical boxes beneath it, each showing a thin host layer with pf and Caddy and two or three jail rectangles inside, sharing one kernel band drawn across the bottom of each box; a dashed CARP/floating-IP line linking the three at the address level, labelled "you build this". Right column "three k3s nodes": the same load balancer, three nodes, but with a fat shaded block sitting across all three labelled "platform · 4,526 Mi · 81 CRDs" and a tiny 8 Mi square labelled "the application" to scale inside it. Same physical width for both columns so the eye compares the shaded area, not the box count. Bottom strip: the two monthly costs, €30 and €122.45, with a footnote marker on the €30. -->

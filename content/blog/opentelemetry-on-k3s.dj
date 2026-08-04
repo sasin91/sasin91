@@ -383,5 +383,3 @@ redeploying anything that produces data.
 The costs are real and I would rather state them than bury them: two thirds of
 the platform's memory, a quarter of its series spent on histograms nobody reads.
 Both are knobs. Neither is a reason to run a cluster you cannot see into.
-
-<!-- HERO: A request crossing from left to right. A laptop over the public internet, into a load balancer, into a Traefik pod in the traefik namespace, which emits a span. The span travels down to a single OpenTelemetry collector box, drawn as three stacked stages in order — memory_limiter, k8sattributes, batch — with the k8sattributes stage shown reaching sideways to the Kubernetes API server and pulling back four labels (k8s.pod.name, k8s.namespace.name, k8s.node.name, k8s.deployment.name) that get stamped onto the span. Out of the collector, three arrows to three stores with their protocol on each: OTLP to Tempo, Prometheus remote-write to VictoriaMetrics, OTLP/HTTP to VictoriaLogs. The emphasis should be that one endpoint goes in and three protocols come out, and that the identity labels are added in the middle, not at the source. -->

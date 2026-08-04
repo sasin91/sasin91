@@ -467,5 +467,3 @@ Agents are very good at producing an answer. The entire value of hosting this
 yourself — the namespace, the quota, the deny, the deadline, the independent
 compiler — is that you get to decide what counts as an answer, and you get to
 see the things that report success.
-
-<!-- HERO: A single agent run as one bounded namespace. Left: a queue of briefs feeding a controller in a platform namespace. Centre: one ephemeral tenant namespace containing an agent pod and a verification pod, drawn inside a box labelled with its guarantees — ResourceQuota, LimitRange, restricted pod security, default-deny NetworkPolicy, activeDeadlineSeconds. One arrow leaves the box, to an egress proxy in the platform namespace that holds the model API key and calls a hosted model outside the cluster; the arrow is clearly the only one crossing the boundary. Blocked arrows (crossed out) point at the metadata endpoint 169.254.169.254, at a neighbouring run's namespace, and at the Kubernetes API server. Right: a report leaving, and the whole namespace shown being deleted. -->

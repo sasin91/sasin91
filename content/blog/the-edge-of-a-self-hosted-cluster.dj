@@ -447,5 +447,3 @@ And whichever you pick, measure it rather than reading about it. Open a
 websocket, send nothing, and write down how long it survives. Do that again
 after every ingress change. That number is worth more than any table on this
 page, including mine.
-
-<!-- HERO: The edge, left to right, as three trust zones. Zone 1 (optional, dashed): a proxying CDN terminating TLS, with a note that the client IP now travels as a header and the origin firewall must be locked to its ranges. Zone 2: the provider load balancer, showing that it terminates the connection and opens a new one — the client address is dropped here unless PROXY protocol is enabled. Zone 3: inside the cluster — two Traefik replicas on separate nodes (anti-affinity, PDB minAvailable 1) behind one platform-owned Gateway with an HTTP listener (same-namespace only, redirect plus ACME challenge) and an HTTPS listener whose allowedRoutes selector admits tenant namespaces; cert-manager off to the side issuing into a Secret that both replicas read. A long-lived websocket drawn as a separate line bypassing the shared proxy entirely. -->
