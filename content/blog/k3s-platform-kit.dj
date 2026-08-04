@@ -38,9 +38,9 @@ Next: [OpenTelemetry on a self-hosted k3s cluster](/blog/opentelemetry-on-k3s/)
 - [Why the dashboard has no public route](#Why-the-dashboard-has-no-public-route)
 - [What is actually proven](#What-is-actually-proven)
 - [Three garden forks in the grass](#Three-garden-forks-in-the-grass)
-- [Lesson one: the cluster that never started](#Lesson-one-the-cluster-that-never-started)
-- [Lesson two: destroy does not destroy](#Lesson-two-destroy-does-not-destroy)
-- [Lesson three: three ways to forbid the same thing](#Lesson-three-three-ways-to-forbid-the-same-thing)
+- [Lesson one: in Kubernetes, the carriage return strikes back](#Lesson-one-in-Kubernetes-the-carriage-return-strikes-back)
+- [Lesson two: destroy does not simply destroy](#Lesson-two-destroy-does-not-simply-destroy)
+- [Lesson three: thrice forbidden](#Lesson-three-thrice-forbidden)
 - [What a model will not give you](#What-a-model-will-not-give-you)
 
 ## What it actually is
@@ -242,7 +242,7 @@ That is the pattern worth taking away, more than any individual fix: none of
 them announced themselves. A thing that fails loudly is a thing you fix this
 afternoon. These are the other kind.
 
-## Lesson one: the cluster that never started
+## Lesson one: in Kubernetes, the carriage return strikes back
 
 
 Every server reported healthy. SSH worked. The orchestrator was not running.
@@ -270,7 +270,7 @@ The fix is not a better README line. It is a check that inspects the fetched
 files themselves. **Check the artifact, not the configuration you believe
 produces it.**
 
-## Lesson two: destroy does not destroy
+## Lesson two: destroy does not simply destroy
 
 
 `tofu destroy` walks its own state and removes what it finds. The cluster,
@@ -292,7 +292,7 @@ and no volumes. Nothing existed outside state to be left behind.
 **A teardown is only proven against a cluster that has actually done
 something.**
 
-## Lesson three: three ways to forbid the same thing
+## Lesson three: thrice forbidden
 
 
 "The platform owns the Gateway, tenants own Routes." Written down, reviewed,
