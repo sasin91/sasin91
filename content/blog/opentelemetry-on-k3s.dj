@@ -1,0 +1,375 @@
++++
+path = "blog/opentelemetry-on-k3s"
+title = "OpenTelemetry on a self-hosted k3s cluster"
+date = 2026-08-04
+description = "Why a collector sits between the applications and the stores on my k3s platform, rather than each application exporting straight to Tempo, VictoriaMetrics and VictoriaLogs. With a real captured trace, the memory it costs, and three failures that reported success."
++++
+
+An application can export its telemetry straight to the store. It works, and I
+still put a collector in the path.
+
+The reason is short. An application knows what it *is*. It does not know where
+it is running — not the pod, not the node, not the namespace, because the
+scheduler assigned all three after the image was built. A collector can look
+that up. That difference is the whole argument, and everything below is detail
+hanging off it.
+
+The numbers come from the same three-node verification cluster as [the k3s
+starter kit](/blog/k3s-platform-kit/). Measured on live hardware, not estimated.
+
+## Index
+
+- [What the collector is doing there](#What-the-collector-is-doing-there)
+- [Should you run one](#Should-you-run-one)
+- [Why not export straight to the store](#Why-not-export-straight-to-the-store)
+- [One endpoint, three signals](#One-endpoint-three-signals)
+- [The trace, as stored](#The-trace-as-stored)
+- [Instrumenting an application](#Instrumenting-an-application)
+- [What it costs](#What-it-costs)
+- [The knob nobody turns](#The-knob-nobody-turns)
+- [What I have not proven](#What-I-have-not-proven)
+- [Three quiet failures](#Three-quiet-failures)
+- [Lesson one: the trace store that was healthy and empty](#Lesson-one-the-trace-store-that-was-healthy-and-empty)
+- [Lesson two: the endpoint that stopped resolving](#Lesson-two-the-endpoint-that-stopped-resolving)
+- [Lesson three: I measured a different cluster](#Lesson-three-I-measured-a-different-cluster)
+- [What this buys](#What-this-buys)
+
+## What the collector is doing there
+
+One `opentelemetry-collector-contrib` Deployment in the `observability`
+namespace. It accepts OTLP on gRPC `4317` and HTTP `4318`, runs three
+processors, and fans out to three stores.
+
+{title="the part that matters"}
+```yaml
+processors: [memory_limiter, k8sattributes, batch]
+```
+
+That order is the config. Everything else is plumbing.
+
+**`memory_limiter` first**, because it can only shed load if it sees a span
+before any work has been done on it. It is a limit, not a target — without it
+the collector answers a traffic spike by growing until the kubelet kills it, and
+a restarting collector loses every span in flight. The symptom of too much load
+becomes missing data rather than slow data, which is the worse of the two
+failures.
+
+**`k8sattributes` before `batch`**, because it resolves identity from the
+connection's source address. It sees a span arrive from `10.42.x.y`, asks the
+API server which pod holds that address, and stamps `k8s.pod.name`,
+`k8s.namespace.name`, `k8s.node.name`, `k8s.deployment.name` and `k8s.pod.uid`
+onto the resource. Once spans from several senders have been merged into one
+batch, that association is gone. Put the processors the other way round and you
+get a pipeline that runs, exports, reports no errors, and enriches nothing.
+
+It is a Deployment rather than a DaemonSet on purpose. A DaemonSet would let a
+workload export to its own node and skip a hop, but then the tenant
+NetworkPolicy has to permit egress to every node address instead of to one
+Service — a materially wider hole for a latency saving I have not measured.
+
+## Should you run one
+
+**Probably not, if** you run one application on one box. You already know which
+host it is on, there is one store, and the SDK talks to it directly. A collector
+there is a second thing to keep alive for no information you did not have.
+
+**Maybe, if** you have several services and expect to change a store. The
+indirection means swapping the metric backend is an edit to one file in the
+platform repository rather than a redeploy of every workload.
+
+**Yes, if** it is Kubernetes. The identity of the process producing a span is
+assigned by the scheduler, changes on every rollout, and the process has no
+reliable way to learn it. Something outside the process has to supply it, and
+the collector is the only component positioned to.
+
+## Why not export straight to the store
+
+Three things you give up, in descending order of how much I care.
+
+**Context.** Covered above, and it is the one that actually decides it. A span
+that goes direct arrives knowing only what the application knew. Joining it to
+the log lines from the same workload becomes manual guesswork, on labels you
+invented and have to keep consistent by hand across every service.
+
+**Protocol independence.** The metric store here speaks Prometheus
+remote-write, not OTLP. The collector translates. The application emits OTLP and
+never learns what is storing it — and does not need a redeploy the day that
+changes.
+
+**Three problems the application should not own.** Batching, retry while a
+store is unreachable, and sampling policy. The last one is not a preference:
+tail-based sampling — keeping a trace *because* it errored — requires seeing the
+whole trace, and no single service in a request path ever does.
+
+## One endpoint, three signals
+
+The workload configures one address. The collector routes:
+
+| Signal | Exporter | Store |
+|---|---|---|
+| Traces | OTLP gRPC | Tempo |
+| Metrics | Prometheus remote-write | VictoriaMetrics |
+| Logs | OTLP/HTTP | VictoriaLogs |
+
+Three different protocols on the way out, one on the way in.
+
+The metrics exporter sets `resource_to_telemetry_conversion`, which carries the
+`k8s.*` resource attributes onto the series as labels. Without it a metric
+arrives not knowing which pod produced it, and the p99 you are looking at cannot
+be lined up with the trace from the request that caused it. That flag is doing
+the same job for metrics that `k8sattributes` does for spans, and it is easy to
+leave off because nothing complains.
+
+## The trace, as stored
+
+I opened the site from a laptop in Denmark, over the public internet. Here is
+what came back out of the store, trimmed to the interesting attributes.
+
+{title="one span, as retrieved"}
+```json
+trace_id  88884793ced6612dbc69893f588e0997
+span_id   e2f66ae8c1522749
+name      GET                       kind  SPAN_KIND_SERVER
+scope     github.com/traefik/traefik
+
+http.request.method       GET
+url.path                  /
+url.scheme                http
+server.address            quazye.lol
+http.response.status_code 301
+entry_point               web
+network.protocol.version  1.1
+client.address            10.42.2.1
+
+service.name              traefik
+service.version           3.7.9
+
+k8s.pod.name              traefik-5779f9b8df-5t6pw
+k8s.namespace.name        traefik
+k8s.deployment.name       traefik
+k8s.node.name             platform-agent-dof
+k8s.pod.uid               5acafbd9-22fb-4fcb-bf74-248c57d1f477
+```
+
+The span is 752,842 nanoseconds wide — 0.75 ms — and it is the plaintext leg,
+Traefik on `entry_point=web` answering port 80 with a redirect to HTTPS. The
+browser then opens a second connection and gets a second trace.
+
+The four `k8s.*` lines are the point. Traefik did not put them there. It emitted
+a span describing an HTTP request, the collector recognised the sender by its
+source address, and the pod that served me is now a field I can filter on. Same
+for the node — which matters more than it reads, because on a cluster with an
+autoscaler the node is ephemeral and the pod may never land on it again.
+
+One honest reading of that block: `client.address` is `10.42.2.1`, the
+in-cluster hop, not my laptop's public address. The span records the peer that
+opened the connection, and behind a load balancer that is the load balancer.
+Getting the real client address into the span is a separate piece of
+configuration and is not free.
+
+Traefik is configured with `--tracing.sampleRate=1`, so every request is
+sampled. That is affordable at this volume and would not be at a larger one,
+which is the conversation tail-based sampling exists to have.
+
+## Instrumenting an application
+
+Nothing here is specific to my kit. It is stock OpenTelemetry configuration.
+
+{title="the whole of it"}
+```yaml
+env:
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: http://opentelemetry-collector.observability.svc.cluster.local:4317
+  - name: OTEL_EXPORTER_OTLP_PROTOCOL
+    value: grpc
+  - name: OTEL_SERVICE_NAME
+    value: my-app
+  - name: OTEL_RESOURCE_ATTRIBUTES
+    value: deployment.environment=production,service.version=1.4.2
+```
+
+`OTEL_SERVICE_NAME` is the one attribute worth setting by hand. Everything about
+*where* the workload runs is stamped downstream; only the application knows what
+it *is*.
+
+Most runtimes will give you HTTP server, outbound client and database spans with
+no code change at all:
+
+| Runtime | Mechanism |
+|---|---|
+| Java | `-javaagent:opentelemetry-javaagent.jar` |
+| Node.js | `--require @opentelemetry/auto-instrumentations-node/register` |
+| Python | `opentelemetry-instrument <your command>` |
+| PHP | `open-telemetry/opentelemetry-auto-*`, loaded via `php.ini` |
+| .NET | `OTEL_DOTNET_AUTO_HOME` with the auto-instrumentation bundle |
+| Go | no agent — import the contrib instrumentation for your router and driver |
+
+Start with the agent, confirm signals arrive, and only then write manual spans
+around the parts of your own code the agent cannot see.
+
+::: warning
+## The egress rule is not optional
+
+Tenant namespaces here are default-deny egress. The template ships
+`allow-egress-telemetry`, which opens ports 4317 and 4318 to the observability
+namespace and nothing else.
+
+A namespace that was not generated from that template has its telemetry dropped
+by the network policy, silently, with the SDK reporting nothing useful. It looks
+exactly like an application that was never instrumented — and so you go and
+check the instrumentation, which is fine, repeatedly.
+:::
+
+## What it costs
+
+Cluster at rest, one tenant serving a static site, measured with `kubectl top`.
+
+| Namespace | Pods | CPU | Memory |
+|---|---|---|---|
+| observability | 19 | 141m | 2,858 Mi |
+| **platform total** | 43 | **194m** | **4,526 Mi** |
+| the tenant application | 2 | 2m | 8 Mi |
+
+Observability is 63% of the platform's memory. Metrics, logs and traces cost
+more than everything that delivers, routes, secures and upgrades the cluster
+put together.
+
+The collector itself is the cheap part of that — it requests 100m CPU and
+192 Mi, capped at 512 Mi. The stores are where the memory goes, and they would
+cost roughly the same if every application exported to them directly. The
+collector is not what makes observability expensive; it is what makes the
+expense buy something.
+
+That cost is also close to fixed. The same 2,858 Mi carries the second tenant
+and the tenth, which is why this shape makes sense with several tenants and not
+with one.
+
+## The knob nobody turns
+
+The cluster carries **161,507 active time series** while running one static
+site. Two control-plane histograms account for 43,920 of them:
+
+| Metric | Series |
+|---|---|
+| `apiserver_request_duration_seconds_bucket` | 24,720 |
+| `etcd_request_duration_seconds_bucket` | 19,200 |
+
+That is **27% of every series on the cluster**, and nothing on this cluster
+queries either one. They are the default in every Kubernetes monitoring stack I
+have used, the cost is per-series, and it lands whether or not anyone looks.
+
+Logs have the same shape. 7,613 lines an hour on an idle cluster, and
+`kube-system` alone produced 4,904 of them.
+
+Dropping or aggregating those histogram buckets is the cheapest win available
+before scaling out, and it is a few lines in one file. I have deliberately not
+made that decision in the kit, because "the control plane latency histogram is
+not worth keeping" is true here and might be exactly what you need on the day
+your API server is the problem. But it is a knob, it is reachable, and almost
+nobody turns it.
+
+## What I have not proven
+
+- **A trace across more than one service.** Exactly one service on this cluster
+  ever emitted a span: `traefik`. The tenant was a static site with no SDK. The
+  load-balancer-to-proxy-to-handler-to-database trace I described is the shape
+  the pipeline produces, not something I watched it produce here.
+- **Tail-based sampling.** Never configured. The collector is the right place
+  for it and a default would be a guess, so there is no default.
+- **The collector under real load.** `memory_limiter` has never shed anything I
+  was watching. Its thresholds are the chart's shape, not a tuned number.
+- **Log-to-trace correlation end to end.** Container stdout is collected
+  separately, by Vector, and a stdout line does not carry the trace ID that
+  produced it. Only logs emitted through the SDK do, and nothing here emits
+  those yet.
+
+That last one is the honest gap in the pitch. The `k8s.*` labels line traces and
+logs up by *workload*, which is most of the value. Lining them up by *request*
+needs the application to log through the SDK, and saying otherwise would be
+selling you the diagram instead of the cluster.
+
+## Three quiet failures
+
+Three things went wrong on the way here. None of them threw an error. Each one
+reported success and kept going, which is the failure mode observability is
+supposed to protect you from and is entirely capable of having itself.
+
+## Lesson one: the trace store that was healthy and empty
+
+An earlier version of the kit installed Tempo, probed it for readiness, scraped
+its metrics and alerted if it went down. Nothing ever sent it a span.
+
+Every check was green. The store was up, responsive, and had received no data at
+all, which from the outside is indistinguishable from a quiet week. It is the
+same shape as an alert rule that loads but never fires, or a backup job that
+reports success having captured nothing — both of which are also written down in
+that repository, and neither of which stopped me from shipping this one.
+
+A component's health check answers "is this running". It does not answer "is
+anything using it", and those diverge silently.
+
+## Lesson two: the endpoint that stopped resolving
+
+Flux derives a Helm release name as `<targetNamespace>-<name>` when you do not
+pin one. The chart then derives every resource name it generates from the
+release name.
+
+So moving a HelmRelease between namespaces renamed its Services. The collector's
+exporters kept sending to the old addresses. Nothing errored anywhere I was
+looking: the exporter writes to a name that no longer resolves and the data is
+simply gone. It broke three things at once — two Services renamed out from under
+the endpoints pointing at them, and one generated label crossing the 63-byte
+limit, which wedged a release in `uninstalling` and left it unable to remediate,
+because the hook it had to run to uninstall was the invalid object.
+
+The fix is two pinned lines, `releaseName` on the release and
+`fullnameOverride` in the values. I hit this twice in one pipeline before pinning
+both.
+
+**An exporter pointed at a hostname is a dependency with no compile step.** The
+only thing that verifies it is data arriving, so the check has to be "did
+anything land", not "is the config right".
+
+## Lesson three: I measured a different cluster
+
+The first version of my numbers said 477,140 active series and 131,325 log lines
+an hour. The real figures are 161,507 and 7,613. Wrong by roughly 3× and 17×,
+and neither came from this cluster.
+
+`kubectl port-forward` was told to bind `8428` and `9428` — the default ports for
+these two components. I already had tunnels to another cluster bound there. The
+port-forward failed to bind, `curl` connected to the tunnel that already owned
+the port, and every query returned real, plausible, internally consistent data
+about somebody else's cluster.
+
+It was caught only because a namespace listing came back naming namespaces that
+do not exist here.
+
+The detail that made it silent: the port-forward was launched with
+`>/dev/null 2>&1`, and `bind: address already in use` goes to stderr. The one
+signal that would have caught it immediately was explicitly discarded.
+
+> Suppressing a command's error output does not make it succeed. For anything
+> that binds a port, bind somewhere unusual, and check *what answered* rather
+> than that something did.
+
+Had those numbers gone into this post instead of into a file I reread, you would
+be reading them right now and they would look completely reasonable.
+
+## What this buys
+
+A request I made from a laptop in another country resolved, in the store, to the
+name of the pod that served it — and the process that emitted the span had no
+idea which pod it was.
+
+That is the entire trade. One more component in the path, 192 Mi of request, and
+a processor order you have to get right. In exchange, every signal off the
+cluster carries the same four identity labels, applied by something that can
+actually look them up, and the stores behind it can be replaced without
+redeploying anything that produces data.
+
+The costs are real and I would rather state them than bury them: two thirds of
+the platform's memory, a quarter of its series spent on histograms nobody reads.
+Both are knobs. Neither is a reason to run a cluster you cannot see into.
+
+<!-- HERO: A request crossing from left to right. A laptop over the public internet, into a load balancer, into a Traefik pod in the traefik namespace, which emits a span. The span travels down to a single OpenTelemetry collector box, drawn as three stacked stages in order — memory_limiter, k8sattributes, batch — with the k8sattributes stage shown reaching sideways to the Kubernetes API server and pulling back four labels (k8s.pod.name, k8s.namespace.name, k8s.node.name, k8s.deployment.name) that get stamped onto the span. Out of the collector, three arrows to three stores with their protocol on each: OTLP to Tempo, Prometheus remote-write to VictoriaMetrics, OTLP/HTTP to VictoriaLogs. The emphasis should be that one endpoint goes in and three protocols come out, and that the identity labels are added in the middle, not at the source. -->
