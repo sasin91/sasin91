@@ -1,0 +1,463 @@
++++
+path = "blog/software-factory-on-your-own-cluster"
+title = "A software factory on your own Kubernetes cluster"
+date = 2026-08-04
+description = "Cloudflare ships an open-source AI app-generation platform you can deploy yourself — onto their edge. Doing the same on your own cluster is not an AI problem, it is a tenancy problem, and the isolation an agent run needs is almost exactly what a tenant namespace already gives you. Here is the mapping, the capacity arithmetic on a measured cluster, and the parts I would not build."
++++
+
+A software factory, in the sense I mean it here: a service that takes a brief,
+spawns a sandboxed coding agent per variant, lets it write an application,
+verifies the result, and reports back.
+
+Generating the application is the easy part. The moment it works you are
+running untrusted code that a language model wrote, at scale, on hardware you
+pay for. That is a sandboxing and resource-isolation problem before it is an AI
+problem.
+
+It also maps, almost line for line, onto per-tenant isolation — which means if
+you already have [a k3s platform with real tenancy](/blog/k3s-platform-kit/),
+you have most of it. The parts you do not have are a deadline and a guaranteed
+teardown, and those are the two the agents actually need.
+
+## Index
+
+- [What it actually is](#What-it-actually-is)
+- [Should you host it yourself](#Should-you-host-it-yourself)
+- [What Cloudflare ships](#What-Cloudflare-ships)
+- [A sandbox is a tenant with a shorter life](#A-sandbox-is-a-tenant-with-a-shorter-life)
+- [How many sandboxes fit](#How-many-sandboxes-fit)
+- [The model is not on your cluster](#The-model-is-not-on-your-cluster)
+- [Verification is the whole product](#Verification-is-the-whole-product)
+- [What I would not do](#What-I-would-not-do)
+- [What I have not proven](#What-I-have-not-proven)
+- [Three things I have already stepped on](#Three-things-I-have-already-stepped-on)
+- [Lesson one: the quota rejects the pod and blames the quota](#Lesson-one-the-quota-rejects-the-pod-and-blames-the-quota)
+- [Lesson two: a denied packet looks like a slow one](#Lesson-two-a-denied-packet-looks-like-a-slow-one)
+- [Lesson three: cleanup only knows what it created](#Lesson-three-cleanup-only-knows-what-it-created)
+- [What this is actually for](#What-this-is-actually-for)
+
+## What it actually is
+
+Strip the framing away and the runtime is small:
+
+1. A queue of runs. One run is one brief and one variant.
+2. Per run, an isolated environment with a checkout, a package manager, a
+   toolchain and network access to exactly one model endpoint.
+3. An agent process inside it, looping until it thinks it is finished.
+4. A verification step — typecheck, build, tests, lint — in the same
+   environment.
+5. A report, and then the environment is destroyed.
+
+Step 5 is the one people skip, and it is the one that decides whether this
+costs you a fixed amount per month or an unbounded amount.
+
+Nothing in that list is exotic. Every hard part is in the word *isolated*, and
+in the fact that step 3 does not reliably terminate.
+
+## Should you host it yourself
+
+The triage, before the detail.
+
+**Probably not, if** you want to generate a handful of applications a week. Rent
+it. The economics of idle capacity are brutal and the isolation is somebody
+else's problem, which is worth more than it sounds.
+
+**Maybe, if** you have a source of briefs that is continuous rather than bursty,
+your generated apps have to reach systems that live inside your network, or the
+briefs themselves are things you would rather not send through a third party's
+platform layer.
+
+**Yes, if** you were already running a multi-tenant cluster. Then the isolation
+is built, the observability is built, and what you are adding is a job template
+and a deadline. That is a genuinely small amount of work sitting on top of a
+genuinely large amount of work you already did.
+
+Note what that last one is not: it is not an argument for building the cluster
+in order to run this. If the cluster does not already exist, the honest answer
+is the hosted shape.
+
+## What Cloudflare ships
+
+The public reference point is Cloudflare's **VibeSDK**, announced on
+[23 September 2025](https://blog.cloudflare.com/deploy-your-own-ai-vibe-coding-platform/)
+and MIT-licensed at
+[github.com/cloudflare/vibesdk](https://github.com/cloudflare/vibesdk). Worth
+reading whether or not you deploy it, because it is a complete and opinionated
+answer to the same question.
+
+Its README gives the stack: Workers with **Durable Objects** running the agents,
+**D1** for the database, **R2** for templates, **KV** for sessions, **AI
+Gateway** for model routing, **Containers** for sandboxed execution, and
+**Workers for Platforms** dispatch namespaces for deploying the generated apps.
+The sandboxing is Cloudflare's
+[Sandbox SDK](https://developers.cloudflare.com/sandbox/), which pairs a Durable
+Object with a container and gives you commands, files, processes and exposed
+ports inside it. The announcement is explicit about the model: generated code
+"can do anything a normal development environment can do: install npm packages,
+run builds, start servers, but it's fully contained".
+
+Now read the prerequisites, because that is where the shape shows:
+
+- Workers **Paid** plan
+- a **Workers for Platforms** subscription
+- **Advanced Certificate Manager**, because previews live on a wildcard
+  subdomain of your own domain
+- a proxied wildcard CNAME you add by hand — the README says this "may be
+  automated in a future release, but it is required today"
+
+Workers Paid is [$5 a month](https://developers.cloudflare.com/containers/pricing/).
+Workers for Platforms is
+[$25 a month](https://developers.cloudflare.com/cloudflare-for-platforms/workers-for-platforms/platform/pricing/),
+including 20M requests, 60M CPU-ms and 1,000 scripts.
+
+So "deploy your own" means deploy your own onto *their* platform. Every
+isolation primitive is theirs: the container, the dispatch namespace, the
+wildcard certificate, the gateway that holds your model keys. That is a
+reasonable trade and I would take it for most workloads. It is also not the same
+claim as running it on your own hardware, and the two get conflated constantly.
+
+The number worth carrying forward is the sandbox size Cloudflare picked for
+itself. The repository sets `SANDBOX_INSTANCE_TYPE` to `standard-3` and
+`MAX_SANDBOX_INSTANCES` to 10. Per
+[Cloudflare's own limits table](https://developers.cloudflare.com/containers/platform-details/limits/),
+`standard-3` is **2 vCPU, 8 GiB memory, 16 GB disk**.
+
+::: note
+## The README and the docs disagree
+
+VibeSDK's README lists `standard-3` at 12 GiB and `standard-2` at 8 GiB;
+Cloudflare's Containers documentation lists 8 GiB and 6 GiB. I have used the
+documentation's table throughout. If you are sizing against this, check it
+yourself rather than trusting either me or the README.
+:::
+
+## A sandbox is a tenant with a shorter life
+
+Here is the mapping. The left column is what a tenant namespace in the kit
+generates. The right column is what it stops when the occupant is an agent
+rather than a customer.
+
+| Tenant guarantee | What it stops for an agent run |
+|---|---|
+| Namespace with `restricted` pod security | a generated manifest asking for `privileged`, `hostPath` or root |
+| ResourceQuota on requests, limits, storage *and object counts* | one build consuming the cluster; a runaway generator filling etcd from inside one namespace |
+| LimitRange with per-container defaults | the generated pod spec that declares no resources at all |
+| NetworkPolicy, default-deny both directions | the code reaching the metadata endpoint, the cluster, or the next run |
+| A namespaced Role, and `automountServiceAccountToken: false` | the code reaching the API server with an identity |
+| `services.loadbalancers: 0`, `services.nodeports: 0` | a run billing you a load balancer, or opening a port on every node |
+
+That last row is my favourite, because it is the one nobody thinks of. A
+`Service` of type `LoadBalancer` provisions a real load balancer at the
+provider and bills for it, on the platform's account, from inside the
+namespace. An agent that has read a lot of Kubernetes examples will write one.
+
+Three things a tenant does not need and a run does:
+
+**A deadline.** `activeDeadlineSeconds` on the Job. Tenants live forever; runs
+must not. An agent that has lost the plot does not crash, it keeps going, and
+"keeps going" is the failure mode that bills.
+
+**Guaranteed teardown.** Delete the namespace, not the pod. One namespace per
+run means cleanup is a single object deletion with no inventory to maintain,
+and no way to miss a ConfigMap somebody's generated manifest created.
+
+**Ephemeral storage limits.** This is the one the tenant template deliberately
+leaves unset, with the reasoning written at the line: a low ceiling kills
+image-heavy workloads at runtime rather than at admission, so the default is to
+leave it alone. For agent runs that trade inverts. `npm install` writes to the
+container's writable layer, and a container writing unboundedly to it can evict
+itself *and its neighbours* off a node. Set it.
+
+And one correction to a thing that gets repeated: `restricted` pod security
+does **not** give you a read-only root filesystem. It gives you non-root, no
+privilege escalation, all capabilities dropped, `RuntimeDefault` seccomp, no
+host namespaces and a restricted set of volume types. `readOnlyRootFilesystem`
+is a separate field you set yourself — and a build needs somewhere to write
+anyway, so the real shape is a read-only root plus a sized `emptyDir`, not a
+profile you switch on.
+
+## How many sandboxes fit
+
+**This is arithmetic, not a benchmark.** I have measured the platform. I have
+not run agents on it.
+
+The measured base, from a three-node verification cluster — one `cpx22` control
+plane, two `cpx32` agents, running the whole platform and one tenant serving a
+static site:
+
+| | |
+|---|---|
+| Allocatable | 9,400m CPU · 17.7 GiB memory |
+| Platform at rest | 194m CPU · 4,526 MiB memory, across 43 pods |
+| Remaining | ~9,200m CPU · ~13,600 MiB memory |
+
+Divide the remainder by a per-sandbox memory request:
+
+| Memory per sandbox | Sandboxes, by aggregate arithmetic |
+|---|---|
+| 8 GiB — Cloudflare's `standard-3` | 1 |
+| 4 GiB | 3 |
+| 2 GiB | 6 |
+| 1 GiB | 13 |
+
+Three caveats, all of which make the real number smaller than the table:
+
+**Memory does not pool across nodes.** The largest node in this shape has 8 GB
+gross. An 8 GiB sandbox never schedules here regardless of what the aggregate
+says, and the first thing cluster-wide arithmetic hides is always the
+single-node constraint.
+
+**4,526 MiB is usage, not requests.** The scheduler packs on requests, and the
+platform's components request more than they use. I did not record the request
+totals, so the true headroom is lower than the table by an amount I cannot
+quote.
+
+**Object counts bite before memory does at the small end.** Thirteen concurrent
+runs is thirteen namespaces, and each carries its own quota, limit range, five
+network policies, service account, role and binding.
+
+CPU never binds. 9,200m free against a sandbox asking for one vCPU is nine, and
+against half a vCPU it is eighteen — more than memory allows at any sizing on
+the list. That matches the platform's own conclusion: memory is the constraint
+on this shape, and CPU is a rounding error at about 2% of allocatable.
+
+So a cluster costing **€122.45 a month gross** runs somewhere between two and
+six concurrent agent sandboxes, depending entirely on how much memory you are
+willing to give a Node build — and none at the size Cloudflare chose. Getting
+to that size is a node purchase, not a configuration change.
+
+Against that, the serverless shape. Cloudflare's Workers Paid plan includes
+**25 GiB-hours of container memory and 375 vCPU-minutes** a month. At
+`standard-3` that is about three hours of one sandbox before overage, and the
+published overage rates — $0.0000025 per GiB-second of memory, $0.000020 per
+vCPU-second — work out to roughly **$0.22 per sandbox-hour** at that size.
+
+I am not going to convert currencies and pretend that comparison is precise, but
+the order of magnitude is the point: the whole three-node cluster costs, per
+month, on the order of several hundred sandbox-hours at Cloudflare's rates.
+Below that volume the serverless shape is cheaper and you should use it. Above
+it, and only above it, the cluster starts to make arithmetic sense.
+
+What the per-hour figure does not capture: the same €122.45 also carries
+ingress, certificates, GitOps, metrics, logs and traces for everything else you
+run there, and the platform's 4.5 GiB is fixed. It carries your first sandbox
+and your tenth.
+
+## The model is not on your cluster
+
+The nodes above are `cpx22` and `cpx32` — CPU only. Nothing on them runs a
+model worth calling. Unless you own accelerators, the practical shape is agents
+running on your cluster calling a hosted model API, and then your cost model is
+per-token and it is not yours to optimise by owning hardware.
+
+Cloudflare's design agrees, incidentally: VibeSDK routes every call through AI
+Gateway on your own provider keys. A Gemini key is the only required one;
+Anthropic, OpenAI, OpenRouter and Groq are optional. Even the fully-hosted
+version bills inference separately, and the code carries an explicit error for
+a gateway balance below two dollars.
+
+This has one design consequence that is worth the whole section.
+
+Your sandbox is under default-deny egress and needs to reach exactly one
+endpoint. **Standard NetworkPolicy cannot express that** — it speaks pod
+selectors, namespace selectors and CIDR blocks, and has no concept of a
+hostname. The addresses behind any interesting API hostname belong to a CDN and
+change without notice, so you cannot approximate it either. The coarse form you
+can actually write is "not the cluster, not the node network, not the
+link-local range, port 443", and that permits every other host on the internet.
+
+The answer I would build is an egress proxy in a platform namespace, with the
+sandbox permitted to reach that pod and nothing else. It solves the network
+problem and a second one for free: **the credential lives in the proxy, and the
+sandbox never holds it.** Code an LLM wrote, running unattended, should not
+have a model API key in its environment where the first `env` dump puts it in a
+log.
+
+The alternative is a CNI with FQDN policy support, and that is a create-time
+decision on the node module rather than something you migrate to later. Decide
+it when you build the cluster or do not decide it at all.
+
+## Verification is the whole product
+
+Generation is cheap. A plausible-looking repository is cheap. What makes any of
+this usable is that something independent ran the typecheck, the build and the
+tests and reported honestly.
+
+Two things follow, and both are easy to get wrong.
+
+**Verification is the same untrusted code.** `npm install` executes lifecycle
+scripts. A test file is a program. `go generate` runs whatever it is told to.
+So the verification step gets the same namespace, the same quota, the same
+default-deny and the same deadline as the generation step — and it needs its
+own deadline separately, because to a supervisor watching exit codes a build
+that hangs and a build that fails look identical right up until the bill
+arrives.
+
+**Tests the agent wrote passing is not evidence.** It is evidence that the
+agent is self-consistent. The signals worth weighting are the ones the agent
+did not author: whether the compiler accepted it, whether the lockfile resolved,
+whether the build produced an artefact of a plausible size, whether a pre-existing
+test suite still passes. Everything else is the model marking its own homework.
+
+## What I would not do
+
+**I would not run inference on the cluster.** Not without accelerators, and if
+you have accelerators this is a different post about a different budget.
+
+**I would not give sandboxes a shared writable volume.** A shared package cache
+is the obvious optimisation and it is a supply chain between runs: one poisoned
+`node_modules` is every later run's problem. It is also barely possible here —
+the provider's block volumes are single-writer, so the shared cache is a
+scheduling constraint before it is a security one.
+
+**I would not reuse a namespace between runs.** Cleanup you have to enumerate
+is cleanup you will eventually get wrong. One namespace, one deletion.
+
+**I would not rely on the NetworkPolicy alone to constrain egress.** See above.
+Written naively it reads as "this run may only reach the model", and it means
+"this run may reach the internet on 443". Those are very different sentences and
+the YAML looks the same.
+
+**I would not forget the metadata endpoint.** `169.254.169.254` is reachable
+from every pod on every node by default and answers instance identity — and, on
+some configurations, credentials. Any blanket egress allowance that does not
+carve out `169.254.0.0/16` hands that to whatever the model wrote.
+
+**I would not run the first version of this on a cluster carrying anything I
+care about.** Quotas are capacity boundaries, not security boundaries. They
+stop accidents. They do not stop anything deliberate that fits inside the
+numbers.
+
+**I would not build it at all if the hosted shape fits.** VibeSDK exists, it is
+MIT, and $30 a month of subscriptions plus usage is less than the first day you
+spend on this.
+
+## What I have not proven
+
+The honest list, and it is longer than I would like.
+
+- **I have not run agent workloads on this cluster.** Every capacity figure in
+  this post is division. The 4,526 MiB is measured; the sandbox sizings beside
+  it are choices, and the number that decides the whole calculation — an agent
+  run's actual peak memory — is one I have not measured.
+- **I have not measured what a real run costs in tokens.** I have deliberately
+  quoted no figure, because I do not have one from a system I ran.
+- **I have not watched `activeDeadlineSeconds` reap a container that ignores
+  `SIGTERM`.** Kubernetes will escalate. I have not sat and watched it do so
+  under a process that is mid-`npm install`.
+- **The Cloudflare numbers are from documentation, not from an account I ran.**
+  Every one is linked. The instance-type table is the one place their own
+  README disagrees with their docs, which is a reason to check rather than to
+  trust.
+- **No backup in this platform has ever been restored from.** That is a
+  standing gap in the kit itself, and it is not specific to this workload.
+
+## Three things I have already stepped on
+
+I have not run the factory. I have run the platform underneath it, four times,
+and three of its failures land harder when the occupant is generated code than
+when it is a customer.
+
+None of the three announced themselves. That is the property they share and it
+is the only reason they are worth writing down.
+
+## Lesson one: the quota rejects the pod and blames the quota
+
+A container that declares no CPU request, in a namespace whose quota constrains
+`requests.cpu`, is **rejected**. Not throttled, not defaulted — rejected, with
+an error message about the quota rather than about the container.
+
+So a namespace shipped with a quota and no LimitRange breaks the first pod
+anyone deploys, and reads as a broken namespace.
+
+The inverse is worse and quieter. A container that declares no *limit*, for a
+resource the quota does not constrain, runs unbounded. It competes with every
+other pod on its node for as much as it can take, and the namespace's stated
+ceiling has nothing to do with what it actually consumes.
+
+Now recall what generated Kubernetes manifests look like. They do not have a
+`resources` block. Almost none of them do. Whichever of those two failures you
+get depends entirely on a file the agent did not write and does not know about.
+
+**A quota without a limit range is aspirational.** Generate both together, or
+neither is real.
+
+## Lesson two: a denied packet looks like a slow one
+
+Under default-deny egress, the first thing to break is name resolution, and it
+breaks as "connection timed out" from inside the application rather than as
+anything that mentions DNS.
+
+I hit the same shape twice on this platform in different clothes. Once as a
+network policy allowing ingress from namespaces labelled `role=gateway`, where
+nothing applied that label — an allowance matching no namespace, so default-deny
+stood, and it surfaced as **HTTP 502** with every object you would think to
+inspect looking correct. Once as instrumentation exporting into a black hole,
+because the collector lives on a cluster address the outbound-internet rule
+explicitly excludes, on a port that is not 443. No error. No rejection. Spans
+discarded at the network layer and a trace store that stays empty for a reason
+nobody would think to look for.
+
+> A network policy selector naming a label nobody sets is a default-deny with
+> extra steps.
+
+Put an agent in that namespace and it gets worse, because a timeout is the one
+failure every layer above it is built to retry. The agent retries the model
+call. The supervisor retries the run. Nothing reports an error, the deadline
+does its job, and you are billed for a full run that never reached the model at
+all.
+
+**Test the egress path with something that fails loudly, before you put
+something patient in there.**
+
+## Lesson three: cleanup only knows what it created
+
+`tofu destroy` walks its own state and removes what it finds. The cluster,
+meanwhile, creates things at runtime that were never in that state — the
+autoscaler creates servers, the cloud controller creates a load balancer per
+`LoadBalancer` Service, the CSI driver creates a volume per claim.
+
+So destroy reports success, and those keep running and keep billing. Worse,
+they are not inert: an autoscaler-created server stays attached to the private
+network, so destroying the *network* fails, several steps from the node
+actually holding it.
+
+I had previously written "destroy is clean, zero residue" in a README. It was
+true and useless — those runs had never autoscaled, never served a
+`LoadBalancer`, never bound a claim.
+
+The generalisation is the part that matters here. **Your teardown knows about
+the objects your template created, and agent runs create objects your template
+did not.** A generated manifest that provisions a volume, a Service, a
+CronJob — deleting the Job you created does not touch any of it. Deleting the
+namespace does, which is the actual argument for one namespace per run, and it
+is a stronger argument than tidiness.
+
+**A teardown is only proven against a run that has actually done something.**
+
+## What this is actually for
+
+The most useful thing I took from building the platform underneath this is not
+a manifest. It is a habit, and it came from nearly publishing a set of numbers
+that were not mine.
+
+I port-forwarded two components on their default ports. Tunnels to a different
+cluster were already bound there. The forward failed to bind, `curl` connected
+to the tunnel that already owned the port, and every query came back with real,
+plausible, internally consistent data about somebody else's cluster. It was
+caught by a namespace list naming namespaces that do not exist. The detail that
+made it silent: the forward was launched with `>/dev/null 2>&1`, and
+`bind: address already in use` goes to stderr — the one signal that would have
+caught it was explicitly discarded.
+
+That is the same failure as a verification step reporting a green build. The
+question is never whether something answered. It is **what** answered, and
+whether the thing that would have said otherwise is being written to
+`/dev/null`.
+
+Agents are very good at producing an answer. The entire value of hosting this
+yourself — the namespace, the quota, the deny, the deadline, the independent
+compiler — is that you get to decide what counts as an answer, and you get to
+see the things that report success.
+
+<!-- HERO: A single agent run as one bounded namespace. Left: a queue of briefs feeding a controller in a platform namespace. Centre: one ephemeral tenant namespace containing an agent pod and a verification pod, drawn inside a box labelled with its guarantees — ResourceQuota, LimitRange, restricted pod security, default-deny NetworkPolicy, activeDeadlineSeconds. One arrow leaves the box, to an egress proxy in the platform namespace that holds the model API key and calls a hosted model outside the cluster; the arrow is clearly the only one crossing the boundary. Blocked arrows (crossed out) point at the metadata endpoint 169.254.169.254, at a neighbouring run's namespace, and at the Kubernetes API server. Right: a report leaving, and the whole namespace shown being deleted. -->
