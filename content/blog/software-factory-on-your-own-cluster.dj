@@ -216,12 +216,21 @@ Against that, the serverless shape. Cloudflare's Workers Paid plan includes
 `standard-3`, about three hours of one sandbox before overage — and the
 published overage rates ($0.0000025 per GiB-second of memory, $0.000020 per
 vCPU-second) work out to roughly **$0.22 per sandbox-hour** at that size. The
-order of magnitude is the point, not the exchange rate: the cluster costs, per
-month, on the order of several hundred sandbox-hours at Cloudflare's rates.
-Below that volume the serverless shape is cheaper; above it, and only above it,
-the cluster makes arithmetic sense — and the same €122.45 also carries ingress,
+shapes are what matter here, not the exchange rate, and the shapes are simple:
+one line is flat and the other climbs.
+
+![A break-even chart. The cluster is a flat line at 122.45 euros a month, unchanged whether it runs one sandbox-hour or a thousand. The serverless option rises from the origin at about twenty-two cents per sandbox-hour. They cross in a band of several hundred sandbox-hours a month, drawn as a band rather than a point because euros and dollars are not converted. Below the crossing serverless is cheaper; above it the cluster is.](/images/software-factory-on-your-own-cluster/break-even.svg)
+
+You pay the cluster whether you use it or not, and you pay the serverless option
+only when a sandbox is running. So below a few hundred sandbox-hours a month the
+serverless shape wins, and above it the cluster does.
+
+That crossing point is also the least interesting thing on the chart, because
+the flat line is not only buying sandboxes. The same €122.45 carries ingress,
 certificates, GitOps, metrics, logs and traces for everything else you run
-there, with the platform's 4.5 GiB fixed whether you run one sandbox or ten.
+there, and the platform's 4.5 GiB is fixed whether you run one sandbox or ten.
+If the cluster is already there for other reasons, the sandboxes are close to
+free and the chart is the wrong question.
 
 ## The model is not on your cluster
 
