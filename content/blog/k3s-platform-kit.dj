@@ -80,23 +80,16 @@ the k3s machines do not.** So the cost argument against Kubernetes is really an
 observability argument in disguise. If you would build metrics, logs and traces
 anyway, you have already paid.
 
-Docker Swarm sits in the middle, and I think it is under-rated. It is a mode of
-the daemon you already run, `docker stack deploy` takes a compose file, and you
-get scheduling, rolling updates, rollback, overlay networking, secrets in an
-encrypted raft log and mutual TLS between machines. All of it in about a dozen
-commands. Engine 29.7.1 came out in July 2026 with Swarm fixes throughout the
-series, so "Swarm is dead" is almost always the removed *Classic* Swarm being
-reported as the live one.
+Docker Swarm fits in the middle: one team running their own apps, which talk to
+each other freely. If one thing needs isolating, put it outside the swarm. If
+several do, that is where Kubernetes starts to be the better choice.
 
-What Swarm has no answer for is the namespace: no admission step, no extension
-mechanism, no per-tenant budget or policy layer.
-
-And that is exactly what k3s wins on. I once measured guarantees across a mature
-multi-tenant cluster. The guarantees issued by the path that creates a tenant,
-meaning quota, limits, network policy, disruption budget, pod security level and
-RBAC, were present in **over ninety percent** of namespaces. The same guarantees,
-written down as recommendations, were present in **none**. Not in fewer. In
-none.
+The reason is narrower than it sounds. I once measured guarantees across a
+mature multi-tenant cluster. The guarantees issued by the path that creates a
+tenant, meaning quota, limits, network policy, disruption budget, pod security
+level and RBAC, were present in **over ninety percent** of namespaces. The same
+guarantees, written down as recommendations, were present in **none**. Not in
+fewer. In none.
 
 The axis is not enforcement versus recommendation. It is in the generator versus
 not in the generator, and Kubernetes is an unusually good target for a generator,
