@@ -4,38 +4,38 @@ title = "Where to start with self-hosting"
 date = 2026-08-04
 series = "self-hosting"
 part = 0
-description = "I set up Kubernetes to learn Kubernetes, then packaged the second cluster so it would launch in an afternoon. Three short posts: what the kit costs and what it buys, where k3s genuinely shines against the simpler options, and the one workload I know well enough to prove the edge of it."
+description = "I set up Kubernetes to learn it, then packaged the second cluster so it would launch in an afternoon. Three short posts: what the kit costs and what it buys, where k3s is genuinely stronger than the simple options, and the one workload I know well enough to prove the edge of it."
 +++
 
-I set up Kubernetes to learn Kubernetes. Creating the cluster took an
-afternoon; everything after it — delivery, secrets, certificates, tenancy,
-observability, backups — took the rest of the week. I did not want to pay for
-that week twice, so the second cluster became a repository you fork.
+I set up Kubernetes to learn it. The cluster itself took an afternoon, but
+everything after it took the rest of the week: delivery, secrets, certificates,
+isolation between tenants, observability, backups. I did not want to pay for
+that week twice, so the second cluster became a repository you can fork.
 
 Three posts came out of it.
 
-- **[K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/)** — what it
-  costs (**€122.45 a month**, measured), what it uses before any of your code
-  runs (**4,526 Mi**, also measured), and where k3s actually beats the simpler
-  answers. Which, below about ten services, is nowhere.
+- **[K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/).** What it costs
+  (**€122.45 a month**, measured), what it uses before any of your own code runs
+  (**4,526 Mi**, also measured), and where k3s is genuinely stronger than the
+  simple options. Which, under about ten services, is nowhere.
 
 - **[What a game world server actually
-  needs](/blog/what-a-game-world-server-needs/)** — a WoW emulator is an old
-  favourite of mine and an unusually honest test of a cluster. Almost all of it
-  is stateless plumbing that belongs in one. Exactly one process does not, and
-  it is the one that is the game.
+  needs](/blog/what-a-game-world-server-needs/).** A WoW emulator is an old
+  favourite of mine, and it is an unusually honest test of a cluster. Almost all
+  of it is stateless plumbing that belongs in one. Exactly one process does not,
+  and that is the one that is the game.
 
 The platform itself is at
 [hcloud-k3s-platform-kit](https://github.com/sasin91/hcloud-k3s-platform-kit):
-fork it, edit the values, apply it. Every decision has the reasoning attached,
-and the forty-nine things that broke while reporting success are in a file of
-their own.
+fork it, edit the values, run it. Every decision has the reasoning attached, and
+the forty-nine things that broke without saying anything are in a file of their
+own.
 
-If you have one application, none of this is for you — put it on
-[one box](/blog/athletos-freebsd/) for about €7 a month and get on with it. What
-flips the decision is rarely the machine count. It is the second person who has
-to keep the isolation correct, because that is the point at which "we remember
-to do it" stops being true.
+If you have one application, none of this is for you. Put it on
+[one machine](/blog/athletos-freebsd/) for about €7 a month and get on with it.
+What flips the decision is rarely the number of machines. It is the second
+person who has to keep the isolation correct, because that is where "we will
+remember" stops being true.
 
 Every number in these posts was measured on a cluster that existed. Where I
-could not measure something I say so rather than estimating it.
+could not measure something, I say so instead of guessing.

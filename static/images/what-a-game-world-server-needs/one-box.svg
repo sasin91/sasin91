@@ -62,7 +62,7 @@
     <path d="M 604 330 C 680 330 700 288 754 288" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#g1-b)"/>
 
     <text x="60" y="306" font-size="11" fill="light-dark(#0f766e, #5eead4)">1 · log in to the auth daemon</text>
-    <text x="60" y="328" font-size="11" fill="var(--diagram-muted, #9a9aa6)">2 · it returns a realm list — an address</text>
+    <text x="60" y="328" font-size="11" fill="var(--diagram-muted, #9a9aa6)">2 · it returns a realm list, an address</text>
     <text x="60" y="350" font-size="11" fill="light-dark(#b45309, #fbbf24)">3 · connect to that address</text>
     <text x="48" y="438" font-size="12" fill="var(--diagram-muted, #6c6c68)">the auth daemon is an ordinary stateless service · the world daemon holds the map in memory and does not want to be moved</text>
   </g>
