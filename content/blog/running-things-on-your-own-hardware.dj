@@ -34,4 +34,4 @@ Choose your tools wisely, and don't reach for the complex solutions if you don't
 need them. A single [€7 box](/blog/athletos-freebsd/) is likely adequate for
 most apps.
 
-Every number in these posts was measured on a cluster that existed.
+Every number in these posts was measured on a live Hetzner Cloud cluster.

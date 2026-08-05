@@ -46,9 +46,6 @@ world server actually needs](/blog/what-a-game-world-server-needs/)
   policy, its disruption budget, its backup job, its pod security level and its
   RBAC.
 
-No example tenant ships with it, and that is deliberate. A workload that just
-occupies a namespace does not show anything the template does not already say.
-
 ## What it costs to run
 
 **€122.45 a month gross**, including 25% Danish VAT, for the three nodes and the
@@ -114,20 +111,3 @@ restored from; **the autoscaler under real pressure**, because the test
 project's quota left no room; and **a control plane surviving the loss of a
 member**, because three formed and were healthy but I never killed one to watch
 the other two carry on.
-
-I would rather write that list down than have you find it first.
-
-## The part I would keep
-
-A good model produces something like this kit in an afternoon, and most of it
-works. What it does not produce is the list of things that report success.
-
-Every machine healthy, SSH working, and the orchestrator not running, because
-Git on Windows had rewritten a file to CRLF inside a module the build tool
-cloned on my behalf. The SELinux policy, compiled on the machine itself,
-rejected the carriage return, and the only visible symptom was an opaque
-provisioner error two layers further up.
-
-Forty-nine of those are in the repository, each stated as a mechanism with the
-failure it produced. That file is the part I would keep if I had to throw the
-rest away.

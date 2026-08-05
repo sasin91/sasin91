@@ -154,7 +154,3 @@ almost exactly, [one machine](/blog/athletos-freebsd/).
 The mistake is not choosing Kubernetes. The mistake is assuming the whole system
 has one shape. It has two, and the cheapest architecture is the one that admits
 it.
-
-``` =html
-<p class="colophon">Everything above is read rather than run: TrinityCore's source and shipped configuration, the AzerothCore and CMaNGOS documentation, the Kubernetes docs and PassMark's published ratings. The threading claim is a design established from source, not a profile of a populated server.</p>
-```
