@@ -2,6 +2,8 @@
 path = "blog/what-a-game-world-server-needs"
 title = "What a game world server actually needs"
 date = 2026-08-04
+series = "self-hosting"
+part = 2
 description = "Hosting a WoW emulator: the world daemon's tick runs on one thread, so clock speed buys you everything and core count buys you almost nothing. What that means for what you buy, why the gaming chip is the wrong pick, and the routing gotcha that catches everyone."
 +++
 
