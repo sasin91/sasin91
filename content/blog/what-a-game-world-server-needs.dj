@@ -12,8 +12,8 @@ hero_alt = "The system split: behind one load balancer, a cluster holding replic
 I started on funservers in early TBC, on something ArcEmu or AscEmu based, I
 don't remember which. Then years of 3.3.5 on TrinityCore, which I'm still happy
 working with. I prefer CMaNGOS classic, though that scene only really got going
-around 2017. I never really stopped privately. I just gave up hosting anything
-public after a few cease and desist letters.
+around 2017. I never really stopped privately, though I gave up running anything
+public a long time ago.
 
 It is still the workload I know well enough to test a cluster honestly. Split one
 up and almost all of it is boring, stateless plumbing that belongs in
