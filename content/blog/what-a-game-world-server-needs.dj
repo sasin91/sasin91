@@ -2,21 +2,21 @@
 path = "blog/what-a-game-world-server-needs"
 title = "What a game world server actually needs"
 date = 2026-08-04
-description = "A WoW emulator is an old favourite of mine and an unusually honest test of a cluster. Split it up and almost all of it is stateless plumbing that belongs in one. Exactly one process does not, a long-lived simulation held in memory whose tick is bound by a single thread, and that is the one that is the game."
+description = "Almost all of a WoW emulator is stateless plumbing that belongs in a k3s cluster. Exactly one process does not, because its tick is bound by a single thread and its world lives in memory. Where that line falls, and how to tell which side a workload of your own is on."
 series = "self-hosting"
 part = 2
-hero = "/images/what-a-game-world-server-needs/one-box.svg"
-hero_alt = "The plain emulator shape on one machine: a player logs in to the auth daemon, which reads the auth schema and hands back a realm list; the player then connects to the world daemon, which reads the characters and world schemas"
+hero = "/images/what-a-game-world-server-needs/split.svg"
+hero_alt = "The system split: behind one load balancer, a cluster holding replicated auth daemons and the web front end over a shared database of accounts, characters and guilds; outside it, each world daemon on its own machine with its own read-mostly world database, reaching back into the shared database for characters and guilds"
 +++
 
 I ran MaNGOS and ArcEmu servers ten years ago, and a World of Warcraft emulator
-is still one of the better textbooks on distributed systems lying around in
-public. Mostly because so little of it is distributed.
+is still the workload I know well enough to test a cluster honestly. Split it up
+and almost all of it is boring, stateless plumbing that belongs in
+[the k3s platform](/blog/k3s-platform-kit/). Exactly one process does not.
 
-It is also the workload I know well enough to test a cluster honestly. Split it
-up and almost all of it is boring, stateless plumbing that belongs in
-[the k3s platform](/blog/k3s-platform-kit/). Exactly one process does not, and
-that is the one that is the game.
+That split is the useful part, and not just for game servers. Most systems have
+one component that quietly cannot be scheduled, and finding it before you build
+the platform is cheaper than finding it after.
 
 These projects exist to study game server architecture and network protocol
 design, and that is the only use I am discussing. If you run anything, the
@@ -30,16 +30,12 @@ starter kit on Hetzner cloud](/blog/k3s-platform-kit/)
 
 ## The three pieces
 
-The same three in every project I looked at: TrinityCore, AzerothCore, CMaNGOS,
-MaNGOS and AscEmu. All of them are still alive, which surprised me.
+An authentication daemon that answers the login handshake, a world daemon that
+is the game, and a relational database split into auth, characters and world
+content. The same three in TrinityCore, AzerothCore, CMaNGOS, MaNGOS and AscEmu.
 
-- **An authentication daemon.** `authserver`, `realmd`, `logonserver`. It
-  answers the login handshake and gives the client a list of realms.
-- **A world daemon.** `worldserver`, `mangosd`. This one is the game: maps,
-  creatures, spells, movement, loot.
-- **A relational database**, split into auth, characters and world content.
-
-The connection between the first two is a table, not an API. TrinityCore's auth
+The connection between the first two decides your topology, so it is worth
+knowing before anything else. It is a table, not an API. TrinityCore's auth
 database has a `realmlist` row per realm with `address` and `port`
 ([realmlist](https://github.com/TrinityCore/tc-wiki/blob/main/database/335/auth/realmlist.md)),
 documented as the world server's public address. The client logs in, gets that
@@ -50,14 +46,7 @@ protocol that publishes its own endpoint has already made your topology decision
 for you.** Whatever you put in front of it has to be a transparent TCP path, not
 something you rewrite at an ingress.
 
-The commercial version was a real distributed system. The CMaNGOS wiki sketches
-separate machines for Login, Connection Manager, Realm, Map, a Battlegroup
-server and several instance servers, connected by message queues
-([Threading model](https://github.com/cmangos/issues/wiki/Threading-model)). The
-open-source emulators fold Realm, Map and instances into one process, and that
-single decision is the whole subject of this post.
-
-## Why the world server is not a pod
+## Why the world server must have a machine of its own
 
 TrinityCore's map manager walks every live map once per tick and either updates
 them directly or hands them to a pool of workers, then waits for all of them:
@@ -127,28 +116,26 @@ The rest of the mismatch:
 
 ## What belongs in the cluster
 
-![The same system split: behind one load balancer, a cluster holding replicated auth daemons and the web front end over a shared database of accounts, characters and guilds; outside it, each world daemon on its own machine with its own read-mostly world database, reaching back into the shared database for characters and guilds.](/images/what-a-game-world-server-needs/split.svg)
+Everything else, and it is more than you would think.
 
-Everything else, and it is more than you would think. The authentication daemon,
-whose durable state lives in the database and whose process is close to
-stateless. The website, the registration API, the account panel. Item shops,
-armory pages, ladders and statistics, which are mostly read and can be cached.
-Discord bots and status pages. Backups, migrations and content database imports,
-which are exactly what Jobs and CronJobs are for. And observability for all of
-it, including the world machine, which can push into the cluster without living
-in it.
+- **The authentication daemon.** Its durable state lives in the database, and
+  the process is close to stateless.
+- **The website, the registration API, the account panel.** Ordinary CRUD over
+  the same database.
+- **Item shops, armory pages, ladders and statistics.** Mostly read, and
+  cacheable.
+- **Discord bots and status pages.** Trivially schedulable.
+- **Backups, migrations and content database imports.** Exactly what Jobs and
+  CronJobs are for.
+- **Observability for all of it**, including the world machine, which can push
+  into the cluster without living in it.
 
-That list is an ordinary small platform: delivery through GitOps, a namespace
-per tenant, certificates, secrets and observability, reconciled from git instead
-of remembered.
-
-The world machine wants the opposite priorities, in an order a spec sheet does
-not encourage. **Clock speed first**, for the reason above. **Then RAM,
-generously**, because the map cache only grows, so budget for a long uptime
-rather than for the first hour. **Then local NVMe**, because the characters
-database writes at every save interval and punishes a network volume. **Then
-network latency, not bandwidth.** Small packets, often, where distance and
-jitter decide how the game feels, and where throughput never enters the picture.
+That list is an ordinary small platform, and it is the shape the
+[k3s kit](/blog/k3s-platform-kit/) generates: delivery through GitOps, a
+namespace per tenant, certificates, secrets and observability, reconciled from
+git instead of remembered. So the honest architecture is a cluster for the
+platform and one private machine for the world, with the cluster proxying to it,
+and the proxy being a TCP passthrough rather than an HTTP route.
 
 ## Where the line falls
 
