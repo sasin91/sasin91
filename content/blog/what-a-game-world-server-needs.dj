@@ -9,9 +9,14 @@ hero = "/images/what-a-game-world-server-needs/split.svg"
 hero_alt = "The system split: behind one load balancer, a cluster holding replicated auth daemons and the web front end over a shared database of accounts, characters and guilds; outside it, each world daemon on its own machine with its own read-mostly world database, reaching back into the shared database for characters and guilds"
 +++
 
-I ran MaNGOS and ArcEmu servers ten years ago, and a World of Warcraft emulator
-is still the workload I know well enough to test a cluster honestly. Split it up
-and almost all of it is boring, stateless plumbing that belongs in
+I started on funservers in early TBC, something in the ArcEmu line, though I
+could not tell you which fork at this distance. Then years of 3.3.5 on
+TrinityCore. Vanilla MaNGOS is the one I actually enjoy working with, and that
+scene only really got going around 2017. I never properly stopped. I just left
+off hosting anything public after a few cease and desist letters arrived.
+
+So it is the workload I know well enough to test a cluster honestly. Split one
+up and almost all of it is boring, stateless plumbing that belongs in
 [the k3s platform](/blog/k3s-platform-kit/). One process does not, and that one
 is the game.
 
@@ -34,6 +39,12 @@ starter kit on Hetzner cloud](/blog/k3s-platform-kit/)
 An authentication daemon that answers the login handshake, a world daemon that
 is the game, and a relational database split into auth, characters and world
 content. The same three in TrinityCore, AzerothCore, CMaNGOS, MaNGOS and AscEmu.
+
+The database is where the time actually went. The servers I ran broke on data
+far more often than on code: a world database half-migrated by whoever was
+developing against it, DBC files mangled on extraction, an MPQ archive missing
+so the maps came out wrong. None of that is an architecture problem, which is
+worth saying before a post that treats the architecture as the interesting part.
 
 The first two are joined by a database table rather than an API. TrinityCore's
 auth database has a `realmlist` row per realm with `address` and `port`
@@ -80,6 +91,11 @@ and that a busy realm just wanted a bigger machine. What it wants is clock
 speed, and the fastest single thread you can buy tends to sit in a desktop
 socket. PassMark gives the Ryzen 9 9950X 4,728 on single thread; the 192-core
 EPYC 9965 gets 3,176.
+
+I met this on cheap OVH VPS instances years before I could have told you why.
+The symptom matched the code above: fine most of the time, then not fine, with
+cores sitting there that nothing could spend. I never profiled it, so that is a
+matching symptom and not a diagnosis.
 
 Now put that process in a cluster, and the Kubernetes documentation describes
 what you just agreed to:
