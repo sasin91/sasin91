@@ -20,9 +20,8 @@ live cluster on Hetzner Cloud: three nodes in Falkenstein, one cpx22 control
 plane and two cpx32 agents, behind an lb11 load balancer.
 
 ::: note
-**Part 1 of 2 of [Where to start with
-self-hosting](/blog/running-things-on-your-own-hardware/).** Next: [What a game
-world server actually needs](/blog/what-a-game-world-server-needs/)
+Part of [Where to start with
+self-hosting](/blog/running-things-on-your-own-hardware/).
 :::
 
 ## What it is
