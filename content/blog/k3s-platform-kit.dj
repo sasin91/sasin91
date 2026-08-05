@@ -4,7 +4,7 @@ title = "K3s starter kit on Hetzner cloud"
 date = 2026-08-04
 hero = "/images/k3s-platform-kit/architecture.svg"
 hero_alt = "Inside a k3s cluster: a git fork reconciled by Flux, a visitor request arriving through Traefik to a tenant application, and telemetry from both flowing to a collector and on to VictoriaMetrics, VictoriaLogs and Tempo"
-description = "A fork-and-edit k3s platform for Hetzner: GitOps delivery, encrypted secrets, certificates, per-tenant isolation and observability. Built and torn down four times on Hetzner Cloud until it stopped lying to me. What it costs, what it uses before your code runs, and the one thing it does that the simple options cannot."
+description = "A fork-and-edit k3s platform for Hetzner Cloud: GitOps delivery, encrypted secrets, certificates, per-tenant isolation and observability. What is in it, what it costs to run, and the one thing it does that three FreeBSD boxes or Docker Swarm cannot."
 series = "self-hosting"
 part = 1
 +++
@@ -49,58 +49,22 @@ world server actually needs](/blog/what-a-game-world-server-needs/)
 No example tenant ships with it, and that is deliberate. A workload that just
 occupies a namespace does not show anything the template does not already say.
 
-## The price, measured
+## What it costs to run
 
-The same three nodes and load balancer, priced. The amounts include 25% Danish
-VAT.
+**€122.45 a month gross**, including 25% Danish VAT, for the three nodes and the
+load balancer above. The kit's default shape is three control planes and two
+agents so there is real quorum, which is €171.17.
 
-| Item | Type | €/month |
-|---|---|---|
-| Control plane × 1 | cpx22, 2 vCPU / 4 GB | 24.36 |
-| Agents × 2 | cpx32, 4 vCPU / 8 GB | 88.72 |
-| Load balancer | lb11 | 9.36 |
-| **Total** | | **122.45** |
+The number that matters more is what the platform uses before any of your own
+code runs: **4,526 Mi of memory and 194m of CPU across 43 pods**, two thirds of
+it observability, against **8 Mi** for the static site it was serving. CPU is a
+rounding error at about 2% of allocatable. Memory is what you are paying for,
+and the same 4.5 GiB carries both the second tenant and the tenth.
 
-The kit's default shape is three control planes and two agents, so there is real
-quorum. That is **€171.17**, before the autoscaler adds a machine.
-
-A managed control plane from the large providers costs around €70 to €75 a month
-on its own, before the first worker. But their workers cost several times
-Hetzner's for the same specification, so you are not saving money by avoiding
-managed Kubernetes at this size. You are saving it by being on Hetzner at all.
-Those are two different decisions, and they get mixed up constantly.
-
-## What it uses before your code runs
-
-The cluster at rest, with one static site running.
-
-| Namespace | Pods | CPU | Memory |
-|---|---|---|---|
-| observability | 19 | 141m | 2,858 Mi |
-| flux-system | 4 | 9m | 596 Mi |
-| kube-system | 11 | 33m | 580 Mi |
-| cert-manager | 6 | 6m | 286 Mi |
-| traefik | 2 | 4m | 150 Mi |
-| system-upgrade | 1 | 1m | 56 Mi |
-| **platform total** | 43 | **194m** | **4,526 Mi** |
-| **the actual application** | 2 | 2m | **8 Mi** |
-
-CPU is a rounding error: 194m out of 9,400m allocatable, about 2%. Memory is
-what you are paying for, and two thirds of it goes to observability. The
-overhead is 566 times the workload I measured it carrying.
-
-That is also why the shape makes sense with several tenants and not with one.
-The same 4.5 GiB carries both the second tenant and the tenth. Size the machines
-for the platform first, and count on about 5 GiB before anything of your own
-runs.
-
-One number is worth knowing before you scale out. The cluster carries **161,507
-active time series** at this size, and two histograms from the control plane,
-`apiserver_request_duration_seconds_bucket` and
-`etcd_request_duration_seconds_bucket`, account for 27% of them. Nobody queries
-them. That is the default in every Kubernetes monitoring stack I have used.
-Dropping those buckets or aggregating them is the cheapest win there is, and the
-kit lets you make the decision instead of making it quietly for you.
+The per-namespace breakdown, the 161,507 active time series, and the two
+control-plane histograms that are 27% of them with nobody querying them, are in
+[the repository's verification
+notes](https://github.com/sasin91/hcloud-k3s-platform-kit/blob/main/docs/verification-stats-2026-08-04.md).
 
 ## Where k3s is genuinely stronger
 
@@ -148,47 +112,29 @@ person holds the invariants in their head and they are correct. Two people hold
 two slightly different versions, and the difference turns up months later as one
 customer seeing another customer's data.
 
-## What is proven, and what is not
+## What is not verified
 
-I have a hard time with "production-ready", so here is the line I will actually
-defend.
+Delivery, secrets, certificates, tenant isolation and the hostname admission
+policy were all verified on that cluster. Three things were not: **a restore**,
+because the backup job is generated with every tenant and has never been
+restored from; **the autoscaler under real pressure**, because the test
+project's quota left no room; and **a control plane surviving the loss of a
+member**, because three formed and were healthy but I never killed one to watch
+the other two carry on.
 
-Verified on that Hetzner Cloud cluster: a control plane of three nodes forms
-with etcd;
-the whole reconciliation chain converges from git with no intervention, 9 of 9
-kustomizations and 8 of 8 Helm releases; a secret committed encrypted is
-decrypted inside the cluster and consumed; a generated tenant serves public
-traffic on a Let's Encrypt certificate the system trust store accepts; traces
-arrive with pod, namespace and node on them; and the hostname admission policy
-refuses another tenant's hostname, and refuses a route that declares none.
-
-Not verified: **a restore.** The backup job is generated alongside every tenant
-and has never been restored from. **The autoscaler under real pressure.** The
-test project's quota left no room. **A control plane surviving the loss of a
-member.** The three formed and were healthy, but I never killed one to watch the
-other two carry on.
-
-That second list is the honest part. I would rather write it down than have you
-find it first.
+I would rather write that list down than have you find it first.
 
 ## The part I would keep
 
-A good model can produce something like this kit in an afternoon, and most of it
-will work. The shapes are conventional and the tools are the obvious ones. What
-it does not produce is the list of things that report success.
+A good model produces something like this kit in an afternoon, and most of it
+works. What it does not produce is the list of things that report success.
 
 Every machine healthy, SSH working, and the orchestrator not running, because
 Git on Windows had rewritten a file to CRLF inside a module the build tool
-cloned on my behalf, where my `.gitattributes` had no say. The SELinux policy,
-compiled on the machine itself, rejected the carriage return, and the only
-visible symptom was an opaque provisioner error two layers further up.
+cloned on my behalf. The SELinux policy, compiled on the machine itself,
+rejected the carriage return, and the only visible symptom was an opaque
+provisioner error two layers further up.
 
-Or `tofu destroy` reporting success while a machine created by the autoscaler
-kept running and kept costing money, because destroy only walks its own state,
-and the cluster creates things at runtime that never entered it. I had written
-"destroy is clean, zero residue" in the README. That was true and useless,
-because those runs had never autoscaled anything.
-
-Forty-nine of that kind are written down in the repository, each stated as a
-mechanism with the failure it produced. That file is the part I would keep if I
-had to throw the rest away.
+Forty-nine of those are in the repository, each stated as a mechanism with the
+failure it produced. That file is the part I would keep if I had to throw the
+rest away.
