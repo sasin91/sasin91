@@ -4,64 +4,27 @@ title = "K3s starter kit on Hetzner cloud"
 date = 2026-08-04
 hero = "/images/k3s-platform-kit/architecture.svg"
 hero_alt = "Inside a k3s cluster: a git fork reconciled by Flux, a visitor request arriving through Traefik to a tenant application, and telemetry from both flowing to a collector and on to VictoriaMetrics, VictoriaLogs and Tempo"
-description = "A fork-and-edit k3s platform for Hetzner: GitOps delivery, encrypted secrets, certificates, per-tenant isolation and observability, with the reasoning attached to every decision. Built, then run on real hardware four times until it stopped lying to me. Here is what it costs, what it does, and the failures that reported success."
+description = "A fork-and-edit k3s platform for Hetzner: GitOps delivery, encrypted secrets, certificates, per-tenant isolation and observability. Built four times on real hardware until it stopped lying to me. What it costs, what it uses before your code runs, and the one thing it does that the simpler options cannot."
 series = "self-hosting"
 part = 1
 +++
 
 Creating a Kubernetes cluster is a solved problem. What comes after — delivery,
 secrets, certificates, tenancy, observability, backups — is not, and that is
-where the cost lives.
+where the week goes.
 
-This is that part, as a repository you fork:
+So the second cluster is a repository you fork:
 [hcloud-k3s-platform-kit](https://github.com/sasin91/hcloud-k3s-platform-kit).
 Every number below was measured over four build-and-teardown cycles on real
 hardware.
 
-Whether it is for you, first.
-
 ::: note
-**Part 1 of 7 of [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)**, a series about self-hosting a platform, and about whether you should.
-
-Previous: [Where to start with self-hosting](/blog/running-things-on-your-own-hardware/)
-
-Next: [OpenTelemetry on a self-hosted k3s cluster](/blog/opentelemetry-on-k3s/)
+**Part 1 of 2 of [Where to start with
+self-hosting](/blog/running-things-on-your-own-hardware/).** Next: [What a game
+world server actually needs](/blog/what-a-game-world-server-needs/)
 :::
 
-## Index
-
-- [Should you use it](#Should-you-use-it)
-- [What it actually is](#What-it-actually-is)
-- [The price, measured](#The-price-measured)
-- [What you are trading](#What-you-are-trading)
-- [What it uses](#What-it-uses)
-- [Why VictoriaMetrics](#Why-VictoriaMetrics)
-- [Why the dashboard has no public route](#Why-the-dashboard-has-no-public-route)
-- [What is actually proven](#What-is-actually-proven)
-- [Three garden forks in the grass](#Three-garden-forks-in-the-grass)
-- [Lesson one: in Kubernetes, the carriage return strikes back](#Lesson-one-in-Kubernetes-the-carriage-return-strikes-back)
-- [Lesson two: destroy does not simply destroy](#Lesson-two-destroy-does-not-simply-destroy)
-- [Lesson three: thrice forbidden](#Lesson-three-thrice-forbidden)
-- [What a model will not give you](#What-a-model-will-not-give-you)
-
-## Should you use it
-
-**Probably not, if** you have one application. Pay for a managed platform, or
-put it on a single box — I run [AthletOS on one FreeBSD
-machine](/blog/athletos-freebsd/) for about €7 a month and it is a better trade
-for that shape.
-
-**Maybe, if** you have several tenants who need isolation from each other, you
-are already paying for the machines, and you want the isolation to be generated
-and checked rather than remembered.
-
-**Yes, if** you were going to build this anyway. That is the real pitch, and
-[the last section](#What-a-model-will-not-give-you) is why.
-
-## What it actually is
-
-A fork-and-edit repository containing the decisions, with the reasoning attached
-to each one.
+## What it is
 
 - **OpenTofu** for the nodes, consuming
   [terraform-hcloud-kube-hetzner](https://github.com/mysticaltech/terraform-hcloud-kube-hetzner)
@@ -73,7 +36,10 @@ to each one.
   applied by hand and cannot be encrypted.
 - **Gateway API** for routing, with the platform owning the Gateway and tenants
   owning Routes.
-- **VictoriaMetrics, VictoriaLogs, Tempo**, and an OpenTelemetry collector.
+- **VictoriaMetrics, VictoriaLogs, Tempo** behind an OpenTelemetry collector —
+  which is the piece that makes traces worth having, because it stamps
+  `k8s.pod.name`, `k8s.namespace.name` and `k8s.node.name` onto every span. An
+  application knows what it *is*; it does not know where the scheduler put it.
 - **A namespace per tenant**, generated with its quota, limits, network policy,
   disruption budget, backup job, pod security level and RBAC.
 
@@ -93,39 +59,17 @@ balancer. Gross figures include 25% Danish VAT.
 | **Total** | | **122.45** |
 
 The kit's *default* shape is three control planes and two agents, for real
-quorum. That is **€171.17**, before the autoscaler adds a node.
+quorum: **€171.17**, before the autoscaler adds a node.
 
-For comparison, a managed control plane from the large providers is roughly
-€70–75 a month on its own, before a single worker node, and their worker nodes
-cost multiples of Hetzner's for the same specification. You are not saving
-money by *avoiding* managed Kubernetes at this size — you are saving it by
-being on Hetzner at all. Those are different decisions and they get conflated
-constantly.
+A managed control plane from the large providers is roughly €70–75 a month on
+its own, before a single worker. But their workers cost multiples of Hetzner's
+for the same specification, so you are not saving money by *avoiding* managed
+Kubernetes at this size — you are saving it by being on Hetzner at all. Those
+are different decisions and they get conflated constantly.
 
-## What you are trading
+## What it uses before your code runs
 
-Money is the easy part. Here is the rest.
-
-**You own the upgrade path.** Nobody rolls your control plane for you. The kit
-ships the system-upgrade-controller and pinned upgrade plans, which means the
-mechanism exists and the decision is still yours.
-
-**You own the day it breaks.** There is no support contract behind this. When
-etcd loses quorum at 02:00, the runbook is a file you wrote.
-
-**You own the security posture.** Pod security levels, network policies,
-admission rules, RBAC — every one of them is a line in your repository that
-somebody has to keep correct. The kit generates them per tenant and checks them
-in CI precisely because I do not trust myself to keep them correct by hand.
-
-**You own knowing when it is wrong.** This is the expensive one, and it is what
-the observability stack is for, and it is why that stack costs what it does.
-
-If you want none of that, the honest answer is a managed platform.
-
-## What it uses
-
-Cluster at rest, running one static site. Measured, not estimated.
+Cluster at rest, running one static site.
 
 | Namespace | Pods | CPU | Memory |
 |---|---|---|---|
@@ -139,175 +83,100 @@ Cluster at rest, running one static site. Measured, not estimated.
 | **the actual application** | 2 | 2m | **8 Mi** |
 
 CPU is a rounding error — 194m of 9,400m allocatable, about 2%. Memory is what
-you are buying, and roughly two thirds of it is the observability stack.
+you are buying, and two thirds of it is observability. The overhead is 566 times
+the workload I measured it carrying.
 
-That is the fixed cost. It does not grow much as you add tenants, which is the
-whole reason the shape makes sense with several and not with one: the same
-4.5 GiB carries your second tenant and your tenth. Size the nodes for the
-platform first and the workloads second, and budget about 5 GiB before anything
-of yours runs.
+That is also why the shape makes sense with several tenants and not with one:
+the same 4.5 GiB carries your second tenant and your tenth. Size the nodes for
+the platform first and budget about 5 GiB before anything of yours runs.
 
-One number is worth knowing before you scale out. The cluster carries **161,507
+One number worth knowing before you scale out: the cluster carries **161,507
 active time series** at this size, and two control-plane histograms —
 `apiserver_request_duration_seconds_bucket` and
-`etcd_request_duration_seconds_bucket` — account for 27% of them, unqueried.
-That is the default in every Kubernetes monitoring stack I have used. Dropping
-or aggregating those buckets is the cheapest win available, and the kit leaves
-the decision to you rather than silently making it.
+`etcd_request_duration_seconds_bucket` — are 27% of them, unqueried. That is the
+default in every Kubernetes monitoring stack I have used. Dropping or
+aggregating those buckets is the cheapest win available, and the kit leaves the
+decision to you rather than silently making it.
 
-## Why VictoriaMetrics
+## Where k3s actually shines
 
-Not because Prometheus is bad. Because at the point where you are paying for
-every series out of your own pocket, the memory footprint per series is the
-number that decides your node size, and VictoriaMetrics uses less of it. I did
-not benchmark the two here, so treat that as the reason I chose it rather than
-a measurement of it. It also speaks Prometheus remote-write and PromQL, so
-nothing downstream has to know.
+![Three options across a spectrum — three FreeBSD boxes, Docker Swarm, and the k3s platform kit — beneath two axes running in opposite directions: components acting on your behalf increase to the right while things you must write yourself decrease, and Swarm sits where they cross.](/images/k3s-platform-kit/spectrum.svg)
 
-The single-node build is one process, and that is the entire deployment — not a
-reduced mode you are meant to grow out of. If you do outgrow it, the cluster
-version is a migration rather than a rewrite.
+I also run [a production app on one FreeBSD box](/blog/athletos-freebsd/) for
+about €7 a month, and I have been through the arithmetic on doing the same with
+three. Put those boxes on identical hardware and the cost difference vanishes —
+three cpx32 is €133.08, *more* than the cluster, because the cluster's control
+plane is a smaller machine. **The saving is not the operating system. It is that
+the FreeBSD boxes fit in 4 GB and the k3s nodes do not.** So the cost argument
+against Kubernetes is really an observability argument wearing a costume: if you
+would build metrics, logs and traces anyway, you have already paid.
 
-The collector in front of it is an OpenTelemetry collector, and that is the
-piece that makes traces worth having: it stamps `k8s.pod.name`,
-`k8s.namespace.name`, `k8s.node.name` and `k8s.deployment.name` onto every
-span. A request I made from my laptop arrives with the exact pod that served it
-attached. That is what lets a trace and a log line meet, and an application
-exporting directly cannot do it — it does not know which pod it is.
+Docker Swarm sits in the middle and is genuinely under-rated. It is a mode of
+the daemon you already run, `docker stack deploy` takes a compose file, and it
+gives you scheduling, rolling updates, rollback, overlay networking, secrets in
+an encrypted raft log and mutual TLS between nodes — in about a dozen verbs.
+Engine 29.7.1 shipped in July 2026 with Swarm fixes throughout the series, so
+"Swarm is dead" is almost always the removed *Classic* Swarm being reported as
+live. What it has no answer for is the namespace: no admission stage, no
+extension mechanism, no per-tenant budget or policy layer.
 
-## Why the dashboard has no public route
+Which is the whole thing k3s wins on. I once measured guarantees across a mature
+multi-tenant cluster: those emitted by the path that *creates* a tenant — quota,
+limits, network policy, disruption budget, pod security level, RBAC — were
+present in **over ninety percent** of namespaces. The same guarantees written
+down as recommendations were present in **none**. Not fewer. None.
 
-There is no ingress for Grafana in this kit, and that is not an omission.
+The axis is not enforcement versus suggestion. It is *in the generator versus
+not in the generator*, and Kubernetes is an unusually good generator target
+because every guarantee is an object with a name, a namespace and a schema, and
+something at the door checks it. You can build a jail generator — `jail.conf` is
+text — and it is a weekend, not a research project. What is hard to reproduce is
+a check that finds what **predates** the generator, and refusal at runtime
+rather than in CI.
 
-Read access to the dashboard is read access to every log line, every metric and
-every trace on the cluster — including, eventually, something a tenant should
-not have shown you. Every alternative to *not exposing it* is a way of
-defending an internet-facing observability dashboard, and none is as safe as
-not having one.
+So: **under about ten services with one person authoring the isolation, the
+simpler answer wins on every axis that matters.** What flips it is the second
+author. One person holds the invariants in their head accurately; two people
+hold two slightly different versions, and the divergence surfaces months later
+as a customer seeing another customer's data.
 
-You reach it with a port-forward. It has no default password; the credential is
-SOPS-encrypted in the repository and Grafana does not start without it. A
-component that will not start is a problem you fix this afternoon. A component
-that started with a known password is a problem you learn about later.
-
-Anonymous access is off at every switch that can enable it, checked in CI, and
-verified at runtime — an unauthenticated API call to the running instance
-returns 401. I check that because I once ran a dashboard with anonymous access
-at editor privilege behind a comment claiming the inner role was read-only.
-
-## What is actually proven
+## What is proven, and what is not
 
 I distrust "production-ready", so here is the line I will actually defend.
 
-Verified on live hardware:
+Verified on live hardware: a three-node HA control plane forms with etcd; the
+whole reconciliation chain converges from git with no manual intervention, 9 of
+9 kustomizations and 8 of 8 Helm releases; a secret committed encrypted is
+decrypted in-cluster and consumed; a generated tenant serves public traffic on a
+Let's Encrypt certificate the system trust store validates; traces arrive
+carrying pod, namespace and node; the hostname admission policy refuses another
+tenant's hostname, and refuses a route that declares none.
 
-- A three-node HA control plane forms, all members ready with etcd.
-- The whole reconciliation chain converges from git with no manual
-  intervention: 9 of 9 kustomizations, 8 of 8 Helm releases.
-- A secret committed encrypted is decrypted in-cluster and consumed.
-- A tenant generated from the template serves traffic over the public internet
-  with a Let's Encrypt certificate the system trust store validates.
-- Traces arrive carrying pod, namespace and node.
-- The hostname admission policy refuses another tenant's hostname, and refuses
-  a route that declares none.
-- Teardown leaves zero servers, load balancers, volumes, networks or addresses
-  — *when you run the cluster-created cleanup first*.
+Not verified: **a restore** — the backup job is generated with every tenant and
+has never been restored from. **The autoscaler under real pressure** — the test
+project's quota left no room. **A control plane surviving the loss of a member**
+— three formed and were healthy; I never killed one to watch the other two carry
+on.
 
-Not verified:
-
-- A restore. The backup job is generated with every tenant and has never been
-  restored from.
-- The autoscaler under real pressure. The test project's quota left no room.
-- A control plane surviving the loss of a member. Three formed and were
-  healthy; I never killed one to watch the other two carry on.
-
-That last list is the honest part. I would rather publish it than discover you
+That second list is the honest part. I would rather publish it than discover you
 found it first.
 
-## Three garden forks in the grass
+## The part I would keep
 
-Three lessons, in the order I stepped on them. Each lay flat in the grass
-looking like nothing at all, and each reported success on its way up to meet my
-face. That none of them announced itself is the pattern worth taking away, more
-than any individual fix.
+A capable model will produce something like this kit in an afternoon, and most
+of it will work — the shapes are conventional and the tools are the obvious
+ones. What it will not produce is the list of things that **report success**.
 
-## Lesson one: in Kubernetes, the carriage return strikes back
-
-Every server reported healthy. SSH worked. The orchestrator was not running.
-
-Git on Windows rewrites text files to CRLF on checkout, including in modules
-your build tool clones on your behalf, where your `.gitattributes` has no say.
-One was an SELinux policy source compiled *on the node* at first boot: the
-compiler rejected the carriage return, the unit failed, k3s never started, and
-the only visible symptom was an opaque provisioner error two layers above the
-real one. It came back later wearing a different face — `set -e\r` in every
-remote script, the shell answering `set: -: invalid option`.
-
-The conversion is enabled in the **system** git config Git for Windows installs,
-not in anything you set, so `git config --global core.autocrlf` prints nothing
-and the conversion happens anyway.
-
-**Check the artifact, not the configuration you believe produces it.**
-
-## Lesson two: destroy does not simply destroy
-
-`tofu destroy` removes what is in its own state. The cluster creates things at
-runtime that never entered it — the autoscaler creates servers, the cloud
-controller a load balancer per `LoadBalancer` service, the CSI driver a volume
-per claim — so destroy reports success while those keep running and keep
-billing. Nor are they inert: an autoscaler-created server stays attached to the
-private network, so destroying the *network* fails — an error naming the
-network, several steps from the node actually holding it.
-
-I had written "destroy is clean, zero residue" in the README. True, and
-useless: those runs had no autoscaled node, no `LoadBalancer` service and no
-volumes — nothing existed outside state to be left behind.
-
-**A teardown is only proven against a cluster that has actually done
-something.**
-
-## Lesson three: thrice forbidden
-
-"The platform owns the Gateway, tenants own Routes." Written down, reviewed,
-and false on a running cluster for three independent reasons — found by
-deploying one real tenant, not by reading.
-
-1. **Workloads applied at cluster scope.** A tenant manifest omitting
-   `namespace`, reconciled without a target namespace, is evaluated
-   cluster-wide, where a namespaced Role grants nothing. The error named
-   `httproutes` — a resource the Role visibly *does* allow — sending you to read
-   the Role, correctly, and to the wrong conclusion.
-
-2. **No listener a tenant was permitted to attach to.** The HTTP listener was
-   same-namespace-only by design; the HTTPS listener carrying the tenant
-   selector was commented out pending a certificate issuer. A route attaching
-   to nothing reports the failure on *itself* and nothing on the Gateway.
-
-3. **The gateway namespace never carried the label tenants select on.** Every
-   tenant network policy allowed ingress from namespaces labelled
-   `role=gateway`; nothing applied it, so the allowance matched no namespace and
-   default-deny stood.
-
-That third one surfaces as **HTTP 502**: route accepted, endpoints healthy, pods
-serving correct content when you curl them from inside the namespace. Every
-object you would think to inspect looks right, and the failure reads as a broken
-application.
-
-> A network policy selector naming a label nobody sets is a default-deny with
-> extra steps.
-
-Each was individually reasonable. The model only exists in the intersection.
-
-## What a model will not give you
-
-**Yes, if** you were going to build this anyway. That is the actual pitch. A
-capable model will produce something like this in an afternoon, and most of it
-will work — the shapes are conventional and the tools are the obvious ones. It
-will not produce the list of things that **report success**, because that list
-only comes from running it on real hardware and reading the API server instead
-of the manifests.
+Every server healthy, SSH working, and the orchestrator not running, because Git
+on Windows rewrote a file to CRLF inside a module the build tool cloned on my
+behalf, where my `.gitattributes` had no say; the SELinux policy compiled *on
+the node* rejected the carriage return, and the visible symptom was an opaque
+provisioner error two layers up. Or `tofu destroy` reporting success while an
+autoscaler-created server kept running and kept billing, because destroy walks
+its own state and the cluster creates things at runtime that never entered it —
+and I had written "destroy is clean, zero residue" in the README, which was true
+and useless, because those runs had never autoscaled anything.
 
 Forty-nine of those are written down in the repository, each stated as a
 mechanism with the failure it produced. That file is the part I would keep if I
 had to throw the rest away.
-

@@ -4,89 +4,38 @@ title = "Where to start with self-hosting"
 date = 2026-08-04
 series = "self-hosting"
 part = 0
-description = "You want to run your own things and the advice all assumes you already picked a side. Here is the decision first: what to choose at one machine, at a handful, and at the point where tenants must not see each other — with the real monthly cost of each, and where to start on the one you pick."
+description = "I set up Kubernetes to learn Kubernetes, then packaged the second cluster so it would launch in an afternoon. Three short posts: what the kit costs and what it buys, where k3s genuinely shines against the simpler options, and the one workload I know well enough to prove the edge of it."
 +++
 
-So you want to self-host, and every guide assumes you already know whether you
-want Kubernetes.
+I set up Kubernetes to learn Kubernetes. Creating the cluster took an
+afternoon; everything after it — delivery, secrets, certificates, tenancy,
+observability, backups — took the rest of the week. I did not want to pay for
+that week twice, so the second cluster became a repository you fork.
 
-I have been there. Here is the decision first, the reasoning after.
+Three posts came out of it.
 
-## Pick the smallest thing that fits
+- **[K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/)** — what it
+  costs (**€122.45 a month**, measured), what it uses before any of your code
+  runs (**4,526 Mi**, also measured), and where k3s actually beats the simpler
+  answers. Which, below about ten services, is nowhere.
 
-- **One app, one operator.** Do not orchestrate. One box, a reverse proxy, and
-  a database on the host. About **€7 a month**.
-  → [One box, two jails and a five second deploy](/blog/athletos-freebsd/), and
-  [how to get FreeBSD onto Hetzner](/blog/freebsd-on-hetzner/) if that is the
-  box you want.
-
-- **A handful of services, one team, existing compose files.** Docker Swarm.
-  You already know most of it, and `docker stack deploy` is a compose file with
-  a different verb.
-  → [Docker Swarm instead of a k3s platform](/blog/docker-swarm-instead/)
-
-- **Several services and one person authoring the isolation.** Still not
-  Kubernetes. Three machines with jails or containers, hand-tended, beats a
-  cluster until the tending becomes the job.
-  → [Three FreeBSD boxes instead of a k3s
-  cluster](/blog/three-freebsd-boxes-instead-of-k3s/)
-
-- **Tenants who must not see each other, or a second author.** Now Kubernetes.
-  Not for the scheduler — for the part that *generates* each tenant's quota,
-  network policy and permissions and then checks they are still there.
-  **€122 a month** for three nodes and a load balancer.
-  → [K3s starter kit on Hetzner cloud](/blog/k3s-platform-kit/)
-
-The honest line, from having run both: **below about ten services, the simpler
-answer wins on every axis that matters.** What flips it is rarely the machine
-count. It is the second person who has to keep the isolation correct, because
-that is the point at which "we remember to do it" stops being true.
-
-## If you picked the cluster
-
-Two things you will need within a week of it working, and will not have thought
-about on day one:
-
-- **[OpenTelemetry on a self-hosted k3s
-  cluster](/blog/opentelemetry-on-k3s/)** — how you find out *which* pod was
-  slow. An application knows what it is; it does not know where it is running.
-
-- **[The edge of a self-hosted
-  cluster](/blog/the-edge-of-a-self-hosted-cluster/)** — websockets against
-  rolling deployments, what a load balancer does to the client IP, and whether
-  to put a CDN in front.
+- **[What a game world server actually
+  needs](/blog/what-a-game-world-server-needs/)** — a WoW emulator is an old
+  favourite of mine and an unusually honest test of a cluster. Almost all of it
+  is stateless plumbing that belongs in one. Exactly one process does not, and
+  it is the one that is the game.
 
 The platform itself is at
 [hcloud-k3s-platform-kit](https://github.com/sasin91/hcloud-k3s-platform-kit):
 fork it, edit the values, apply it. Every decision has the reasoning attached,
-and the failures are in a file of their own.
+and the forty-nine things that broke while reporting success are in a file of
+their own.
 
-## Two workloads, worked through
+If you have one application, none of this is for you — put it on
+[one box](/blog/athletos-freebsd/) for about €7 a month and get on with it. What
+flips the decision is rarely the machine count. It is the second person who has
+to keep the isolation correct, because that is the point at which "we remember
+to do it" stops being true.
 
-Once you have somewhere to put things, the interesting question is what fits
-and what does not.
-
-- **[What a game world server actually
-  needs](/blog/what-a-game-world-server-needs/)** — almost all of a game server
-  is stateless plumbing that belongs in a cluster. One process is not, and it is
-  the one that is the game.
-
-- **[A software factory on your own
-  cluster](/blog/software-factory-on-your-own-cluster/)** — running code a
-  language model wrote, on machines you are paying for, is a tenancy problem
-  before it is an AI problem.
-
-## What you are actually signing up for
-
-Nobody upgrades your control plane. There is no support contract. When
-something breaks at two in the morning the runbook is a file you wrote.
-
-That is the trade, and it is worth it exactly when the thing you get back —
-isolation you can prove, on hardware you can price — is worth more than the
-attention it costs. For one app it is not. For a handful of tenants it starts
-to be.
-
-Every number in this series was measured on a cluster that existed, and where I
-could not measure something I say so rather than estimating it. Several posts
-carry a list of what they have **not** proven, which is the part I would want to
-read first if somebody else had written them.
+Every number in these posts was measured on a cluster that existed. Where I
+could not measure something I say so rather than estimating it.
