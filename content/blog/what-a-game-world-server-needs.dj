@@ -2,27 +2,18 @@
 path = "blog/what-a-game-world-server-needs"
 title = "What a game world server actually needs"
 date = 2026-08-04
-description = "Almost all of a WoW emulator is stateless plumbing that belongs in a k3s cluster. Exactly one process does not, because its tick is bound by a single thread and its world lives in memory. Where that line falls, and how to tell which side a workload of your own is on."
+description = "A WoW emulator splits cleanly in two: an ordinary small platform that belongs in a k3s cluster, and one process that does not. Which parts go where, why the world daemon wants a machine of its own, and the one thing about the join between them that decides your topology."
 series = "self-hosting"
 part = 2
 hero = "/images/what-a-game-world-server-needs/split.svg"
 hero_alt = "The system split: behind one load balancer, a cluster holding replicated auth daemons and the web front end over a shared database of accounts, characters and guilds; outside it, each world daemon on its own machine with its own read-mostly world database, reaching back into the shared database for characters and guilds"
 +++
 
-I started on funservers in early TBC, on something ArcEmu or AscEmu based, I
-don't remember which. Then years of 3.3.5 on TrinityCore, which I'm still happy
-working with. I prefer CMaNGOS classic, though that scene only really got going
-around 2017. I never really stopped privately, though I gave up running anything
-public a long time ago.
-
-It is still the workload I know well enough to test a cluster honestly. Split one
-up and almost all of it is boring, stateless plumbing that belongs in
+WoW emulation has always been interesting to me, and a server emulator turns out
+to be a good test of what a cluster is actually for. Almost all of one is
+ordinary stateless plumbing that belongs in
 [the k3s platform](/blog/k3s-platform-kit/). One process does not, and that one
 is the game.
-
-That split is the useful part, and not just for game servers. Most systems have
-one component that quietly cannot be scheduled, and finding it before you build
-the platform is cheaper than finding it after.
 
 These projects exist to study game server architecture and network protocol
 design, and that is the only use I am discussing. If you run anything, the
@@ -34,104 +25,14 @@ self-hosting](/blog/running-things-on-your-own-hardware/).** Previous: [K3s
 starter kit on Hetzner cloud](/blog/k3s-platform-kit/)
 :::
 
-## The three pieces
+## The shape
 
-An authentication daemon that answers the login handshake, a world daemon that
-is the game, and a relational database split into auth, characters and world
-content. The same three in TrinityCore, AzerothCore, CMaNGOS, MaNGOS and AscEmu.
+Three pieces, and the same three in TrinityCore, AzerothCore, CMaNGOS, MaNGOS
+and AscEmu: an authentication daemon that answers the login handshake, a world
+daemon that is the game, and a relational database split into auth, characters
+and world content.
 
-The database is where the time actually went. The servers I ran broke on data
-far more often than on code: a world database half-migrated by whoever was
-developing against it, DBC files mangled on extraction, an MPQ archive missing
-so the maps came out wrong. None of that is an architecture problem, which is
-worth saying before a post that treats the architecture as the interesting part.
-
-The first two are joined by a database table rather than an API. TrinityCore's
-auth database has a `realmlist` row per realm with `address` and `port`
-([realmlist](https://github.com/TrinityCore/tc-wiki/blob/main/database/335/auth/realmlist.md)),
-documented as the world server's public address. The client logs in, gets that
-address, and opens a raw TCP connection straight to the world daemon.
-
-I had expected it to talk to a front door that routes. It does not, and that
-settles the topology before you get a say in it. Whatever sits in front of the
-world daemon has to be a transparent TCP path. The address can be a hostname
-rather than an IP, but the client resolves it and opens a raw socket, so there
-is no HTTP layer for an ingress to route on.
-
-## Why the world server must have a machine of its own
-
-TrinityCore's map manager walks every live map once per tick and either updates
-them directly or hands them to a pool of workers, then waits for all of them:
-
-{title="src/server/game/Maps/MapManager.cpp"}
-```cpp
-if (m_updater.activated())
-    m_updater.schedule_update(*iter->second, uint32(i_timer.GetCurrent()));
-else
-    iter->second->Update(uint32(i_timer.GetCurrent()));
-...
-if (m_updater.activated())
-    m_updater.wait();
-```
-
-And the unit of work a worker gets is one whole map. So parallelism exists
-between maps and instances but never inside one: a continent is a single `Map`
-object, and updating it is a single task on a single thread. `m_updater.wait()`
-is also a barrier on every tick, which means the tick costs whatever the slowest
-individual map costs, however many threads are idle behind it.
-
-The shipped defaults agree. TrinityCore ships `MapUpdate.Threads = 1` and
-CMaNGOS ships 3. CMaNGOS also ships `Network.Threads = 1`, commented "Number of
-threads for network, recommend 1 thread per 1000 connections", which is the same
-assumption arriving from the other end. All of that comes from the source and
-the config files rather than from profiling a populated server, so take it as
-the design and not as a measurement. People do report a crowded capital city
-pinning one core, which fits.
-
-I went in assuming a modern core with a thread pool would spread across cores,
-and that a busy realm just wanted a bigger machine. What it wants is clock
-speed, and the fastest single thread you can buy tends to sit in a desktop
-socket. PassMark gives the Ryzen 9 9950X 4,727 on single thread; the 192-core
-EPYC 9965 gets 3,176. Both are running aggregates that drift, read on 5 August
-2026.
-
-I met this on cheap OVH VPS instances years before I could have told you why.
-The symptom matched the code above: fine most of the time, then not fine, with
-cores sitting there that nothing could spend. I never profiled it, so that is a
-matching symptom and not a diagnosis.
-
-Now put that process in a cluster, and the Kubernetes documentation describes
-what you just agreed to:
-
-> By default, the kubelet uses CFS quota to enforce pod CPU limits. When the
-> node runs many CPU-bound pods, the workload can move to different CPU cores
-> depending on whether the pod is throttled and which CPU cores are available
-> at scheduling time.
-
-That is from [CPU Management
-Policies](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/),
-describing normal, correct behaviour. Getting exclusive cores back takes the
-`static` policy, and even then only for containers that are "both part of a
-`Guaranteed` pod and have integer CPU `requests`". The fix is kubelet
-configuration at the machine level, and what you end up with is a machine
-dedicated to one pod, with pinned cores and reserved memory, still sitting under
-a control plane that believes it can evict you.
-
-Three more things do not fit.
-
-- The state lives in RAM and it keeps growing. AzerothCore's memory page says
-  the server caches maps as players explore them and never frees them until a
-  restart, ending up at 11 GB or more, and suggests starting at 16 GB. So
-  restarting a pod restarts the server for everyone logged in, and the cache
-  then has to warm up again from nothing.
-- Readiness does not mean much here. A world server that has finished loading is
-  not interchangeable with the one it replaced.
-- The connection is a long-lived raw TCP session. Ingress controllers, retries
-  and connection draining all assume requests that end.
-
-## What belongs in the cluster
-
-Everything else.
+## What goes in the cluster
 
 - The authentication daemon. Its durable state is in the database, so the
   process itself is close to stateless.
@@ -146,9 +47,62 @@ Everything else.
 
 That is an ordinary small platform, and it is the shape the
 [k3s kit](/blog/k3s-platform-kit/) generates: GitOps delivery, a namespace per
-tenant, certificates, secrets, observability. So the architecture that fits is a
-cluster for all of that and one private machine for the world, with the cluster
-proxying through to it at layer 4.
+tenant, certificates, secrets, observability.
+
+## What does not
+
+The world daemon, for four reasons, and any one of them would be enough.
+
+- **Its tick is bounded by a single thread.** Parallelism exists between maps
+  and instances but never inside one, and `MapManager` puts a barrier on every
+  tick, so the tick costs whatever the slowest individual map costs. TrinityCore
+  ships `MapUpdate.Threads = 1` and CMaNGOS ships 3. What it wants is clock
+  speed, and Kubernetes hands out shared, movable CPU unless you go to the
+  trouble of the `static` policy on a dedicated node, which is a private machine
+  with extra steps.
+- **The state is in RAM and it grows.** AzerothCore's memory page says maps are
+  cached as players explore them and never freed until a restart, ending past
+  11 GB, and recommends starting at 16 GB. Restarting a pod restarts the server
+  for everyone logged in.
+- **Readiness means nothing here.** A world server that has finished loading is
+  not interchangeable with the one it replaced, so a rolling update has nothing
+  to roll over to.
+- **The connection is a long-lived raw TCP session**, not a request, which is
+  the opposite of what ingress controllers, retries and connection draining
+  assume.
+
+Cheap shared VPS instances are the obvious way to get this wrong. I ran servers
+on them years ago and the symptom matched the code above: fine most of the time,
+then not, with cores sitting there that nothing could spend.
+
+## The join decides your topology
+
+The auth daemon and the world daemon are connected by a database table rather
+than an API. TrinityCore's auth database has a `realmlist` row per realm with
+`address` and `port`
+([realmlist](https://github.com/TrinityCore/tc-wiki/blob/main/database/335/auth/realmlist.md)),
+documented as the world server's public address. The client logs in, gets that
+address, and opens a raw TCP connection straight to the world daemon.
+
+So there is no front door doing the routing, and whatever you put in front of
+the world machine has to be a transparent TCP path. The address can be a
+hostname rather than an IP, but the client resolves it and opens a raw socket,
+so there is no HTTP layer for an ingress to route on. Proxy it at layer 4 or not
+at all.
+
+## Building the world machine
+
+Nothing about that part is worth re-deriving here. CMaNGOS's [installation
+instructions](https://github.com/cmangos/issues/wiki/Installation-Instructions)
+cover Debian and Ubuntu end to end: the package list, the CMake build, the three
+databases and the script that populates them, extracting maps and DBC files from
+a game client, and the realm configuration that ties it together.
+
+Budget a fast core, plenty of RAM, a local disk and a short path to your
+players, in that order. The database is also where the time actually goes: the
+servers I ran broke on data far more often than on code, with a world database
+half-migrated by whoever was developing against it, DBC files mangled on
+extraction, or a missing MPQ archive making the maps come out wrong.
 
 ## Where the line falls
 
@@ -157,11 +111,7 @@ noticing. Auth, web, shop, armory, statistics, bots, backups and jobs all pass
 that test, and a cluster gives them reconciled configuration, generated
 isolation and one place to look when something breaks.
 
-The world server fails it. One long-lived process holding a world in memory,
-advancing it on a clock, bound by a single thread, talking raw TCP to clients
-who will notice a restart within a second. Fast core, plenty of RAM, local disk,
-short path to the players. That is [one machine](/blog/athletos-freebsd/).
-
-None of which is an argument against Kubernetes. It is an argument against
-assuming one system has one shape, which is the assumption that puts the world
-server in a pod in the first place.
+The world daemon fails it, and it is the only thing that does. None of which is
+an argument against Kubernetes. It is an argument against assuming one system
+has one shape, which is the assumption that puts the world server in a pod in
+the first place.
