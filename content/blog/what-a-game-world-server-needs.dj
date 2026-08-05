@@ -54,8 +54,9 @@ address, and opens a raw TCP connection straight to the world daemon.
 
 I had expected it to talk to a front door that routes. It does not, and that
 settles the topology before you get a say in it. Whatever sits in front of the
-world daemon has to be a transparent TCP path. An ingress that rewrites
-hostnames has nothing to rewrite.
+world daemon has to be a transparent TCP path. The address can be a hostname
+rather than an IP, but the client resolves it and opens a raw socket, so there
+is no HTTP layer for an ingress to route on.
 
 ## Why the world server must have a machine of its own
 
@@ -79,18 +80,20 @@ object, and updating it is a single task on a single thread. `m_updater.wait()`
 is also a barrier on every tick, which means the tick costs whatever the slowest
 individual map costs, however many threads are idle behind it.
 
-The shipped defaults agree. TrinityCore ships `MapUpdate.Threads = 1`, CMaNGOS
-ships 3, and both ship `Network.Threads = 1` with the note "Recommended 1 thread
-per 1000 connections". All of that comes from the source and the config files
-rather than from profiling a populated server, so take it as the design and not
-as a measurement. People do report a crowded capital city pinning one core,
-which fits.
+The shipped defaults agree. TrinityCore ships `MapUpdate.Threads = 1` and
+CMaNGOS ships 3. CMaNGOS also ships `Network.Threads = 1`, commented "Number of
+threads for network, recommend 1 thread per 1000 connections", which is the same
+assumption arriving from the other end. All of that comes from the source and
+the config files rather than from profiling a populated server, so take it as
+the design and not as a measurement. People do report a crowded capital city
+pinning one core, which fits.
 
 I went in assuming a modern core with a thread pool would spread across cores,
 and that a busy realm just wanted a bigger machine. What it wants is clock
 speed, and the fastest single thread you can buy tends to sit in a desktop
-socket. PassMark gives the Ryzen 9 9950X 4,728 on single thread; the 192-core
-EPYC 9965 gets 3,176.
+socket. PassMark gives the Ryzen 9 9950X 4,727 on single thread; the 192-core
+EPYC 9965 gets 3,176. Both are running aggregates that drift, read on 5 August
+2026.
 
 I met this on cheap OVH VPS instances years before I could have told you why.
 The symptom matched the code above: fine most of the time, then not fine, with
