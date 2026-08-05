@@ -12,7 +12,8 @@ hero_alt = "The system split: behind one load balancer, a cluster holding replic
 I ran MaNGOS and ArcEmu servers ten years ago, and a World of Warcraft emulator
 is still the workload I know well enough to test a cluster honestly. Split it up
 and almost all of it is boring, stateless plumbing that belongs in
-[the k3s platform](/blog/k3s-platform-kit/). Exactly one process does not.
+[the k3s platform](/blog/k3s-platform-kit/). One process does not, and that one
+is the game.
 
 That split is the useful part, and not just for game servers. Most systems have
 one component that quietly cannot be scheduled, and finding it before you build
@@ -34,17 +35,16 @@ An authentication daemon that answers the login handshake, a world daemon that
 is the game, and a relational database split into auth, characters and world
 content. The same three in TrinityCore, AzerothCore, CMaNGOS, MaNGOS and AscEmu.
 
-The connection between the first two decides your topology, so it is worth
-knowing before anything else. It is a table, not an API. TrinityCore's auth
-database has a `realmlist` row per realm with `address` and `port`
+The first two are joined by a database table rather than an API. TrinityCore's
+auth database has a `realmlist` row per realm with `address` and `port`
 ([realmlist](https://github.com/TrinityCore/tc-wiki/blob/main/database/335/auth/realmlist.md)),
 documented as the world server's public address. The client logs in, gets that
 address, and opens a raw TCP connection straight to the world daemon.
 
-I had expected the client to talk to a front door that routes. It does not. **A
-protocol that publishes its own endpoint has already made your topology decision
-for you.** Whatever you put in front of it has to be a transparent TCP path, not
-something you rewrite at an ingress.
+I had expected it to talk to a front door that routes. It does not, and that
+settles the topology before you get a say in it. Whatever sits in front of the
+world daemon has to be a transparent TCP path. An ingress that rewrites
+hostnames has nothing to rewrite.
 
 ## Why the world server must have a machine of its own
 
@@ -62,26 +62,24 @@ if (m_updater.activated())
     m_updater.wait();
 ```
 
-And the unit of work a worker gets is one whole map. Two things follow from
-that. Parallelism exists between maps and instances, never inside one. A
-continent is a single `Map` object, and its update is one task on one thread.
-And `m_updater.wait()` is a barrier on every single tick, so the tick costs what
-the slowest individual map costs, no matter how many threads are sitting idle
-behind it.
+And the unit of work a worker gets is one whole map. So parallelism exists
+between maps and instances but never inside one: a continent is a single `Map`
+object, and updating it is a single task on a single thread. `m_updater.wait()`
+is also a barrier on every tick, which means the tick costs whatever the slowest
+individual map costs, however many threads are idle behind it.
 
-The shipped defaults say the same. TrinityCore ships `MapUpdate.Threads = 1`,
-CMaNGOS ships 3, and both ship `Network.Threads = 1` with the note "Recommended
-1 thread per 1000 connections". That is the design, established from source and
-configuration, and not a profile of a running server. A crowded capital city
-locking up one core, which is what people report, is in line with that code. In
-line with is not the same as measured.
+The shipped defaults agree. TrinityCore ships `MapUpdate.Threads = 1`, CMaNGOS
+ships 3, and both ship `Network.Threads = 1` with the note "Recommended 1 thread
+per 1000 connections". All of that comes from the source and the config files
+rather than from profiling a populated server, so take it as the design and not
+as a measurement. People do report a crowded capital city pinning one core,
+which fits.
 
-I went into this assuming that a modern core with a thread pool would scale
-across cores, and that the answer to a busy realm was a bigger machine. **A tick
-bound by one thread is bound by clock speed, not by core count.** And the
-fastest single thread you can buy sits in a desktop socket, not a server one.
-PassMark gives the Ryzen 9 9950X 4,728 on single thread against the EPYC 9965
-and its 192 cores at 3,176.
+I went in assuming a modern core with a thread pool would spread across cores,
+and that a busy realm just wanted a bigger machine. What it wants is clock
+speed, and the fastest single thread you can buy tends to sit in a desktop
+socket. PassMark gives the Ryzen 9 9950X 4,728 on single thread; the 192-core
+EPYC 9965 gets 3,176.
 
 Now put that process in a cluster, and the Kubernetes documentation describes
 what you just agreed to:
@@ -96,61 +94,55 @@ Policies](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-pol
 describing normal, correct behaviour. Getting exclusive cores back takes the
 `static` policy, and even then only for containers that are "both part of a
 `Guaranteed` pod and have integer CPU `requests`". The fix is kubelet
-configuration at the machine level, and at the end of it you have a machine
-dedicated to one pod with pinned cores and reserved memory. A private machine
-with extra steps, under a control plane that still believes it may evict you.
+configuration at the machine level, and what you end up with is a machine
+dedicated to one pod, with pinned cores and reserved memory, still sitting under
+a control plane that believes it can evict you.
 
-The rest of the mismatch:
+Three more things do not fit.
 
-- **The state is in RAM, and it grows.** AzerothCore's page on memory says the
-  server caches maps as players explore them and never frees them before a
-  restart, ending up at 11 GB or more. They recommend starting at 16 GB
-  ([memory usage](https://www.azerothcore.org/wiki/es/memory-usage), where only
-  the Spanish translation is live and the English one 404s). Restarting a pod is
-  restarting the server for everyone logged in.
-- **There is no meaningful readiness.** A world server that has finished loading
-  cannot simply replace the one that was there before. Rolling updates have
-  nothing to roll over to.
-- **The connection is a long-lived, raw TCP session**, not a request. Ingress
-  controllers, retries and connection draining all assume the opposite.
+- The state lives in RAM and it keeps growing. AzerothCore's memory page says
+  the server caches maps as players explore them and never frees them until a
+  restart, ending up at 11 GB or more, and suggests starting at 16 GB. So
+  restarting a pod restarts the server for everyone logged in, and the cache
+  then has to warm up again from nothing.
+- Readiness does not mean much here. A world server that has finished loading is
+  not interchangeable with the one it replaced.
+- The connection is a long-lived raw TCP session. Ingress controllers, retries
+  and connection draining all assume requests that end.
 
 ## What belongs in the cluster
 
-Everything else, and it is more than you would think.
+Everything else.
 
-- **The authentication daemon.** Its durable state lives in the database, and
-  the process is close to stateless.
-- **The website, the registration API, the account panel.** Ordinary CRUD over
-  the same database.
-- **Item shops, armory pages, ladders and statistics.** Mostly read, and
-  cacheable.
-- **Discord bots and status pages.** Trivially schedulable.
-- **Backups, migrations and content database imports.** Exactly what Jobs and
-  CronJobs are for.
-- **Observability for all of it**, including the world machine, which can push
-  into the cluster without living in it.
+- The authentication daemon. Its durable state is in the database, so the
+  process itself is close to stateless.
+- The website, the registration API, the account panel: ordinary CRUD over that
+  same database.
+- Item shops, armory pages, ladders, statistics. Read-mostly and cacheable.
+- Discord bots, status pages, uptime checks.
+- Backups, schema migrations and content-database imports, which is what Jobs
+  and CronJobs are for.
+- Observability for all of the above, and for the world machine too, which can
+  push into the cluster without living in it.
 
-That list is an ordinary small platform, and it is the shape the
-[k3s kit](/blog/k3s-platform-kit/) generates: delivery through GitOps, a
-namespace per tenant, certificates, secrets and observability, reconciled from
-git instead of remembered. So the honest architecture is a cluster for the
-platform and one private machine for the world, with the cluster proxying to it,
-and the proxy being a TCP passthrough rather than an HTTP route.
+That is an ordinary small platform, and it is the shape the
+[k3s kit](/blog/k3s-platform-kit/) generates: GitOps delivery, a namespace per
+tenant, certificates, secrets, observability. So the architecture that fits is a
+cluster for all of that and one private machine for the world, with the cluster
+proxying through to it at layer 4.
 
 ## Where the line falls
 
 Split the system by whether a process can be killed and replaced without anyone
-noticing. Everything on the yes side, meaning auth, web, shop, armory,
-statistics, bots, backups and jobs, is a perfectly normal workload, and a
-cluster gives it reconciled configuration, generated isolation and one place to
-look when something goes wrong.
+noticing. Auth, web, shop, armory, statistics, bots, backups and jobs all pass
+that test, and a cluster gives them reconciled configuration, generated
+isolation and one place to look when something breaks.
 
-The world server stands alone on the no side. One long-lived process holding a
-world in memory, driving it forward on a clock, bound by a single thread, and
-talking raw TCP to clients who notice a restart within a second. It wants a fast
-core, a lot of RAM, a local disk and a short path to its players. It wants,
-almost exactly, [one machine](/blog/athletos-freebsd/).
+The world server fails it. One long-lived process holding a world in memory,
+advancing it on a clock, bound by a single thread, talking raw TCP to clients
+who will notice a restart within a second. Fast core, plenty of RAM, local disk,
+short path to the players. That is [one machine](/blog/athletos-freebsd/).
 
-The mistake is not choosing Kubernetes. The mistake is assuming the whole system
-has one shape. It has two, and the cheapest architecture is the one that admits
-it.
+None of which is an argument against Kubernetes. It is an argument against
+assuming one system has one shape, which is the assumption that puts the world
+server in a pod in the first place.
