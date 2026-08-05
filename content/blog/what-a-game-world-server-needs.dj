@@ -2,7 +2,7 @@
 path = "blog/what-a-game-world-server-needs"
 title = "What a game world server actually needs"
 date = 2026-08-04
-description = "A WoW emulator splits cleanly in two: an ordinary small platform that belongs in a k3s cluster, and one process that does not. Which parts go where, why the world daemon wants a machine of its own, and the one thing about the join between them that decides your topology."
+description = "A WoW emulator splits cleanly in two: an ordinary small platform that belongs in a k3s cluster, and one process that does not. Which parts go where, what to buy for the world machine, and why a homelab suits this architecture better than a cloud does."
 series = "self-hosting"
 part = 2
 hero = "/images/what-a-game-world-server-needs/split.svg"
@@ -131,6 +131,26 @@ and the cores you are not buying were not going to help.
 Then 16 GB of RAM as the floor, local NVMe rather than a network volume, and a
 short path to your players. Small packets, frequently, so distance and jitter
 decide how the game feels and throughput never enters it.
+
+## Kubernetes in a homelab
+
+None of this needs a cloud. k3s is a single binary and runs happily on hardware
+you already own: a couple of mini PCs, a decommissioned desktop, a NUC on a
+shelf. For this particular split a homelab is arguably the better fit, because
+the world machine wants a fast desktop-class core and a local NVMe, and that is
+exactly the hardware a homelab already has and exactly what cloud instances are
+worst at.
+
+Co-locating them also removes the problem the split creates. The cluster reaches
+the world daemon across your own switch instead of a provider network, and the
+layer 4 passthrough is a port forward rather than a load balancer you rent by the
+month. The parts of [the k3s kit](/blog/k3s-platform-kit/) above the node layer
+move over unchanged, since Flux, Gateway API, cert-manager and the observability
+stack do not care whose hardware they are on. The OpenTofu half is Hetzner
+specific and is the piece you would replace.
+
+What you give up is the boring half: someone else's power bill, someone else's
+uplink, and someone else's spare disk at two in the morning.
 
 ## Building the world machine
 
