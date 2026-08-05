@@ -67,6 +67,15 @@ notes](https://github.com/sasin91/hcloud-k3s-platform-kit/blob/main/docs/verific
 
 ![Three options across a spectrum, three FreeBSD boxes, Docker Swarm, and the k3s platform kit, beneath two axes running in opposite directions: components acting on your behalf increase to the right while things you must write yourself decrease, and Swarm sits where they cross.](/images/k3s-platform-kit/spectrum.svg)
 
+The FreeBSD end is not bare. Jails are the isolation primitive, bhyve runs a
+full guest kernel when a workload needs one, and bastille or cbsd will manage
+either. What is missing is the layer above them: nothing schedules across the
+three machines, and nothing reconciles them back to a written-down state. One
+caveat if you are planning around bhyve on this provider, though. It needs
+hardware virtualisation, and Hetzner Cloud exposes none, which is why
+[installing FreeBSD there](/blog/freebsd-on-hetzner/) runs under TCG emulation.
+On these machines you get jails, not virtual machines.
+
 I also run [a production app on one FreeBSD
 machine](/blog/athletos-freebsd/) for about €7 a month, and I have done the
 arithmetic on doing the same with three. Put those machines on the same instance

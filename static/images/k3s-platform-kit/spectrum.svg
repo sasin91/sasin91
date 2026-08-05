@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600" role="img" aria-label="Three options across a spectrum. Left, three FreeBSD boxes with no orchestrator and jails inside, hand-tended. Middle, Docker Swarm: three nodes with one manager, a routing mesh across all of them, fed by one compose file. Right, the k3s platform kit: a cluster boundary holding Flux, a Gateway, cert-manager and observability, annotated with 81 custom resource definitions and 4,526 mebibytes. Beneath, two axes running in opposite directions: components acting on your behalf increase to the right, while things you must write yourself decrease. Swarm sits where they cross.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600" role="img" aria-label="Three options across a spectrum. Left, three FreeBSD boxes running jails, with bhyve available for a full guest kernel, but no cluster layer above them and so no scheduler and no reconciler. Middle, Docker Swarm: three nodes with one manager, a routing mesh across all of them, fed by one compose file. Right, the k3s platform kit: a cluster boundary holding Flux, a Gateway, cert-manager and observability, annotated with 81 custom resource definitions and 4,526 mebibytes. Beneath, two axes running in opposite directions: components acting on your behalf increase to the right, while things you must write yourself decrease. Swarm sits where they cross.">
   <defs>
     <style>svg:root { color-scheme: dark; }</style>
     <linearGradient id="w-panel" x1="0" y1="0" x2="0" y2="1">
@@ -15,7 +15,7 @@
 
     <rect x="48" y="80" width="336" height="290" rx="12" fill="none" stroke="var(--diagram-rule, #2b2b36)" stroke-width="1.5"/>
     <text x="72" y="108" font-size="14" fill="light-dark(#0f766e, #5eead4)" font-weight="700">three FreeBSD boxes</text>
-    <text x="72" y="128" font-size="11" fill="var(--diagram-muted, #9a9aa6)">no orchestrator at all</text>
+    <text x="72" y="128" font-size="11" fill="var(--diagram-muted, #9a9aa6)">jails or bhyve · no cluster layer</text>
     <g fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5">
       <rect x="72" y="146" width="288" height="58" rx="8"/>
       <rect x="72" y="216" width="288" height="58" rx="8"/>
@@ -30,7 +30,7 @@
     </g>
     <text x="72" y="300" font-size="11" fill="var(--diagram-muted, #9a9aa6)">you place every service by hand</text>
     <text x="72" y="320" font-size="11" fill="var(--diagram-muted, #9a9aa6)">you write the failover</text>
-    <text x="72" y="340" font-size="11" fill="var(--diagram-muted, #6c6c68)">nothing acts without you</text>
+    <text x="72" y="340" font-size="11" fill="var(--diagram-muted, #6c6c68)">no scheduler, no reconciler</text>
 
     <rect x="432" y="80" width="336" height="290" rx="12" fill="var(--diagram-panel, #1b1b26)" fill-opacity="0.5" stroke="light-dark(#b45309, #fbbf24)" stroke-width="2"/>
     <text x="456" y="108" font-size="14" fill="light-dark(#b45309, #fbbf24)" font-weight="700">Docker Swarm</text>
