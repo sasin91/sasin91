@@ -88,35 +88,6 @@ anyway, you have already paid.
 
 Docker Swarm fits in the middle: one team running their own apps, which talk to
 each other freely. If one thing needs isolating, put it outside the swarm. If
-several do, that is where Kubernetes starts to be the better choice.
-
-The reason is narrower than it sounds. I once measured guarantees across a
-mature multi-tenant cluster. The guarantees issued by the path that creates a
-tenant, meaning quota, limits, network policy, disruption budget, pod security
-level and RBAC, were present in **over ninety percent** of namespaces. The same
-guarantees, written down as recommendations, were present in **none**. Not in
-fewer. In none.
-
-The axis is not enforcement versus recommendation. It is in the generator versus
-not in the generator, and Kubernetes is an unusually good target for a generator,
-because every guarantee is an object with a name, a namespace and a schema, and
-something checks it at the door. You can certainly build a jail generator, since
-`jail.conf` is text, and that is a weekend rather than a research project. The
-hard part to reproduce is a check that finds what was there before the
-generator, and a refusal that happens at runtime rather than in CI.
-
-So: under about ten services with one person authoring the isolation, the simple
-option wins on every axis that matters. What flips it is the second person. One
-person holds the invariants in their head and they are correct. Two people hold
-two slightly different versions, and the difference turns up months later as one
-customer seeing another customer's data.
-
-## What is not verified
-
-Delivery, secrets, certificates, tenant isolation and the hostname admission
-policy were all verified on that cluster. Three things were not: **a restore**,
-because the backup job is generated with every tenant and has never been
-restored from; **the autoscaler under real pressure**, because the test
-project's quota left no room; and **a control plane surviving the loss of a
-member**, because three formed and were healthy but I never killed one to watch
-the other two carry on.
+several do, that is where Kubernetes starts to be the better choice, because the
+isolation is generated with each namespace and checked when it is applied,
+rather than remembered.
