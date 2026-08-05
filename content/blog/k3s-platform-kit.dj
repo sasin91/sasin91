@@ -4,7 +4,7 @@ title = "K3s starter kit on Hetzner cloud"
 date = 2026-08-04
 hero = "/images/k3s-platform-kit/architecture.svg"
 hero_alt = "Inside a k3s cluster: a git fork reconciled by Flux, a visitor request arriving through Traefik to a tenant application, and telemetry from both flowing to a collector and on to VictoriaMetrics, VictoriaLogs and Tempo"
-description = "A fork-and-edit k3s platform for Hetzner: GitOps delivery, encrypted secrets, certificates, per-tenant isolation and observability. Built four times on real hardware until it stopped lying to me. What it costs, what it uses before your code runs, and the one thing it does that the simple options cannot."
+description = "A fork-and-edit k3s platform for Hetzner: GitOps delivery, encrypted secrets, certificates, per-tenant isolation and observability. Built and torn down four times on Hetzner Cloud until it stopped lying to me. What it costs, what it uses before your code runs, and the one thing it does that the simple options cannot."
 series = "self-hosting"
 part = 1
 +++
@@ -15,8 +15,9 @@ backups. That is where the week goes.
 
 So the second cluster is a repository you fork:
 [hcloud-k3s-platform-kit](https://github.com/sasin91/hcloud-k3s-platform-kit).
-Every number below was measured over four rounds of building and tearing down on
-real hardware.
+Every number below was measured over four rounds of building and tearing down a
+live cluster on Hetzner Cloud: three nodes in Falkenstein, one cpx22 control
+plane and two cpx32 agents, behind an lb11 load balancer.
 
 ::: note
 **Part 1 of 2 of [Where to start with
@@ -50,8 +51,8 @@ occupies a namespace does not show anything the template does not already say.
 
 ## The price, measured
 
-Three machines in Falkenstein, one control plane and two agents, plus a load
-balancer. The amounts include 25% Danish VAT.
+The same three nodes and load balancer, priced. The amounts include 25% Danish
+VAT.
 
 | Item | Type | €/month |
 |---|---|---|
@@ -107,8 +108,8 @@ kit lets you make the decision instead of making it quietly for you.
 
 I also run [a production app on one FreeBSD
 machine](/blog/athletos-freebsd/) for about €7 a month, and I have done the
-arithmetic on doing the same with three. Put those machines on the same hardware
-and the price difference disappears: three cpx32 is €133.08, more than the
+arithmetic on doing the same with three. Put those machines on the same instance
+type and the price difference disappears: three cpx32 is €133.08, more than the
 cluster, because the cluster's control plane is a smaller machine. **The saving
 is not in the operating system. It is that the FreeBSD machines fit in 4 GB and
 the k3s machines do not.** So the cost argument against Kubernetes is really an
@@ -152,7 +153,8 @@ customer seeing another customer's data.
 I have a hard time with "production-ready", so here is the line I will actually
 defend.
 
-Verified on real hardware: a control plane of three machines forms with etcd;
+Verified on that Hetzner Cloud cluster: a control plane of three nodes forms
+with etcd;
 the whole reconciliation chain converges from git with no intervention, 9 of 9
 kustomizations and 8 of 8 Helm releases; a secret committed encrypted is
 decrypted inside the cluster and consumed; a generated tenant serves public
