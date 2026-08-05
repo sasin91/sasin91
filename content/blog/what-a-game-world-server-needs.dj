@@ -9,13 +9,13 @@ hero = "/images/what-a-game-world-server-needs/split.svg"
 hero_alt = "The system split: behind one load balancer, a cluster holding replicated auth daemons and the web front end over a shared database of accounts, characters and guilds; outside it, each world daemon on its own machine with its own read-mostly world database, reaching back into the shared database for characters and guilds"
 +++
 
-I started on funservers in early TBC, something in the ArcEmu line, though I
-could not tell you which fork at this distance. Then years of 3.3.5 on
-TrinityCore. CMaNGOS classic is the one I actually enjoy working with, and that
-scene only really got going around 2017. I never properly stopped. I just left
-off hosting anything public after a few cease and desist letters arrived.
+I started on funservers in early TBC, on something ArcEmu or AscEmu based, I
+don't remember which. Then years of 3.3.5 on TrinityCore. CMaNGOS classic is the
+one I actually enjoy working with, and that scene only really got going around
+2017. I never really stopped privately. I just gave up hosting anything public
+after a few cease and desist letters.
 
-So it is the workload I know well enough to test a cluster honestly. Split one
+It is still the workload I know well enough to test a cluster honestly. Split one
 up and almost all of it is boring, stateless plumbing that belongs in
 [the k3s platform](/blog/k3s-platform-kit/). One process does not, and that one
 is the game.
