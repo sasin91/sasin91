@@ -112,7 +112,8 @@ sasin91.xyz, www.sasin91.xyz {
 	@hashed path_regexp \.[0-9a-f]{8,}\.css$
 	header @hashed Cache-Control "public, max-age=31536000, immutable"
 
-	# Everything else — HTML, cv.pdf, rss.xml, images — keeps a fixed URL and
+	# Everything else — HTML, cv_jonas_hansen_software_developer.pdf, rss.xml,
+	# images — keeps a fixed URL and
 	# changes on deploy, so it must be revalidated rather than cached blind.
 	# `no-cache` does not mean "do not store": it means "revalidate before
 	# reuse", so a repeat visit costs a 304 off the ETag, not the whole body.
@@ -149,7 +150,8 @@ Hours later the heuristic grows and the site quietly feels fast again --
 which is why this read as "a bit of latency" that "went back to normal", and
 why it would have returned on every subsequent deploy. After the reload: the
 hashed stylesheet returns `public, max-age=31536000, immutable`; HTML and
-`cv.pdf` return `public, no-cache`; an HTML revalidation returns `304` with a
+`cv_jonas_hansen_software_developer.pdf` return `public, no-cache`; an HTML
+revalidation returns `304` with a
 zero-byte body. The reload itself was graceful -- same pid before and after,
 no dropped connections.
 
@@ -175,15 +177,16 @@ nothing failing loudly to say so.
   content does (see `hash_css` in `src/main.rs`) -- a long `max-age` on a
   fixed name like `site.css` would be a staleness trap, since a cached copy
   would then survive a deploy that changed the CSS underneath it.
-- **Everything else** -- HTML, `rss.xml`, `sitemap.xml`, `cv.pdf` -- gets
-  `no-cache`. That name is misleading: it does not mean "do not cache", it
-  means "revalidate before reuse". The browser still stores the response and
-  still sends the `ETag` on the next request, so a fresh visit costs a 304
-  and a header round trip, not the full body. That is the right behaviour for
-  these files specifically because they change at the same URL on every
-  deploy -- `/`, `/cv.pdf`, `/rss.xml` never get a new name the way the
-  stylesheets do, so blind caching them would show a stale page just as
-  surely as a long `max-age` on `site.css` would.
+- **Everything else** -- HTML, `rss.xml`, `sitemap.xml`,
+  `cv_jonas_hansen_software_developer.pdf` -- gets `no-cache`. That name is
+  misleading: it does not mean "do not cache", it means "revalidate before
+  reuse". The browser still stores the response and still sends the `ETag`
+  on the next request, so a fresh visit costs a 304 and a header round trip,
+  not the full body. That is the right behaviour for these files
+  specifically because they change at the same URL on every deploy -- `/`,
+  `/cv_jonas_hansen_software_developer.pdf`, `/rss.xml` never get a new name
+  the way the stylesheets do, so blind caching them would show a stale page
+  just as surely as a long `max-age` on `site.css` would.
 
 A bare `caddy reload --config ...` fails here with `dial tcp [::1]:2019:
 connect: connection refused`. Caddy's admin API on this box is not on the

@@ -45,12 +45,13 @@ jobs:
       - name: Build the site
         run: cargo run --release
 
-      # cv.pdf is now written by `cargo run --release` itself (same
-      # content/cv.toml, same layout code as /cv/), so there is nothing to
-      # render or verify here anymore. It would otherwise be surprising for a
-      # deploy workflow shipping a PDF to have no step that touches it; the
-      # guards below (required-URL check, and the live curl in "Verify the
-      # deployed site") are what stand in for the old render-and-assert step.
+      # cv_jonas_hansen_software_developer.pdf is now written by
+      # `cargo run --release` itself (same content/cv.toml, same layout code
+      # as /cv/), so there is nothing to render or verify here anymore. It
+      # would otherwise be surprising for a deploy workflow shipping a PDF to
+      # have no step that touches it; the guards below (required-URL check,
+      # and the live curl in "Verify the deployed site") are what stand in
+      # for the old render-and-assert step.
       - name: Fail if unexpected JavaScript slipped in
         run: |
           set -euo pipefail
@@ -102,7 +103,7 @@ jobs:
                    blog/freebsd-on-hetzner/index blog/athletos-freebsd/index; do
             test -f "public/$u.html" || { echo "missing: $u"; exit 1; }
           done
-          test -f public/cv.pdf || { echo "missing: cv.pdf"; exit 1; }
+          test -f public/cv_jonas_hansen_software_developer.pdf || { echo "missing: cv_jonas_hansen_software_developer.pdf"; exit 1; }
           echo "all required URLs present"
 
       # Until the box is provisioned there is nowhere to send this. Skipping
@@ -193,7 +194,8 @@ jobs:
           set -euo pipefail
           fail=0
           for path in / /blog /blog/trongate /blog/trongate/mx-transition \
-                      /blog/freebsd-on-hetzner /blog/athletos-freebsd /about/ /cv/ /cv.pdf /rss.xml; do
+                      /blog/freebsd-on-hetzner /blog/athletos-freebsd /about/ /cv/ \
+                      /cv_jonas_hansen_software_developer.pdf /rss.xml; do
             # 308 is expected on the extensionless paths: Caddy canonicalises to
             # the trailing-slash form, which browsers and crawlers follow.
             code=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 20 "https://sasin91.xyz$path")

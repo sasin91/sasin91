@@ -430,7 +430,11 @@ fn main() -> Result<()> {
     // at a local server; that server once resolved /cv/ to the homepage and the
     // site shipped the landing page as cv.pdf for several deploys. There is no
     // URL to get wrong here.
-    fs::write(format!("{OUT}/cv.pdf"), cv_pdf::render(&cv)).context("writing public/cv.pdf")?;
+    fs::write(
+        format!("{OUT}/cv_jonas_hansen_software_developer.pdf"),
+        cv_pdf::render(&cv),
+    )
+    .context("writing public/cv_jonas_hansen_software_developer.pdf")?;
     write(
         format!("{OUT}/blog/index.html"),
         &BlogPage {
