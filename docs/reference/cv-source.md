@@ -23,13 +23,13 @@ support and listening to user requests and issues with a smile.
 ### January 2017 – February 2020 — Lead developer, GHC Travel / Iraqi Airways, Copenhagen
 Airline booking platform
 
-- Grew from junior to senior developer, worked as sole developer for a period, and led development in the final phase
-- Maintained and developed a basic PHP platform
+- Joined as a junior developer maintaining a procedural PHP platform, then rewrote it to Laravel about a year in
+- Grew from junior to senior developer; took over as sole developer after the senior developer left for a new job, continuing to build out the platform before leading development in the final phase
 - Migrated from a traditional PHP web host to VPS servers I set up, managed and monitored, including DNS and Let's Encrypt SSL
-- Successfully migrated to Laravel 6 and maintained up version 8, including comprehensive PHPUnit test suite ensuring fast feedback loops on changes
+- Maintained and upgraded the Laravel rewrite up to version 8, including a comprehensive PHPUnit test suite ensuring fast feedback loops on changes
 - Debugged slow database queries and implemented caching to keep the platform responsive
-- Extracted the Laravel monolith's Vue 2 templated frontend into 3 distinct Nuxt 2 apps sharing UI and design packages over npm and consuming a Laravel API, ensuring better scalability, user experience and content delivery via CDN
-- Greatly improved ticketing workflows by automating airport terminal interactions using UiPath RPA, improving ticket sales and customer satisfaction
+- As the platform grew, domain boundaries became a mess — extracted the frontend into 3 distinct Nuxt 2 apps sharing UI and design packages over npm and consuming a Laravel API, establishing clear visual boundaries, and refactored the backend using domain-driven design
+- Together with a new coworker, integrated and automated ticket booking and flight monitoring via UiPath RPA, improving ticket sales and customer satisfaction
 - Provided live debugging and triage support directly to reception staff and agents, acting as first-line support
 
 ### April 2020 – January 2023 — Tech Lead, Syncronet, Slagelse
@@ -94,3 +94,14 @@ Including Cisco CCNA and IP based network management.
   reception staff and agents. GHC's frontend bullet rewritten to describe
   extracting the Laravel/Vue 2 monolith into 3 Nuxt 2 apps sharing UI and
   design packages over npm against a Laravel API.
+- 2026-08-06: GHC rewritten around the fuller timeline Jonas gave — joined
+  into a procedural PHP app, rewrote it to Laravel about a year in, took
+  over as sole developer when the senior left, and later (as the platform
+  grew and domain boundaries got messy) extracted the Nuxt frontends to
+  establish visual boundaries and refactored the backend with DDD; the RPA
+  work covered ticket booking and flight monitoring, done with a new
+  coworker. Jonas confirmed the company's 2020 COVID-19 closure should stay
+  out of the public CV/summary and only be recorded here.
+- Context (not in the public CV): GHC Travel / Iraqi Airways wound down in
+  2020 due to COVID-19's impact on air travel — that is why the role ends
+  February 2020.

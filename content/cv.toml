@@ -97,13 +97,13 @@ company = "GHC Travel / Iraqi Airways"
 location = "Copenhagen"
 summary = "Airline booking platform"
 achievements = [
-  "Grew from junior to senior developer, worked as sole developer for a period, and led development in the final phase",
-  "Maintained and developed a basic PHP platform",
+  "Joined as a junior developer maintaining a procedural PHP platform, then rewrote it to Laravel about a year in",
+  "Grew from junior to senior developer; took over as sole developer after the senior developer left for a new job, continuing to build out the platform before leading development in the final phase",
   "Migrated from a traditional PHP web host to VPS servers I set up, managed and monitored, including DNS and Let's Encrypt SSL",
-  "Successfully migrated to Laravel 6 and maintained up version 8, including comprehensive PHPUnit test suite ensuring fast feedback loops on changes",
+  "Maintained and upgraded the Laravel rewrite up to version 8, including a comprehensive PHPUnit test suite ensuring fast feedback loops on changes",
   "Debugged slow database queries and implemented caching to keep the platform responsive",
-  "Extracted the Laravel monolith's Vue 2 templated frontend into 3 distinct Nuxt 2 apps sharing UI and design packages over npm and consuming a Laravel API, ensuring better scalability, user experience and content delivery via CDN",
-  "Greatly improved ticketing workflows by automating airport terminal interactions using UiPath RPA, improving ticket sales and customer satisfaction",
+  "As the platform grew, domain boundaries became a mess — extracted the frontend into 3 distinct Nuxt 2 apps sharing UI and design packages over npm and consuming a Laravel API, establishing clear visual boundaries, and refactored the backend using domain-driven design",
+  "Together with a new coworker, integrated and automated ticket booking and flight monitoring via UiPath RPA, improving ticket sales and customer satisfaction",
   "Provided live debugging and triage support directly to reception staff and agents, acting as first-line support",
 ]
 
