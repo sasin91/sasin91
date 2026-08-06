@@ -25,16 +25,20 @@ Airline booking platform
 
 - Grew from junior to senior developer, worked as sole developer for a period, and led development in the final phase
 - Maintained and developed a basic PHP platform
-- Migrated from traditional PHP web host to VPS servers I setup, managed and monitored
+- Migrated from a traditional PHP web host to VPS servers I set up, managed and monitored, including DNS and Let's Encrypt SSL
 - Successfully migrated to Laravel 6 and maintained up version 8, including comprehensive PHPUnit test suite ensuring fast feedback loops on changes
-- Built 3 distinct frontends in Nuxt 2 consuming API hosted on Laravel backend, ensuring better scalability, user experience and content delivery via CDN
+- Debugged slow database queries and implemented caching to keep the platform responsive
+- Extracted the Laravel monolith's Vue 2 templated frontend into 3 distinct Nuxt 2 apps sharing UI and design packages over npm and consuming a Laravel API, ensuring better scalability, user experience and content delivery via CDN
 - Greatly improved ticketing workflows by automating airport terminal interactions using UiPath RPA, improving ticket sales and customer satisfaction
+- Provided live debugging and triage support directly to reception staff and agents, acting as first-line support
 
 ### April 2020 – January 2023 — Tech Lead, Syncronet, Slagelse
 Live streaming social media platform
 
 - Led migration from an expensive setup on Azure using media services to Linode with mux.com for video delivery
+- Set up, managed and monitored VPS infrastructure, including DNS and Let's Encrypt SSL
 - Architectured a Kubernetes cluster with Go services and Nginx endpoints wrapping FFmpeg for internal video processing and delivery
+- Debugged slow database queries and implemented caching to keep the platform performant
 - Led frontend development in Nuxt 3 and mobile development in React Native while maintaining Laravel backend
 
 ### January 2023 – August 2023 — Web developer, JUICE ApS, Copenhagen
@@ -84,3 +88,9 @@ Including Cisco CCNA and IP based network management.
   Supeo achievements expanded to describe close collaboration with the CTO
   and primary/review responsibilities. All roles were close collaborations
   on small to medium teams.
+- 2026-08-06: GHC and Syncronet achievements expanded with infrastructure
+  work (VPS setup, DNS, Let's Encrypt SSL, monitoring), database query
+  debugging and caching, and — GHC only — live debugging/triage support for
+  reception staff and agents. GHC's frontend bullet rewritten to describe
+  extracting the Laravel/Vue 2 monolith into 3 Nuxt 2 apps sharing UI and
+  design packages over npm against a Laravel API.
