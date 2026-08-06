@@ -46,6 +46,7 @@ achievements = [
   "Upgraded Symfony 6 to 7",
   "Built a comprehensive ranking and sorting engine, delivering a quick and efficient method of finding candidates and sorting by relevancy",
   "AI integration, making it a breeze to upload a job ad and receiving a SmartMatch job post",
+  "Led development in close collaboration with the CTO, who provided feedback and code review",
 ]
 
 [[roles]]
@@ -56,8 +57,8 @@ company = "Supeo"
 location = "Næstved"
 summary = "Web development agency"
 achievements = [
-  "Delivered multiple features on Supeo Flex, in React, Express.js & GraphQL",
-  "Gained sole responsibility of customer interactions and development of SamFocus in Laravel 9",
+  "Held primary responsibility for Laravel development, including sole ownership of customer interactions and development of SamFocus in Laravel 9",
+  "Provided code review and development support across other work, including Supeo Flex in React, Express.js & GraphQL",
 ]
 
 [[roles]]
@@ -70,12 +71,13 @@ summary = "Job & candidate matchmaking platform"
 achievements = [
   "Introduced CI/CD enabling efficient and fast delivery of Symfony 6",
   "Contributed to multiple features in Symfony & Twig + Stimulus.js",
+  "Worked in close collaboration with the CTO, leading development with his feedback and review",
 ]
 
 [[roles]]
 start = "2020-04"
 end = "2023-01"
-title = "Software developer"
+title = "Tech Lead"
 company = "Syncronet"
 location = "Slagelse"
 summary = "Live streaming social media platform"
@@ -88,11 +90,12 @@ achievements = [
 [[roles]]
 start = "2017-01"
 end = "2020-02"
-title = "IT & developer"
+title = "Lead developer"
 company = "GHC Travel / Iraqi Airways"
 location = "Copenhagen"
 summary = "Airline booking platform"
 achievements = [
+  "Grew from junior to senior developer, worked as sole developer for a period, and led development in the final phase",
   "Maintained and developed a basic PHP platform",
   "Migrated from traditional PHP web host to VPS servers I setup, managed and monitored",
   "Successfully migrated to Laravel 6 and maintained up version 8, including comprehensive PHPUnit test suite ensuring fast feedback loops on changes",

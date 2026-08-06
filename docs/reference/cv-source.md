@@ -20,16 +20,17 @@ support and listening to user requests and issues with a smile.
 
 ## Work history & achievements
 
-### January 2017 – February 2020 — IT & developer, GHC Travel / Iraqi Airways, Copenhagen
+### January 2017 – February 2020 — Lead developer, GHC Travel / Iraqi Airways, Copenhagen
 Airline booking platform
 
+- Grew from junior to senior developer, worked as sole developer for a period, and led development in the final phase
 - Maintained and developed a basic PHP platform
 - Migrated from traditional PHP web host to VPS servers I setup, managed and monitored
 - Successfully migrated to Laravel 6 and maintained up version 8, including comprehensive PHPUnit test suite ensuring fast feedback loops on changes
 - Built 3 distinct frontends in Nuxt 2 consuming API hosted on Laravel backend, ensuring better scalability, user experience and content delivery via CDN
 - Greatly improved ticketing workflows by automating airport terminal interactions using UiPath RPA, improving ticket sales and customer satisfaction
 
-### April 2020 – January 2023 — Software developer, Syncronet, Slagelse
+### April 2020 – January 2023 — Tech Lead, Syncronet, Slagelse
 Live streaming social media platform
 
 - Led migration from an expensive setup on Azure using media services to Linode with mux.com for video delivery
@@ -41,12 +42,13 @@ Job & candidate matchmaking platform
 
 - Introduced CI/CD enabling efficient and fast delivery of Symfony 6
 - Contributed to multiple features in Symfony & Twig + Stimulus.js
+- Worked in close collaboration with the CTO, leading development with his feedback and review
 
 ### September 2023 – September 2024 — Web developer, Supeo, Næstved
 Web development agency
 
-- Delivered multiple features on Supeo Flex, in React, Express.js & GraphQL
-- Gained sole responsibility of customer interactions and development of SamFocus in Laravel 9
+- Held primary responsibility for Laravel development, including sole ownership of customer interactions and development of SamFocus in Laravel 9
+- Provided code review and development support across other work, including Supeo Flex in React, Express.js & GraphQL
 
 ### September 2024 – February 2026 — Web developer, JUICE ApS, Copenhagen
 Job & candidate matchmaking platform
@@ -54,6 +56,7 @@ Job & candidate matchmaking platform
 - Upgraded Symfony 6 to 7
 - Built a comprehensive ranking and sorting engine, delivering a quick and efficient method of finding candidates and sorting by relevancy
 - AI integration, making it a breeze to upload a job ad and receiving a SmartMatch job post
+- Led development in close collaboration with the CTO, who provided feedback and code review
 
 ## Skills
 
@@ -74,3 +77,10 @@ Including Cisco CCNA and IP based network management.
 
 - The source PDF spells Copenhagen as "Copenhangen" twice. Corrected above.
 - Since February 2026: job-seeking. Not listed as a role.
+- 2026-08-06: titles and achievements enriched with detail not in the source
+  PDF, from Jonas directly — GHC Travel title changed to "Lead developer"
+  (progression: junior → senior → sole developer → lead) and Syncronet title
+  changed to "Software developer" → "Tech Lead". JUICE (both stints) and
+  Supeo achievements expanded to describe close collaboration with the CTO
+  and primary/review responsibilities. All roles were close collaborations
+  on small to medium teams.
