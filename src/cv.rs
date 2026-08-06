@@ -148,7 +148,10 @@ impl Role {
     /// `content/cv.toml` — putting it in the source string would print the
     /// literal `<span>` tags into the PDF.
     pub fn achievements_html(&self) -> Vec<String> {
-        self.achievements.iter().map(|a| jumpify(&html_escape(a))).collect()
+        self.achievements
+            .iter()
+            .map(|a| jumpify(&html_escape(a)))
+            .collect()
     }
 }
 
