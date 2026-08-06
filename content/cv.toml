@@ -38,40 +38,40 @@ email = "jonas.kerwin.hansen@gmail.com"
 [[roles]]
 start = "2024-09"
 end = "2026-02"
-title = "Web developer"
+title = "Web Developer"
 company = "JUICE ApS"
 location = "Copenhagen"
 summary = "Job & candidate matchmaking platform"
 achievements = [
-  "Upgraded Symfony 6 to 7",
-  "Built a comprehensive ranking and sorting engine, delivering a quick and efficient method of finding candidates and sorting by relevancy",
-  "AI integration, making it a breeze to upload a job ad and receiving a SmartMatch job post",
-  "Led development in close collaboration with the CTO, who provided feedback and code review",
+  "Upgraded the Symfony framework from version 6 to 7",
+  "Built a candidate ranking and sorting engine, enabling fast, relevancy-based candidate search",
+  "Integrated AI to automatically generate SmartMatch job posts from uploaded job ads",
+  "Led development in close collaboration with the CTO, incorporating regular feedback and code review",
 ]
 
 [[roles]]
 start = "2023-09"
 end = "2024-09"
-title = "Web developer"
+title = "Web Developer"
 company = "Supeo"
 location = "Næstved"
 summary = "Web development agency"
 achievements = [
-  "Held primary responsibility for Laravel development, including sole ownership of customer interactions and development of SamFocus in Laravel 9",
+  "Owned Laravel development end-to-end, including customer interactions and development of SamFocus in Laravel 9",
   "Provided code review and development support across other work, including Supeo Flex in React, Express.js & GraphQL",
 ]
 
 [[roles]]
 start = "2023-01"
 end = "2023-08"
-title = "Web developer"
+title = "Web Developer"
 company = "JUICE ApS"
 location = "Copenhagen"
 summary = "Job & candidate matchmaking platform"
 achievements = [
   "Introduced CI/CD enabling efficient and fast delivery of Symfony 6",
-  "Contributed to multiple features in Symfony & Twig + Stimulus.js",
-  "Worked in close collaboration with the CTO, leading development with his feedback and review",
+  "Delivered multiple features using Symfony, Twig, and Stimulus.js",
+  "Worked in close collaboration with the CTO, leading development while incorporating feedback and code review",
 ]
 
 [[roles]]
@@ -83,27 +83,27 @@ location = "Slagelse"
 summary = "Live streaming social media platform"
 achievements = [
   "Led migration from an expensive setup on Azure using media services to Linode with mux.com for video delivery",
-  "Set up, managed and monitored VPS infrastructure, including DNS and Let's Encrypt SSL",
-  "Architectured a Kubernetes cluster with Go services and Nginx endpoints wrapping FFmpeg for internal video processing and delivery",
+  "Set up, managed, and monitored VPS infrastructure, including DNS and Let's Encrypt SSL",
+  "Architected a Kubernetes cluster with Go services and Nginx endpoints wrapping FFmpeg for internal video processing and delivery",
   "Debugged slow database queries and implemented caching to keep the platform performant",
-  "Led frontend development in Nuxt 3 and mobile development in React Native while maintaining Laravel backend",
+  "Led frontend development in Nuxt 3 and mobile development in React Native while maintaining the Laravel backend",
 ]
 
 [[roles]]
 start = "2017-01"
 end = "2020-02"
-title = "Lead developer"
+title = "Lead Developer"
 company = "GHC Travel / Iraqi Airways"
 location = "Copenhagen"
 summary = "Airline booking platform"
 achievements = [
-  "Joined as a junior developer maintaining a procedural PHP platform, then rewrote it to Laravel about a year in",
-  "Grew from junior to senior developer; took over as sole developer after the senior developer left for a new job, continuing to build out the platform before leading development in the final phase",
-  "Migrated from a traditional PHP web host to VPS servers I set up, managed and monitored, including DNS and Let's Encrypt SSL",
-  "Maintained and upgraded the Laravel rewrite up to version 8, including a comprehensive PHPUnit test suite ensuring fast feedback loops on changes",
+  "Rebuilt a procedural PHP platform in Laravel within the first year, after joining as a junior developer",
+  "Progressed from junior to senior developer, took over as sole developer after a teammate's departure, and led development in the final phase, continuously building out the platform throughout",
+  "Migrated from a traditional PHP web host to VPS servers, setting up, managing, and monitoring infrastructure including DNS and Let's Encrypt SSL",
+  "Maintained and upgraded the Laravel platform up to version 8, including a comprehensive PHPUnit test suite ensuring fast feedback loops on changes",
   "Debugged slow database queries and implemented caching to keep the platform responsive",
-  "As the platform grew, domain boundaries became a mess — extracted the frontend into 3 distinct Nuxt 2 apps sharing UI and design packages over npm and consuming a Laravel API, establishing clear visual boundaries, and refactored the backend using domain-driven design",
-  "Together with a new coworker, integrated and automated ticket booking and flight monitoring via UiPath RPA, improving ticket sales and customer satisfaction",
+  "Resolved growing domain-boundary issues by extracting the frontend into 3 distinct Nuxt 2 apps sharing UI and design packages over npm and consuming a Laravel API, and refactored the backend using Domain-Driven Design (DDD)",
+  "Automated ticket booking and flight monitoring using UiPath RPA in collaboration with a new team member, improving ticket sales and customer satisfaction",
   "Provided live debugging and triage support directly to reception staff and agents, acting as first-line support",
 ]
 
