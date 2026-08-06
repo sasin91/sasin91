@@ -39,8 +39,8 @@
         <p>{{ role.summary }}</p>
         {% if !role.achievements.is_empty() %}
           <ul>
-            {% for achievement in role.achievements %}
-              <li>{{ achievement }}</li>
+            {% for achievement in role.achievements_html() %}
+              <li>{{ achievement|safe }}</li>
             {% endfor %}
           </ul>
         {% endif %}

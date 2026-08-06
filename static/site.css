@@ -450,6 +450,65 @@ figcaption {
   margin: 0.3rem 0;
 }
 
+/* The Symfony "6 to 7" upgrade bullet: each digit gets its own amplitude,
+   duration and delay so the two bounce out of sync rather than mirroring
+   each other -- a symmetric bounce reads as one wobbling unit, not two
+   digits independently hopping. */
+.cv-jump {
+  display: inline-block;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.cv-jump-six {
+  animation-name: cv-jump-six;
+  animation-duration: 1.6s;
+}
+
+.cv-jump-seven {
+  animation-name: cv-jump-seven;
+  animation-duration: 2.1s;
+  animation-delay: 0.35s;
+}
+
+@keyframes cv-jump-six {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-0.4em);
+  }
+  55% {
+    transform: translateY(0.08em);
+  }
+  80% {
+    transform: translateY(-0.05em);
+  }
+}
+
+@keyframes cv-jump-seven {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(0.22em);
+  }
+  60% {
+    transform: translateY(-0.5em);
+  }
+  85% {
+    transform: translateY(0.06em);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-jump {
+    animation: none;
+  }
+}
+
 /* ---------- post list ---------- */
 
 .post-list {

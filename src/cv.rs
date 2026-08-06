@@ -141,6 +141,33 @@ impl Role {
             .as_deref()
             .map(|e| month(e).expect("date already validated by Cv::validate"))
     }
+
+    /// `achievements`, HTML-escaped and rendered with `{{ |safe }}` on `/cv`.
+    /// `cv_pdf.rs` draws the same `achievements` field as plain text, so the
+    /// "6 to 7" jump-animation markup is injected here rather than stored in
+    /// `content/cv.toml` — putting it in the source string would print the
+    /// literal `<span>` tags into the PDF.
+    pub fn achievements_html(&self) -> Vec<String> {
+        self.achievements.iter().map(|a| jumpify(&html_escape(a))).collect()
+    }
+}
+
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
+/// Wraps the digits in "version 6 to 7" so CSS can bounce them asymmetrically
+/// (see `.cv-jump-six`/`.cv-jump-seven` in `static/site.css`). A no-op on
+/// every other achievement string.
+fn jumpify(escaped: &str) -> String {
+    escaped.replace(
+        "version 6 to 7",
+        "version <span class=\"cv-jump cv-jump-six\">6</span> to <span class=\"cv-jump cv-jump-seven\">7</span>",
+    )
 }
 
 #[derive(Deserialize)]
