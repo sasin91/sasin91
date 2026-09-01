@@ -48,6 +48,8 @@ Job & candidate matchmaking platform
 - Delivered multiple features using Symfony, Twig, and Stimulus.js
 - Worked in close collaboration with the CTO, leading development while incorporating feedback and code review
 
+Note: The role ended in August 2023 when JUICE cut staff for financial reasons. Rehired by the company in September 2024.
+
 ### September 2023 – September 2024 — Web Developer, Supeo, Næstved
 Web development agency
 
@@ -61,6 +63,8 @@ Job & candidate matchmaking platform
 - Built a candidate ranking and sorting engine, enabling fast, relevancy-based candidate search
 - Integrated AI to automatically generate SmartMatch job posts from uploaded job ads
 - Led development in close collaboration with the CTO, incorporating regular feedback and code review
+
+Note: Rehired by JUICE after the 2023 round of cuts. The role ended in February 2026 when the company again cut staff for financial reasons.
 
 ## Skills
 
@@ -105,3 +109,9 @@ Including Cisco CCNA and IP based network management.
 - Context (not in the public CV): GHC Travel / Iraqi Airways wound down in
   2020 due to COVID-19's impact on air travel — that is why the role ends
   February 2020.
+- 2026-09-01: both JUICE stints ended in cuts JUICE made for financial
+  reasons, and the second stint is a rehire — from Jonas directly. Unlike the
+  GHC closure above, he asked for this one to appear on the public CV, so it
+  is a `note` on each JUICE role in `content/cv.toml` and renders on /cv and
+  in the PDF below that role's bullets. Neither departure was about
+  performance; the rehire is the company's own answer to the first one.

@@ -115,6 +115,12 @@ pub struct Role {
     pub summary: String,
     #[serde(default)]
     pub achievements: Vec<String>,
+    /// Why the role ended, when that is worth saying outright rather than
+    /// leaving a reader to guess from the dates -- both JUICE stints ended in
+    /// cuts the company made for financial reasons, and the second one is a
+    /// rehire. Most roles leave this unset.
+    #[serde(default)]
+    pub note: Option<String>,
 }
 
 /// "2024-09" -> "September 2024". Errors name the bad value so a caller can

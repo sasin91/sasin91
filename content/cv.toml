@@ -48,6 +48,7 @@ achievements = [
   "Integrated AI to automatically generate SmartMatch job posts from uploaded job ads",
   "Led development in close collaboration with the CTO, incorporating regular feedback and code review",
 ]
+note = "Rehired by JUICE after the 2023 round of cuts. The role ended in February 2026 when the company again cut staff for financial reasons."
 
 [[roles]]
 start = "2023-09"
@@ -73,6 +74,7 @@ achievements = [
   "Delivered multiple features using Symfony, Twig, and Stimulus.js",
   "Worked in close collaboration with the CTO, leading development while incorporating feedback and code review",
 ]
+note = "The role ended in August 2023 when JUICE cut staff for financial reasons. Rehired by the company in September 2024."
 
 [[roles]]
 start = "2020-04"
