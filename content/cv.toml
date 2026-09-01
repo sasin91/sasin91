@@ -108,6 +108,7 @@ achievements = [
   "Automated ticket booking and flight monitoring using UiPath RPA in collaboration with a new team member, improving ticket sales and customer satisfaction",
   "Provided live debugging and triage support directly to reception staff and agents, acting as first-line support",
 ]
+note = "The role ended in February 2020 when the company wound down, after COVID-19 shut down air travel."
 
 [[skills]]
 name = "Linux server management and maintenance"

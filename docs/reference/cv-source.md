@@ -32,6 +32,8 @@ Airline booking platform
 - Automated ticket booking and flight monitoring using UiPath RPA in collaboration with a new team member, improving ticket sales and customer satisfaction
 - Provided live debugging and triage support directly to reception staff and agents, acting as first-line support
 
+Note: The role ended in February 2020 when the company wound down, after COVID-19 shut down air travel.
+
 ### April 2020 – January 2023 — Tech Lead, Syncronet, Slagelse
 Live streaming social media platform
 
@@ -106,12 +108,18 @@ Including Cisco CCNA and IP based network management.
   work covered ticket booking and flight monitoring, done with a new
   coworker. Jonas confirmed the company's 2020 COVID-19 closure should stay
   out of the public CV/summary and only be recorded here.
-- Context (not in the public CV): GHC Travel / Iraqi Airways wound down in
-  2020 due to COVID-19's impact on air travel — that is why the role ends
-  February 2020.
+- GHC Travel / Iraqi Airways wound down in 2020 due to COVID-19's impact on
+  air travel — that is why the role ends February 2020. Public: see the
+  2026-09-01 entry below, which supersedes the 2026-08-06 decision to keep
+  this off the CV.
 - 2026-09-01: both JUICE stints ended in cuts JUICE made for financial
-  reasons, and the second stint is a rehire — from Jonas directly. Unlike the
-  GHC closure above, he asked for this one to appear on the public CV, so it
-  is a `note` on each JUICE role in `content/cv.toml` and renders on /cv and
-  in the PDF below that role's bullets. Neither departure was about
-  performance; the rehire is the company's own answer to the first one.
+  reasons, and the second stint is a rehire — from Jonas directly. He asked
+  for this to appear on the public CV, so it is a `note` on each JUICE role
+  in `content/cv.toml` and renders on /cv and in the PDF below that role's
+  bullets. Neither departure was about performance; the rehire is the
+  company's own answer to the first one.
+- 2026-09-01: Jonas reversed the 2026-08-06 call above and asked for the GHC
+  closure on the public CV too, so it is now a `note` on that role as well.
+  With all three, every gap in the history has its reason on the page and
+  none of them is about his work — which is the point of saying them out
+  loud rather than leaving a reader to infer.
