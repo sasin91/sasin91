@@ -210,8 +210,18 @@ fn keep_with_heading(mut heading: Vec<Line>, gap_mm: f32, mut block: Vec<Line>) 
     heading
 }
 
-/// A role or education entry as one keep-together block.
-fn entry(heading: &str, meta_line: &str, body: Option<&str>, bullets: &[String]) -> Vec<Line> {
+/// A role or education entry as one keep-together block. `note` closes the
+/// entry -- context about the job rather than a claim about the work, so it
+/// follows the bullets, set a shade smaller and separated by a small gap
+/// folded into its own first line (the same trick `keep_with_heading` uses)
+/// so the block stays one unbreakable unit.
+fn entry(
+    heading: &str,
+    meta_line: &str,
+    body: Option<&str>,
+    bullets: &[String],
+    note: Option<&str>,
+) -> Vec<Line> {
     let mut block = lines(heading, Font::HelveticaBold, 10.5, 14.0, 0.0, 0.0);
     block.extend(lines(meta_line, Font::Helvetica, 8.5, 12.0, 0.0, 0.0));
     if let Some(body) = body {
@@ -226,6 +236,13 @@ fn entry(heading: &str, meta_line: &str, body: Option<&str>, bullets: &[String])
             BULLET_INDENT_MM,
             BULLET_HANGING_MM,
         ));
+    }
+    if let Some(note) = note {
+        let mut note_lines = lines(note, Font::Helvetica, 9.0, 13.0, 0.0, 0.0);
+        if let Some(first) = note_lines.first_mut() {
+            first.leading_mm += pt(3.0);
+        }
+        block.extend(note_lines);
     }
     block
 }
@@ -299,6 +316,7 @@ fn layout(cv: &Cv) -> Vec<Page> {
             &meta(&role.start_label(), role.end_label(), &role.location),
             Some(&role.summary),
             &role.achievements,
+            role.note.as_deref(),
         )
     };
     let heading_lines = section_heading(&mut cursor, "Experience");
@@ -353,6 +371,7 @@ fn layout(cv: &Cv) -> Vec<Page> {
             ),
             education.note.as_deref(),
             &[],
+            None,
         )
     };
     let heading_lines = section_heading(&mut cursor, "Education");
@@ -693,6 +712,10 @@ mod tests {
             for achievement in &role.achievements {
                 let frag = opening(achievement, 4);
                 assert!(text.contains(&frag), "missing achievement: {frag}");
+            }
+            if let Some(note) = &role.note {
+                let frag = opening(note, 4);
+                assert!(text.contains(&frag), "missing role note: {frag}");
             }
         }
 

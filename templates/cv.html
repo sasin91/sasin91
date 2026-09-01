@@ -44,6 +44,9 @@
             {% endfor %}
           </ul>
         {% endif %}
+        {% if let Some(note) = role.note %}
+          <p class="cv-note">{{ note }}</p>
+        {% endif %}
       </article>
     {% endfor %}
 

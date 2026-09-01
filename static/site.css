@@ -441,6 +441,15 @@ figcaption {
   margin: 0.3rem 0;
 }
 
+/* Why a role ended, where that is worth stating -- context about the job
+   rather than a claim about the work, so it sits below the achievements and
+   reads at the same weight as the date line above them. */
+.cv-role .cv-note {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .cv-skills {
   margin: 0;
   padding-left: 1.2rem;
