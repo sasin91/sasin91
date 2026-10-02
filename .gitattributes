@@ -1,5 +1,7 @@
 * text=auto eol=lf
 
+*.bin binary
+
 *.css diff=css
 *.html diff=html
 *.md diff=markdown

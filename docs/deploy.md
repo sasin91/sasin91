@@ -109,7 +109,7 @@ sasin91.xyz, www.sasin91.xyz {
 	# click feel slow for hours after a deploy: with no Cache-Control at all,
 	# browsers fall back to heuristic freshness of roughly 10% of the age
 	# since Last-Modified, which is near zero on a file that just shipped.
-	@hashed path_regexp \.[0-9a-f]{8,}\.css$
+	@hashed path_regexp \.[0-9a-f]{8,}\.(css|bin|txt|json)$
 	header @hashed Cache-Control "public, max-age=31536000, immutable"
 
 	# Everything else — HTML, cv_jonas_hansen_software_developer.pdf, rss.xml,
@@ -124,7 +124,7 @@ sasin91.xyz, www.sasin91.xyz {
 	# the immutable header depending on evaluation order — a failure whose
 	# only symptom is the site being slow again. Reordering would also work,
 	# but this pair cannot be broken by a later edit that reorders them.
-	@unhashed not path_regexp \.[0-9a-f]{8,}\.css$
+	@unhashed not path_regexp \.[0-9a-f]{8,}\.(css|bin|txt|json)$
 	header @unhashed Cache-Control "public, no-cache"
 }
 ```
@@ -188,6 +188,31 @@ nothing failing loudly to say so.
   the way the stylesheets do, so blind caching them would show a stale page
   just as surely as a long `max-age` on `site.css` would.
 
+### Search assets
+
+Applied 2026-10-02 (backup `sasin91.caddy.bak.20261002202423`). The search
+palette (Ctrl+K on any page) and the AI article's Ask view (`/blog/ai/ask/`) fetch
+three more content-hashed files when a reader first uses them:
+`/search/model.<hash>.bin` (3.9 MB), `/search/vocab.<hash>.txt` (220 kB) and
+`/search/index.<hash>.json` (about 340 kB, 106 kB compressed). Their names come from the same
+`hash_css` function as the stylesheets, so they are just as safe to cache
+forever. With only `\.css$` in the matchers they fell into `@unhashed` and got
+`no-cache` (stored, but revalidated with a 304 on each visit), so both
+matchers were widened together to `\.(css|bin|txt|json)$`, keeping them
+mutually exclusive.
+
+No other file on the site has a hex-hash segment before one of those
+extensions, so nothing else changes lifetime.
+
+`/search/palette.js` (24 kB, 9 kB compressed) deliberately keeps a fixed
+name, so it gets `no-cache`: every page's inline loader imports it by that
+name, and the build writes the hashed index URL into it. A first open per
+visit costs one 304 round trip, and a fresh deploy can never be paired with
+a stale palette. Caddy's `encode` compresses the
+vocabulary and index (text and JSON) but not the `.bin` model, which is
+application/octet-stream; int8 weights only shrink by about 7% under gzip, so
+that costs little.
+
 A bare `caddy reload --config ...` fails here with `dial tcp [::1]:2019:
 connect: connection refused`. Caddy's admin API on this box is not on the
 default `localhost:2019` -- `/usr/local/etc/rc.d/caddy` exports `CADDY_ADMIN`
@@ -202,11 +227,12 @@ service caddy configtest
 service caddy reload
 ```
 
-**Rolling back** this change is restoring the pre-change backup and
-reloading the same way:
+**Rolling back** a change is restoring its pre-change backup and reloading
+the same way. `.bak.20261002202423` is the file before the Ask assets were
+added; `.bak.20260729094952` is the one before cache headers existed at all:
 
 ```sh
-cp /usr/local/etc/caddy/sites/sasin91.caddy.bak.20260729094952 \
+cp /usr/local/etc/caddy/sites/sasin91.caddy.bak.20261002202423 \
    /usr/local/etc/caddy/sites/sasin91.caddy
 service caddy reload
 ```

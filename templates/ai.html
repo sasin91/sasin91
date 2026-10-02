@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <article class="prose knowledge">
+    <h1>{{ article.title }}</h1>
+    <p class="lede">{{ article.description }}</p>
+    <div class="meta">
+      <time datetime="{{ article.published_iso() }}">{{ article.published_long() }}</time>
+      {% if article.was_updated() %}
+        · updated <time datetime="{{ article.updated_iso() }}">{{ article.updated_long() }}</time>
+      {% endif %}
+      · {{ article.nodes.len() }} sections
+    </div>
+
+    {% include "ai_views.html" %}
+
+    {% for part in article.parts %}
+      <section class="knowledge-part">
+        <h2 id="{{ part.id }}">{{ part.title }}</h2>
+
+        {% for node in article.nodes_in(part) %}
+          {# The id is on the whole section, so a deep link scrolls to the
+             heading and :target can mark the node being linked to. #}
+          <section class="node" id="{{ node.id }}">
+            <div class="node-head">
+              <h3>{{ node.title }}</h3>
+              <a class="node-anchor" href="#{{ node.id }}">
+                <span aria-hidden="true">#</span>
+                <span class="visually-hidden">Link to this section: {{ node.title }}</span>
+              </a>
+            </div>
+
+            {{ node.body|safe }}
+
+            {% if !node.misconceptions.is_empty() %}
+              <div class="node-misreadings">
+                <p>Often misread as:</p>
+                <ul>
+                  {% for belief in node.misconceptions %}
+                    <li>“{{ belief }}”</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+
+            {% if !node.builds_on.is_empty() || !node.see_also.is_empty() %}
+              <p class="node-links">
+                {% if !node.builds_on.is_empty() %}
+                  <span>Builds on
+                    {% for link in node.builds_on %}<a href="#{{ link.id }}">{{ link.title }}</a>{% if !loop.last %}, {% endif %}{% endfor %}</span>
+                {% endif %}
+                {% if !node.see_also.is_empty() %}
+                  <span>See also
+                    {% for link in node.see_also %}<a href="#{{ link.id }}">{{ link.title }}</a>{% if !loop.last %}, {% endif %}{% endfor %}</span>
+                {% endif %}
+              </p>
+            {% endif %}
+          </section>
+        {% endfor %}
+      </section>
+    {% endfor %}
+
+    <p class="knowledge-coda">
+      Looking for one idea in particular? <a href="{{ article.url() }}ask/">Ask this
+      article</a> finds the closest sections using the same kind of retrieval
+      described in <a href="#rag">Retrieval-augmented generation</a>, running on
+      your device.
+    </p>
+  </article>
+
+  {% if article.has_diagrams() %}
+  {% include "lightbox.html" %}
+  {% endif %}
+{% endblock %}

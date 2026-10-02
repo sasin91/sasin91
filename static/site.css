@@ -109,15 +109,31 @@ dd {
   letter-spacing: -0.015em;
 }
 
+/* Never shrinks to share a line with the name -- the header wraps it onto
+   its own line first -- and only wraps internally when even a full line is
+   too narrow. */
 .site-nav {
   display: flex;
-  gap: 1.4rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.5rem 1.4rem;
   font-size: 0.94rem;
   color: var(--muted);
 }
 
 .site-nav a:hover {
   color: var(--accent);
+}
+
+/* The nav does not fit a phone at desktop spacing. Tighter gaps keep it
+   on one line on common phone widths; below that it wraps rather than pushing
+   the page sideways. */
+@media (max-width: 30rem) {
+  .site-nav {
+    column-gap: 0.6rem;
+  }
 }
 
 .site-nav a[aria-current="page"] {
@@ -560,6 +576,640 @@ figcaption {
   font-size: 0.95rem;
 }
 
+/* ---------- search palette (any page: Ctrl/⌘+K, Ctrl+Space, "/") ---------- */
+
+.site-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.12rem 0.3rem 0.12rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.site-search[hidden] {
+  display: none;
+}
+
+.site-search:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.site-search svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.site-search kbd,
+.palette kbd {
+  padding: 0 0.35rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--bg);
+  font-family: var(--sans);
+  font-size: 0.72rem;
+}
+
+/* On narrow screens the icon alone, with its accessible name kept. */
+@media (max-width: 34rem) {
+  .site-search {
+    padding: 0.3rem;
+  }
+
+  .site-search-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .site-search-key {
+    display: none;
+  }
+}
+
+.palette {
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: min(34rem, calc(100vh - 6rem));
+  margin: 12vh auto auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.3);
+}
+
+.palette[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.palette::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+.palette-search {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.palette-search svg {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--muted);
+}
+
+.palette-search input {
+  flex: 1;
+  min-width: 0;
+  height: 3.1rem;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+/* The dialog's own outline marks focus; the field is the only control. */
+.palette-search input:focus-visible {
+  outline: none;
+}
+
+.palette-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.4rem 0;
+}
+
+.palette-group + .palette-group {
+  margin-top: 0.4rem;
+}
+
+.palette-group-label {
+  margin: 0.4rem 1rem 0.2rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.palette-option {
+  display: grid;
+  /* minmax(0, ...) lets the one-line context and snippet shrink and
+     ellipsis instead of widening the list. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.05rem;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+}
+
+.palette-option[aria-selected="true"] {
+  background: var(--surface);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.palette-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.palette-option[aria-selected="true"] .palette-title {
+  color: var(--accent);
+}
+
+.palette-context,
+.palette-snippet {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-context:empty {
+  display: none;
+}
+
+.palette-empty {
+  margin: 0;
+  padding: 1.6rem 1rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.palette-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.3rem 1rem;
+  padding: 0.55rem 1rem;
+  border-top: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.palette-keys kbd {
+  margin-right: 0.15rem;
+}
+
+@media (max-width: 34rem) {
+  .palette {
+    margin-top: 1rem;
+  }
+
+  .palette-keys {
+    display: none;
+  }
+}
+
+/* ---------- knowledge stream: /blog/ai/, /blog/ai/timeline/, /blog/ai/ask/ ---------- */
+
+/* Read / Timeline / Ask. Three links styled as one control, so it reads as
+   "views of the same thing" rather than as more site navigation. */
+.view-nav {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: 0.2rem;
+  margin: 0 0 2.6rem;
+  padding: 0.2rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.9rem;
+  letter-spacing: 0.008em;
+}
+
+.view-nav a {
+  padding: 0.22rem 0.95rem;
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.view-nav a:hover {
+  color: var(--accent);
+}
+
+.view-nav a[aria-current="page"] {
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--rule);
+}
+
+/* Nodes sit two sections deep, out of reach of `.prose > *`, so they
+   restate the same block rhythm. */
+.knowledge .node > * {
+  margin-top: 0;
+  margin-bottom: 1.15rem;
+}
+
+.knowledge-part > h2 {
+  margin: 4rem 0 0;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--rule);
+}
+
+.node {
+  margin-top: 2.6rem;
+  scroll-margin-top: 1.5rem;
+}
+
+.node-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.knowledge .node-head {
+  margin-bottom: 0.7rem;
+}
+
+.node-head h3 {
+  margin: 0;
+  font-size: 1.14rem;
+}
+
+/* Always present, so it is discoverable on touch screens too, but quiet
+   until the node is hovered or the link itself is focused. */
+.node-anchor {
+  color: var(--muted);
+  font-weight: 500;
+  text-decoration: none;
+  opacity: 0.5;
+}
+
+.node:hover .node-anchor,
+.node-anchor:focus-visible {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* The node a deep link landed on. */
+.node:target {
+  margin-left: calc(-1rem - 2px);
+  padding-left: 1rem;
+  border-left: 2px solid var(--accent);
+}
+
+.node-misreadings {
+  padding: 0.1rem 0 0.1rem 1rem;
+  border-left: 2px solid var(--warn-edge);
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.node-misreadings p {
+  margin: 0 0 0.2rem;
+  color: var(--warn-title);
+  font-weight: 600;
+}
+
+.node-misreadings ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.node-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.4rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.knowledge-coda {
+  margin-top: 4rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--rule);
+  color: var(--muted);
+}
+
+/* ---- timeline ----
+   A vertical line through numbered steps. The number is the list's own
+   counter, which honours each part's `start`, so the visible step and the
+   one a screen reader announces are the same number. */
+.timeline-part h2 {
+  margin: 2.6rem 0 0.8rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline li {
+  position: relative;
+  padding-left: 2.7rem;
+}
+
+.timeline li::before {
+  content: counter(list-item);
+  position: absolute;
+  top: 0.3rem;
+  left: 0;
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.7rem;
+  text-align: center;
+}
+
+.timeline li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 2.2rem;
+  bottom: 0;
+  left: 0.9rem;
+  border-left: 1px solid var(--rule);
+}
+
+.timeline a {
+  display: block;
+  margin-left: -0.5rem;
+  padding: 0.3rem 0.5rem 1rem;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.timeline a:hover .timeline-title {
+  color: var(--accent);
+}
+
+.timeline-title {
+  display: block;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+.timeline-summary {
+  display: block;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+/* ---- ask ---- */
+.ask > label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
+
+.ask-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ask input[type="search"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.ask input[type="search"]:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.ask button[type="submit"] {
+  padding: 0.55rem 1.15rem;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--bg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ask :disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ask-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ask-status {
+  min-height: 1.6em;
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ask-examples {
+  margin-top: 1.1rem;
+  font-size: 0.9rem;
+}
+
+.ask-examples p {
+  margin: 0 0 0.45rem;
+  color: var(--muted);
+}
+
+.ask-examples ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-examples button {
+  padding: 0.22rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ask-examples button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ask-results ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-results li {
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.ask-results li:first-child {
+  border-top: 1px solid var(--rule);
+}
+
+.ask-results h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.06rem;
+}
+
+.ask-results h3 a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.ask-results h3 a:hover {
+  color: var(--accent);
+}
+
+.ask-results p {
+  margin: 0 0 0.45rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.ask-results details {
+  font-size: 0.88rem;
+}
+
+.ask-results summary {
+  width: fit-content;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.ask-results dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.3rem 0.9rem;
+  margin: 0.6rem 0 0;
+}
+
+.ask-results dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ask-results dd {
+  margin: 0;
+}
+
+@media (max-width: 30rem) {
+  .ask-results dl {
+    grid-template-columns: 1fr;
+  }
+
+  .ask-results dd {
+    margin-bottom: 0.4rem;
+  }
+}
+
+.ask-how {
+  margin-top: 4rem;
+}
+
+.pipeline {
+  padding-left: 1.3rem;
+}
+
+.pipeline li {
+  margin: 0 0 0.9rem;
+}
+
+.pipeline-output {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.pipeline-output:empty {
+  display: none;
+}
+
+.pipeline-tokens {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.pipeline-token {
+  padding: 0 0.35rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.pipeline-token.is-unknown {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+/* The first dimensions of the question's vector, as bars. Decorative: the
+   numbers themselves are written out next to them. */
+.pipeline-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 2rem;
+  margin: 0.35rem 0;
+}
+
+.pipeline-bars span {
+  width: 5px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.pipeline-bars span.is-negative {
+  background: var(--warn-edge);
+}
+
+.ask-credit {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 /* ---------- prose ---------- */
 
 .prose > * {
@@ -821,6 +1471,15 @@ math {
   font-size: 1.05em;
 }
 
+/* A wide display formula scrolls on its own rather than widening the whole
+   page on a phone. */
+math[display="block"] {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.2rem;
+}
+
 /* ---- focus ----
    The audit found no focus styles at all: keyboard users got only the browser
    default, which `text-decoration: none` on nav links made worse. */
@@ -861,7 +1520,11 @@ math {
   .theme-switch,
   .lightbox,
   .lightbox-trigger,
-  .cv-download {
+  .cv-download,
+  .view-nav,
+  .node-anchor,
+  .site-search,
+  .palette {
     display: none;
   }
 

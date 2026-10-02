@@ -1,0 +1,37 @@
++++
+id = "search-and-verification"
+title = "Multiple samples, search and verification"
+summary = "Systems can explore alternatives deliberately: generate several candidates, search over partial solutions, and check the results. It is an outer loop around generation."
+concepts = ["best-of-n", "self-consistency", "verification", "tree search", "test-time compute", "reward model"]
+prerequisites = ["discarded-candidates"]
+related = ["synthetic-data", "tool-use"]
+search_terms = ["multiple samples", "majority vote", "verifier", "reasoning models", "thinking", "test time compute", "generate and test"]
+learning_objectives = [
+    "Describe best-of-n sampling and self-consistency",
+    "Explain why multi-candidate search is an outer loop rather than part of token generation",
+]
+misconceptions = ["Running more candidates at inference time trains the model."]
++++
+
+If one sample can be wrong, generate several. That simple idea has many
+forms:
+
+- *Best-of-n*: sample $`n` complete answers and pick one with a scoring model
+  or a check.
+- *Self-consistency*: sample several reasoning paths and take the answer most
+  of them agree on.
+- *Search*: treat partial solutions as nodes in a tree, extend the promising
+  ones and abandon the rest.
+- *Verification*: run the unit tests, check the proof, execute the query, and
+  keep what passes.
+
+Each candidate is a separate generation, with its own context and its own
+KV cache, although a shared prompt prefix can be cached once. The
+alternatives exist because the inference system asked for them, not because
+the model kept its [discarded candidates](#discarded-candidates). Spending
+more computation this way, at answer time rather than in training, is often
+called *test-time compute*.
+
+None of this changes the model. Candidates that pass a verifier can later be
+collected and used to train a better model, but that happens afterwards, in a
+separate process: see [synthetic data](#synthetic-data).

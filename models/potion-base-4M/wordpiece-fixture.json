@@ -1,0 +1,450 @@
+[
+ {
+  "text": "Why doesn't a larger context window replace RAG?",
+  "tokens": [
+   "why",
+   "doesn",
+   "'",
+   "t",
+   "a",
+   "larger",
+   "context",
+   "window",
+   "replace",
+   "rag",
+   "?"
+  ],
+  "ids": [
+   1345,
+   1993,
+   11,
+   62,
+   43,
+   2475,
+   5129,
+   2338,
+   4678,
+   16774,
+   35
+  ]
+ },
+ {
+  "text": "KV cache",
+  "tokens": [
+   "kv",
+   "cache"
+  ],
+  "ids": [
+   23894,
+   16059
+  ]
+ },
+ {
+  "text": "kv-cache and the QKV projection",
+  "tokens": [
+   "kv",
+   "-",
+   "cache",
+   "and",
+   "the",
+   "q",
+   "##k",
+   "##v",
+   "projection"
+  ],
+  "ids": [
+   23894,
+   17,
+   16059,
+   1004,
+   1002,
+   59,
+   1249,
+   1621,
+   13002
+  ]
+ },
+ {
+  "text": "What is top-p (nucleus) sampling?",
+  "tokens": [
+   "what",
+   "is",
+   "top",
+   "-",
+   "p",
+   "(",
+   "nucleus",
+   ")",
+   "sampling",
+   "?"
+  ],
+  "ids": [
+   1060,
+   1009,
+   1333,
+   17,
+   58,
+   12,
+   12508,
+   13,
+   15233,
+   35
+  ]
+ },
+ {
+  "text": "MCP is a protocol, not RAG.",
+  "tokens": [
+   "mc",
+   "##p",
+   "is",
+   "a",
+   "protocol",
+   ",",
+   "not",
+   "rag",
+   "."
+  ],
+  "ids": [
+   10344,
+   1367,
+   1009,
+   43,
+   7784,
+   16,
+   1031,
+   16774,
+   18
+  ]
+ },
+ {
+  "text": "Self-attention: softmax(QK^T / sqrt(d)) V",
+  "tokens": [
+   "self",
+   "-",
+   "attention",
+   ":",
+   "soft",
+   "##max",
+   "(",
+   "q",
+   "##k",
+   "^",
+   "t",
+   "/",
+   "sq",
+   "##rt",
+   "(",
+   "d",
+   ")",
+   ")",
+   "v"
+  ],
+  "ids": [
+   1975,
+   17,
+   2092,
+   30,
+   2736,
+   16854,
+   12,
+   59,
+   1249,
+   40,
+   62,
+   19,
+   4496,
+   4345,
+   12,
+   46,
+   13,
+   13,
+   64
+  ]
+ },
+ {
+  "text": "Tokenization splits text into sub-word units like ##ing",
+  "tokens": [
+   "token",
+   "##ization",
+   "splits",
+   "text",
+   "into",
+   "sub",
+   "-",
+   "word",
+   "units",
+   "like",
+   "#",
+   "#",
+   "ing"
+  ],
+  "ids": [
+   18210,
+   2995,
+   18590,
+   2799,
+   1052,
+   3948,
+   17,
+   1779,
+   2203,
+   1072,
+   7,
+   7,
+   12755
+  ]
+ },
+ {
+  "text": "café naïve résumé Ångström",
+  "tokens": [
+   "cafe",
+   "naive",
+   "resume",
+   "ang",
+   "##strom"
+  ],
+  "ids": [
+   6674,
+   14749,
+   12752,
+   16082,
+   14693
+  ]
+ },
+ {
+  "text": "em—dash and “smart quotes” and it’s…",
+  "tokens": [
+   "em",
+   "—",
+   "dash",
+   "and",
+   "“",
+   "smart",
+   "quotes",
+   "”",
+   "and",
+   "it",
+   "’",
+   "s",
+   "…"
+  ],
+  "ids": [
+   6867,
+   523,
+   10460,
+   1004,
+   529,
+   5053,
+   15620,
+   530,
+   1004,
+   1015,
+   527,
+   61,
+   535
+  ]
+ },
+ {
+  "text": "tabs\tand\nnewlines\r\nare whitespace",
+  "tokens": [
+   "tab",
+   "##s",
+   "and",
+   "new",
+   "##lines",
+   "are",
+   "whites",
+   "##pace"
+  ],
+  "ids": [
+   20634,
+   1021,
+   1004,
+   1053,
+   11741,
+   1030,
+   11467,
+   14333
+  ]
+ },
+ {
+  "text": "zero​width and soft­hyphen",
+  "tokens": [
+   "zero",
+   "##wi",
+   "##dt",
+   "##h",
+   "and",
+   "soft",
+   "##hy",
+   "##ph",
+   "##en"
+  ],
+  "ids": [
+   4723,
+   8154,
+   10933,
+   1238,
+   1004,
+   2736,
+   9542,
+   7464,
+   1374
+  ]
+ },
+ {
+  "text": "中文字 mixed with English",
+  "tokens": [
+   "中",
+   "文",
+   "[UNK]",
+   "mixed",
+   "with",
+   "english"
+  ],
+  "ids": [
+   752,
+   867,
+   1,
+   2822,
+   1013,
+   1400
+  ]
+ },
+ {
+  "text": "emoji 🚀 rocket",
+  "tokens": [
+   "em",
+   "##oj",
+   "##i",
+   "[UNK]",
+   "rocket"
+  ],
+  "ids": [
+   6867,
+   28153,
+   1078,
+   1,
+   6602
+  ]
+ },
+ {
+  "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx overlong",
+  "tokens": [
+   "[UNK]",
+   "over",
+   "##long"
+  ],
+  "ids": [
+   1,
+   1064,
+   9058
+  ]
+ },
+ {
+  "text": "GPT-4o, Llama-3.1-70B and 128k tokens",
+  "tokens": [
+   "gp",
+   "##t",
+   "-",
+   "4",
+   "##o",
+   ",",
+   "ll",
+   "##ama",
+   "-",
+   "3",
+   ".",
+   "1",
+   "-",
+   "70",
+   "##b",
+   "and",
+   "128",
+   "##k",
+   "token",
+   "##s"
+  ],
+  "ids": [
+   13252,
+   1108,
+   17,
+   24,
+   1086,
+   16,
+   1228,
+   7073,
+   17,
+   23,
+   18,
+   21,
+   17,
+   2969,
+   1503,
+   1004,
+   10905,
+   1249,
+   18210,
+   1021
+  ]
+ },
+ {
+  "text": "Áccented via combining mark",
+  "tokens": [
+   "accent",
+   "##ed",
+   "via",
+   "combining",
+   "mark"
+  ],
+  "ids": [
+   8675,
+   1104,
+   2087,
+   10572,
+   1934
+  ]
+ },
+ {
+  "text": "İstanbul",
+  "tokens": [
+   "istanbul"
+  ],
+  "ids": [
+   8966
+  ]
+ },
+ {
+  "text": "",
+  "tokens": [],
+  "ids": []
+ },
+ {
+  "text": "   ",
+  "tokens": [],
+  "ids": []
+ },
+ {
+  "text": "transformers hallucinate unfathomably",
+  "tokens": [
+   "transformers",
+   "hall",
+   "##uc",
+   "##inate",
+   "un",
+   "##fat",
+   "##hom",
+   "##ably"
+  ],
+  "ids": [
+   18087,
+   1540,
+   13200,
+   13782,
+   3901,
+   26759,
+   22399,
+   7237
+  ]
+ }
+]

@@ -1,0 +1,41 @@
+# Toolchain and tasks for working on the site. `mise install` once, then e.g.
+# `mise run dev`. Plain cargo commands work just as well; see
+# docs/development.md.
+
+[tools]
+# CI builds with the latest stable Rust and Node 22; match it.
+rust = { version = "stable", components = "rustfmt,clippy" }
+node = "22"
+watchexec = "latest"
+
+[tasks.build]
+description = "Build the site into ./public"
+run = "cargo run --release"
+
+[tasks.serve]
+description = "Build, then serve ./public at http://localhost:8000"
+run = "cargo run --release -- serve"
+
+[tasks.dev]
+description = "Serve, rebuilding and restarting on every change"
+run = "watchexec --restart --exts dj,html,css,rs,toml,mjs -- cargo run --release -- serve"
+
+[tasks.fmt]
+description = "Format the Rust code"
+run = "cargo fmt"
+
+[tasks.test]
+description = "Rust tests, then the Ask view's JavaScript tests against a fresh build"
+run = [
+    "cargo test",
+    "cargo run --release",
+    "node --test js/retrieval.test.mjs",
+]
+
+[tasks.check]
+description = "Everything CI checks"
+run = [
+    "cargo fmt --check",
+    "cargo clippy --all-targets -- -D warnings",
+    { task = "test" },
+]

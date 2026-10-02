@@ -28,6 +28,13 @@ jobs:
         run: cargo clippy -- -D warnings
       - name: Test
         run: cargo test
+      - name: Build the site
+        run: cargo run --release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test the Ask view's retrieval
+        run: node --test js/retrieval.test.mjs
 
   deploy:
     name: Build and deploy
@@ -73,9 +80,14 @@ jobs:
             exit 1
           fi
 
-          # Every page carries the two theme scripts; a post page carries a
-          # third for the diagram lightbox. Anything else means a script
-          # arrived without anyone deciding to add it.
+          # Every page carries the two theme scripts and the search palette's
+          # loader (data-search); a page with diagrams carries one more for
+          # the lightbox, and /blog/ai/ask/ one more for the Ask form (data-ask).
+          # The loader only import()s /search/palette.js -- same origin --
+          # when a reader opens the palette, and the Ask form fetches its
+          # model and index only once used, so nothing can gate reading.
+          # Anything else means a script arrived without anyone deciding to
+          # add it.
           fail=0
           while IFS= read -r page; do
             # Same grep-exits-1-on-no-match trap as above: a page that lost
@@ -83,10 +95,9 @@ jobs:
             # exists to catch, and without `|| true` it would abort here
             # before ever reporting that.
             n=$({ grep -o '<script' "$page" || true; } | wc -l)
-            if grep -q 'data-lightbox' "$page"; then
-              want=3
-            else
-              want=2
+            want=3
+            if grep -q 'data-lightbox' "$page" || grep -q 'data-ask' "$page"; then
+              want=4
             fi
             if [ "$n" -ne "$want" ]; then
               echo "$page has $n inline scripts, expected $want"
@@ -100,10 +111,14 @@ jobs:
         run: |
           for u in index about/index cv/index blog/index blog/trongate/index \
                    blog/trongate/mx-transition/index \
-                   blog/freebsd-on-hetzner/index blog/athletos-freebsd/index; do
+                   blog/freebsd-on-hetzner/index blog/athletos-freebsd/index \
+                   blog/ai/index blog/ai/timeline/index blog/ai/ask/index; do
             test -f "public/$u.html" || { echo "missing: $u"; exit 1; }
           done
           test -f public/cv_jonas_hansen_software_developer.pdf || { echo "missing: cv_jonas_hansen_software_developer.pdf"; exit 1; }
+          for asset in 'index.*.json' 'model.*.bin' 'vocab.*.txt' 'palette.js'; do
+            ls public/search/$asset >/dev/null 2>&1 || { echo "missing: search/$asset"; exit 1; }
+          done
           echo "all required URLs present"
 
       # Until the box is provisioned there is nowhere to send this. Skipping
@@ -195,6 +210,7 @@ jobs:
           fail=0
           for path in / /blog /blog/trongate /blog/trongate/mx-transition \
                       /blog/freebsd-on-hetzner /blog/athletos-freebsd /about/ /cv/ \
+                      /blog/ai/ /blog/ai/timeline/ /blog/ai/ask/ \
                       /cv_jonas_hansen_software_developer.pdf /rss.xml; do
             # 308 is expected on the extensionless paths: Caddy canonicalises to
             # the trailing-slash form, which browsers and crawlers follow.

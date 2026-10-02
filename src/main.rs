@@ -8,17 +8,22 @@ mod content;
 mod cv;
 mod cv_pdf;
 mod djot;
+mod embed;
 mod highlight;
 mod html;
+mod knowledge;
 mod math;
 mod pdf;
 mod pdf_metrics;
+mod search_index;
+mod serve;
 
 use anyhow::{Context, Result};
 use askama::Template;
 use chrono::Datelike;
 use content::Post;
 use cv::Cv;
+use knowledge::Article;
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -95,11 +100,73 @@ struct CvPage<'a> {
     syntax_css: &'a str,
 }
 
+/// One item on the /blog/ listing: a post, or the AI article, which lives
+/// under /blog/ too but is not a post.
+struct Entry {
+    url: String,
+    title: String,
+    date_iso: String,
+    date_long: String,
+    description: String,
+    /// Shown after the date, to say what kind of thing this is.
+    label: Option<&'static str>,
+}
+
+impl Entry {
+    fn from_post(post: &Post) -> Self {
+        Self {
+            url: post.url(),
+            title: post.title.clone(),
+            date_iso: post.date_iso(),
+            date_long: post.date_long(),
+            description: post.description.clone(),
+            label: None,
+        }
+    }
+
+    fn from_article(article: &Article) -> Self {
+        Self {
+            url: article.url(),
+            title: article.title.clone(),
+            date_iso: article.published_iso(),
+            date_long: article.published_long(),
+            description: article.description.clone(),
+            label: Some("Long read, with a timeline and Ask"),
+        }
+    }
+}
+
+/// The /blog/ listing: the posts in their existing order (newest first, a
+/// series kept together), with the article placed by its publication date.
+///
+/// A post is compared by the date it is listed under: its own, or for a
+/// series the date of its newest part, as `content::load_posts` sorts them.
+/// Every part of a series shares that date, so the article can never land
+/// between two of them.
+fn listing(posts: &[Post], article: &Article) -> Vec<Entry> {
+    let listed_date = |post: &Post| {
+        posts
+            .iter()
+            .filter(|p| post.series.is_some() && p.series == post.series)
+            .map(|p| p.date)
+            .max()
+            .unwrap_or(post.date)
+    };
+    let at = posts
+        .iter()
+        .position(|p| listed_date(p) < article.published)
+        .unwrap_or(posts.len());
+
+    let mut entries: Vec<Entry> = posts.iter().map(Entry::from_post).collect();
+    entries.insert(at, Entry::from_article(article));
+    entries
+}
+
 #[derive(Template)]
 #[template(path = "blog.html")]
 struct BlogPage<'a> {
     cv: &'a Cv,
-    posts: &'a [Post],
+    entries: &'a [Entry],
     year: i32,
     nav: &'static str,
     meta: Meta,
@@ -128,6 +195,88 @@ struct PostPage<'a> {
     syntax_css: &'a str,
 }
 
+/// The long-form article at /blog/ai/: every knowledge node, in reading order.
+#[derive(Template)]
+#[template(path = "ai.html")]
+struct AiPage<'a> {
+    cv: &'a Cv,
+    article: &'a Article,
+    year: i32,
+    nav: &'static str,
+    /// Which of Read / Timeline / Ask the view switcher marks current.
+    view: &'static str,
+    meta: Meta,
+    syntax: bool,
+    site_css: &'a str,
+    syntax_css: &'a str,
+}
+
+/// /blog/ai/timeline/: the same nodes, one line each.
+#[derive(Template)]
+#[template(path = "ai_timeline.html")]
+struct AiTimelinePage<'a> {
+    cv: &'a Cv,
+    article: &'a Article,
+    year: i32,
+    nav: &'static str,
+    view: &'static str,
+    meta: Meta,
+    syntax: bool,
+    site_css: &'a str,
+    syntax_css: &'a str,
+}
+
+/// /blog/ai/ask/: retrieval over the nodes, run in the reader's browser.
+#[derive(Template)]
+#[template(path = "ai_ask.html")]
+struct AiAskPage<'a> {
+    cv: &'a Cv,
+    article: &'a Article,
+    year: i32,
+    nav: &'static str,
+    view: &'static str,
+    meta: Meta,
+    syntax: bool,
+    site_css: &'a str,
+    syntax_css: &'a str,
+    /// Root-relative URL of the hashed search index.
+    index_url: &'a str,
+    model: &'a search_index::ModelInfo,
+    script: &'static str,
+}
+
+/// The Ask page's only script: the retrieval logic followed by the code that
+/// drives the form, inlined as one module like every other script on the
+/// site. Nothing heavy is in it -- the model and index are fetched by this
+/// script only once the reader starts using the form.
+const ASK_SCRIPT: &str = concat!(
+    include_str!("../js/retrieval.mjs"),
+    "\n",
+    include_str!("../js/ask.mjs")
+);
+
+/// The site-wide search palette (Ctrl+K on any page): the same retrieval
+/// logic, plus the palette UI. Not inlined -- base.html imports it from
+/// /search/palette.js only when a reader first opens the palette, so no page
+/// pays for it otherwise. `build_search` prefixes the hashed index URL.
+const PALETTE_SCRIPT: &str = concat!(
+    include_str!("../js/retrieval.mjs"),
+    "
+",
+    include_str!("../js/palette.mjs")
+);
+
+/// Where the committed embedding model lives; see models/README.md.
+const AI_MODEL_DIR: &str = "models/potion-base-4M";
+const AI_MODEL_NAME: &str = "potion-base-4M";
+
+/// The search assets every search UI shares.
+struct SearchAssets {
+    /// Root-relative URL of the hashed site-wide index.
+    index_url: String,
+    model: search_index::ModelInfo,
+}
+
 #[derive(Template)]
 #[template(path = "rss.xml", escape = "xml")]
 struct Feed<'a> {
@@ -144,6 +293,7 @@ struct Feed<'a> {
 #[template(path = "sitemap.xml", escape = "xml")]
 struct Sitemap<'a> {
     posts: &'a [Post],
+    article: &'a Article,
     base: &'a str,
 }
 
@@ -180,15 +330,26 @@ fn hash_css(bytes: &[u8]) -> String {
 /// compile, pass every other test, build fine, and only show up as the
 /// Caddy rule silently failing to match once it's live.
 fn hashed_css_name(stem: &str, bytes: &[u8]) -> String {
-    format!("{stem}.{}.css", hash_css(bytes))
+    hashed_name(stem, "css", bytes)
 }
 
-fn write(path: impl AsRef<Path>, contents: &str) -> Result<()> {
+/// The same content-hashed naming for any other immutable asset -- the Ask
+/// view's model, vocabulary and index. docs/deploy.md extends the Caddy
+/// immutable rule to these extensions.
+fn hashed_name(stem: &str, extension: &str, bytes: &[u8]) -> String {
+    format!("{stem}.{}.{extension}", hash_css(bytes))
+}
+
+fn write_bytes(path: impl AsRef<Path>, contents: &[u8]) -> Result<()> {
     let path = path.as_ref();
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir).with_context(|| format!("creating directory {}", dir.display()))?;
     }
     fs::write(path, contents).with_context(|| format!("writing {}", path.display()))
+}
+
+fn write(path: impl AsRef<Path>, contents: &str) -> Result<()> {
+    write_bytes(path, contents.as_bytes())
 }
 
 /// Walks `static/` into `public/`, renaming `site.css` to its content-hashed
@@ -324,7 +485,27 @@ fn og_image(post: &Post) -> Result<(Option<String>, Option<String>)> {
     Ok((Some(format!("{BASE_URL}{hero}")), post.hero_alt.clone()))
 }
 
+/// `site` builds ./public. `site serve [port]` builds, then serves ./public
+/// on localhost for development (see `serve.rs`).
 fn main() -> Result<()> {
+    let mut args = std::env::args().skip(1);
+    match args.next().as_deref() {
+        None => build(),
+        Some("serve") => {
+            let port = match args.next() {
+                Some(p) => p
+                    .parse()
+                    .with_context(|| format!("not a port number: {p:?}"))?,
+                None => serve::DEFAULT_PORT,
+            };
+            build()?;
+            serve::run(Path::new(OUT), port)
+        }
+        Some(other) => anyhow::bail!("unknown command {other:?}; usage: site [serve [port]]"),
+    }
+}
+
+fn build() -> Result<()> {
     let started = std::time::Instant::now();
 
     let hl = highlight::Highlighter::new();
@@ -333,6 +514,19 @@ fn main() -> Result<()> {
     cv.validate().context("content/cv.toml has a bad date")?;
     let mut posts = content::load_posts(Path::new("content/blog"), |body| djot::render(body, &hl))?;
     inline_svg_heroes(&mut posts)?;
+    let article = knowledge::load(Path::new("content/ai"), |body| djot::render(body, &hl))?;
+    // The article lives under /blog/ beside the posts, so a post path inside
+    // its tree would silently overwrite one of its pages.
+    if let Some(post) = posts
+        .iter()
+        .find(|p| p.path == article.path || p.path.starts_with(&format!("{}/", article.path)))
+    {
+        anyhow::bail!(
+            "post {:?} collides with the AI article at {}; pick another path",
+            post.path,
+            article.url()
+        );
+    }
     let year = chrono::Local::now().year();
 
     // Hashed once here, not per page: the hash is a pure function of each
@@ -439,7 +633,7 @@ fn main() -> Result<()> {
         format!("{OUT}/blog/index.html"),
         &BlogPage {
             cv: &cv,
-            posts: &posts,
+            entries: &listing(&posts, &article),
             year,
             nav: "blog",
             meta: Meta {
@@ -482,6 +676,9 @@ fn main() -> Result<()> {
         )?;
     }
 
+    let search = build_search(&article, &posts)?;
+    build_ai(&cv, &article, year, &site_css, &syntax_css, &search)?;
+
     let last_build_date = posts.first().map(|p| p.date_rfc2822()).unwrap_or_default();
     write(
         format!("{OUT}/rss.xml"),
@@ -497,6 +694,7 @@ fn main() -> Result<()> {
         format!("{OUT}/sitemap.xml"),
         &Sitemap {
             posts: &posts,
+            article: &article,
             base: BASE_URL,
         }
         .render()?,
@@ -507,10 +705,150 @@ fn main() -> Result<()> {
     )?;
 
     println!(
-        "built {} posts in {:.0?} -> {OUT}/",
+        "built {} posts and {} knowledge nodes in {:.0?} -> {OUT}/",
         posts.len(),
+        article.nodes.len(),
         started.elapsed()
     );
+
+    Ok(())
+}
+
+/// Writes everything search needs under /search/: the model and vocabulary,
+/// copied under content-hashed names; the site-wide index of AI article nodes
+/// and blog posts, embedded here with the same model the browser will use;
+/// and the palette module, which knows the index's hashed URL.
+fn build_search(article: &Article, posts: &[Post]) -> Result<SearchAssets> {
+    let base = format!("{OUT}/search");
+    let url = "/search/";
+
+    let model_dir = Path::new(AI_MODEL_DIR);
+    let vocab = fs::read_to_string(model_dir.join("vocab.txt"))
+        .with_context(|| format!("reading {AI_MODEL_DIR}/vocab.txt"))?;
+    let weights = fs::read(model_dir.join("embeddings.q8.bin"))
+        .with_context(|| format!("reading {AI_MODEL_DIR}/embeddings.q8.bin"))?;
+    let model = embed::StaticModel::from_parts(&vocab, &weights)?;
+
+    let weights_name = hashed_name("model", "bin", &weights);
+    let vocab_name = hashed_name("vocab", "txt", vocab.as_bytes());
+    write_bytes(format!("{base}/{weights_name}"), &weights)?;
+    write(format!("{base}/{vocab_name}"), &vocab)?;
+
+    let info = search_index::ModelInfo {
+        name: AI_MODEL_NAME.to_string(),
+        weights_url: format!("{url}{weights_name}"),
+        vocab_url: format!("{url}{vocab_name}"),
+        bytes: weights.len() + vocab.len(),
+        dim: model.dim(),
+    };
+    let index = search_index::build(article, posts, &model, &info)?;
+    let index_name = hashed_name("index", "json", index.as_bytes());
+    write(format!("{base}/{index_name}"), &index)?;
+    let index_url = format!("{url}{index_name}");
+
+    write(
+        format!("{base}/palette.js"),
+        &format!(
+            "const SEARCH_INDEX_URL = {index_url:?};\nconst AI_ARTICLE_URL = {:?};\n{PALETTE_SCRIPT}",
+            article.url()
+        ),
+    )?;
+
+    Ok(SearchAssets {
+        index_url,
+        model: info,
+    })
+}
+
+/// Writes the three views of the AI article.
+fn build_ai(
+    cv: &Cv,
+    article: &Article,
+    year: i32,
+    site_css: &str,
+    syntax_css: &str,
+    search: &SearchAssets,
+) -> Result<()> {
+    let base = format!("{OUT}/{}", article.path);
+    let url = article.url();
+
+    let meta = |title: String, description: String, path: &str, og_type: &'static str| Meta {
+        title: format!("{title} — {}", cv.site.name),
+        description,
+        url: format!("{BASE_URL}{url}{path}"),
+        og_type,
+        image: None,
+        image_alt: None,
+    };
+
+    write(
+        format!("{base}/index.html"),
+        &AiPage {
+            cv,
+            article,
+            year,
+            nav: "blog",
+            view: "read",
+            meta: meta(
+                article.title.clone(),
+                article.description.clone(),
+                "",
+                "article",
+            ),
+            syntax: article.has_syntax(),
+            site_css,
+            syntax_css,
+        }
+        .render()?,
+    )?;
+    write(
+        format!("{base}/timeline/index.html"),
+        &AiTimelinePage {
+            cv,
+            article,
+            year,
+            nav: "blog",
+            view: "timeline",
+            meta: meta(
+                format!("Timeline: {}", article.title),
+                format!(
+                    "{} One line per idea, each linking to its full section.",
+                    article.description
+                ),
+                "timeline/",
+                "website",
+            ),
+            syntax: false,
+            site_css,
+            syntax_css,
+        }
+        .render()?,
+    )?;
+    write(
+        format!("{base}/ask/index.html"),
+        &AiAskPage {
+            cv,
+            article,
+            year,
+            nav: "blog",
+            view: "ask",
+            meta: meta(
+                format!("Ask: {}", article.title),
+                "Ask a question and get the most relevant sections of the article, found by \
+                 semantic search that runs entirely in your browser."
+                    .to_string(),
+                "ask/",
+                "website",
+            ),
+            syntax: false,
+            site_css,
+            syntax_css,
+            index_url: &search.index_url,
+            model: &search.model,
+            script: ASK_SCRIPT,
+        }
+        .render()?,
+    )?;
 
     Ok(())
 }
@@ -563,6 +901,7 @@ email = "x"
             series: None,
             part: None,
             body: String::new(),
+            source: String::new(),
             hero_html: None,
         }
     }
@@ -662,10 +1001,9 @@ email = "x"
     #[test]
     fn blog_page_highlights_the_writing_link() {
         let cv = cv_fixture();
-        let posts = [];
         let html = BlogPage {
             cv: &cv,
-            posts: &posts,
+            entries: &[],
             year: 2026,
             nav: "blog",
             meta: meta_fixture("/blog/", "website"),
@@ -756,7 +1094,7 @@ email = "x"
                 "blog",
                 BlogPage {
                     cv: &cv,
-                    posts: &posts,
+                    entries: &[Entry::from_post(&post_fixture())],
                     year: 2026,
                     nav: "blog",
                     meta: meta_fixture("/blog/", "website"),
@@ -782,7 +1120,350 @@ email = "x"
                 .render()
                 .unwrap(),
             ),
+            ("ai", ai_page_html()),
+            ("ai-timeline", ai_timeline_html()),
+            ("ai-ask", ai_ask_html()),
         ]
+    }
+
+    /// The real article, with bodies rendered through the real Djot renderer
+    /// so the page tests see what ships.
+    fn real_article() -> Article {
+        let hl = highlight::Highlighter::new();
+        knowledge::load(Path::new("content/ai"), |body| djot::render(body, &hl)).unwrap()
+    }
+
+    fn model_info_fixture() -> search_index::ModelInfo {
+        search_index::ModelInfo {
+            name: AI_MODEL_NAME.into(),
+            weights_url: "/search/model.cccccccccccccccc.bin".into(),
+            vocab_url: "/search/vocab.dddddddddddddddd.txt".into(),
+            bytes: 4_000_000,
+            dim: 128,
+        }
+    }
+
+    fn ai_page_html() -> String {
+        let cv = cv_fixture();
+        let article = real_article();
+        AiPage {
+            cv: &cv,
+            article: &article,
+            year: 2026,
+            nav: "blog",
+            view: "read",
+            meta: meta_fixture("/blog/ai/", "article"),
+            syntax: article.has_syntax(),
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
+        }
+        .render()
+        .unwrap()
+    }
+
+    fn ai_timeline_html() -> String {
+        let cv = cv_fixture();
+        let article = real_article();
+        AiTimelinePage {
+            cv: &cv,
+            article: &article,
+            year: 2026,
+            nav: "blog",
+            view: "timeline",
+            meta: meta_fixture("/blog/ai/timeline/", "website"),
+            syntax: false,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
+        }
+        .render()
+        .unwrap()
+    }
+
+    fn ai_ask_html() -> String {
+        let cv = cv_fixture();
+        let article = real_article();
+        let model = model_info_fixture();
+        AiAskPage {
+            cv: &cv,
+            article: &article,
+            year: 2026,
+            nav: "blog",
+            view: "ask",
+            meta: meta_fixture("/blog/ai/ask/", "website"),
+            syntax: false,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
+            index_url: "/search/index.eeeeeeeeeeeeeeee.json",
+            model: &model,
+            script: ASK_SCRIPT,
+        }
+        .render()
+        .unwrap()
+    }
+
+    #[test]
+    fn the_article_renders_every_node_once_with_a_stable_anchor_and_permalink() {
+        let html = ai_page_html();
+        let article = real_article();
+        for node in &article.nodes {
+            let section = format!("<section class=\"node\" id=\"{}\">", node.id);
+            assert_eq!(html.matches(&section).count(), 1, "{}", node.id);
+            assert!(
+                html.contains(&format!("class=\"node-anchor\" href=\"#{}\"", node.id)),
+                "{}",
+                node.id
+            );
+        }
+        // One h1; parts are h2; nodes are h3 -- no level is skipped.
+        assert_eq!(html.matches("<h1").count(), 1);
+        assert_eq!(html.matches("<h2").count(), article.parts.len());
+        assert_eq!(html.matches("<h3").count(), article.nodes.len());
+        assert!(!html.contains("<h4"), "node bodies must not add headings");
+    }
+
+    #[test]
+    fn the_article_shows_relationships_and_misreadings() {
+        let html = ai_page_html();
+        // kv-cache builds on qkv and context-window.
+        let kv = &html[html.find("id=\"kv-cache\"").unwrap()..];
+        let kv = &kv[..kv.find("</section>").unwrap()];
+        assert!(kv.contains("Builds on"), "{kv}");
+        assert!(
+            kv.contains("<a href=\"#qkv\">Queries, keys and values</a>"),
+            "{kv}"
+        );
+        assert!(kv.contains("Often misread as"), "{kv}");
+    }
+
+    /// The article and timeline are content first: they must work without
+    /// JavaScript and must not pay for the Ask view's script.
+    #[test]
+    fn the_article_and_timeline_carry_no_script_beyond_the_site_wide_ones() {
+        // The two theme scripts and the palette loader, as on every page.
+        for html in [ai_page_html(), ai_timeline_html()] {
+            assert_eq!(html.matches("<script").count(), 3, "{html}");
+            assert!(!html.contains("data-ask"));
+        }
+    }
+
+    /// Every page offers the palette, but only as a trigger: a hidden button
+    /// the loader reveals, and a dynamic import of the module on first use.
+    /// Nothing is fetched up front.
+    #[test]
+    fn every_page_carries_the_palette_loader_but_not_the_palette() {
+        for (name, html) in all_pages_html() {
+            assert!(
+                html.contains("data-search hidden"),
+                "{name}: button must start hidden"
+            );
+            assert_eq!(
+                html.matches("import('/search/palette.js')").count(),
+                1,
+                "{name}"
+            );
+            assert!(
+                !html.contains("modulepreload"),
+                "{name}: must not load eagerly"
+            );
+        }
+    }
+
+    #[test]
+    fn the_palette_module_has_the_retrieval_code_and_exports_open() {
+        assert!(PALETTE_SCRIPT.contains("export function open()"));
+        assert!(PALETTE_SCRIPT.contains("export function rank("));
+        assert!(PALETTE_SCRIPT.contains("SEARCH_INDEX_URL"));
+    }
+
+    fn dated_post(
+        path: &str,
+        date: (i32, u32, u32),
+        series: Option<&str>,
+        part: Option<u32>,
+    ) -> Post {
+        Post {
+            path: path.into(),
+            date: chrono::NaiveDate::from_ymd_opt(date.0, date.1, date.2).unwrap(),
+            series: series.map(Into::into),
+            part,
+            ..post_fixture()
+        }
+    }
+
+    fn listed_urls(posts: &[Post], article: &Article) -> Vec<String> {
+        listing(posts, article).into_iter().map(|e| e.url).collect()
+    }
+
+    #[test]
+    fn the_blog_listing_places_the_article_by_its_date() {
+        let article = real_article(); // published 2026-10-02
+        let posts = [
+            dated_post("blog/newer", (2026, 11, 1), None, None),
+            dated_post("blog/older", (2026, 9, 1), None, None),
+        ];
+        assert_eq!(
+            listed_urls(&posts, &article),
+            ["/blog/newer/", "/blog/ai/", "/blog/older/"]
+        );
+
+        // Newer than everything: first. Older than everything: last.
+        assert_eq!(listed_urls(&posts[1..], &article)[0], "/blog/ai/");
+        assert_eq!(listed_urls(&posts[..1], &article)[1], "/blog/ai/");
+    }
+
+    /// A series is listed together at the date of its newest part, so parts
+    /// can be older than the article while the series sits above it. The
+    /// article goes after the whole series, never between its parts.
+    #[test]
+    fn the_blog_listing_never_splits_a_series() {
+        let article = real_article();
+        let posts = [
+            dated_post("blog/s/one", (2026, 9, 1), Some("s"), Some(1)),
+            dated_post("blog/s/two", (2026, 11, 1), Some("s"), Some(2)),
+            dated_post("blog/older", (2026, 8, 1), None, None),
+        ];
+        assert_eq!(
+            listed_urls(&posts, &article),
+            ["/blog/s/one/", "/blog/s/two/", "/blog/ai/", "/blog/older/"]
+        );
+    }
+
+    #[test]
+    fn the_blog_page_lists_the_article_with_its_label() {
+        let cv = cv_fixture();
+        let article = real_article();
+        let html = BlogPage {
+            cv: &cv,
+            entries: &listing(&[], &article),
+            year: 2026,
+            nav: "blog",
+            meta: meta_fixture("/blog/", "website"),
+            syntax: false,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
+        }
+        .render()
+        .unwrap();
+        assert!(
+            html.contains(&format!(
+                "<a href=\"{}\">{}</a>",
+                article.url(),
+                article.title
+            )),
+            "{html}"
+        );
+        assert!(
+            html.contains("Long read, with a timeline and Ask"),
+            "{html}"
+        );
+    }
+
+    #[test]
+    fn each_view_marks_itself_current_in_the_view_switcher() {
+        for (html, current) in [
+            (ai_page_html(), "Read"),
+            (ai_timeline_html(), "Timeline"),
+            (ai_ask_html(), "Ask"),
+        ] {
+            // The article lives under /blog/, so "Writing" is current in the
+            // site nav, as on a post, plus this view in the switcher.
+            assert_eq!(html.matches("aria-current=\"page\"").count(), 2);
+            asserts_single_nav_link_current(&html, &["Writing"]);
+            assert!(
+                html.contains(&format!("aria-current=\"page\">{current}</a>")),
+                "{current}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_timeline_links_every_node_to_its_section_in_order() {
+        let html = ai_timeline_html();
+        let article = real_article();
+        let mut last = 0;
+        for node in &article.nodes {
+            let link = format!("href=\"/blog/ai/#{}\"", node.id);
+            let at = html
+                .find(&link)
+                .unwrap_or_else(|| panic!("no timeline entry for {}", node.id));
+            assert!(at > last, "{} is out of order", node.id);
+            last = at;
+        }
+        // Each part's list continues the numbering from the previous part.
+        for part in &article.parts {
+            let first = &article.nodes_in(part)[0];
+            assert!(html.contains(&format!(
+                "<ol class=\"timeline\" start=\"{}\">",
+                first.order
+            )));
+        }
+    }
+
+    #[test]
+    fn the_ask_page_inlines_one_lazy_module_and_starts_disabled() {
+        let html = ai_ask_html();
+        assert_eq!(
+            html.matches("<script").count(),
+            4,
+            "theme scripts, palette loader and Ask"
+        );
+        assert!(html.contains("<script type=\"module\">"));
+        assert!(html.contains("data-ask data-index=\"/search/index.eeeeeeeeeeeeeeee.json\""));
+        // Without JavaScript, the form must not be able to submit a question
+        // to the server in a URL.
+        assert!(html.contains("type=\"search\" autocomplete=\"off\" spellcheck=\"false\""));
+        let input = &html[html.find("id=\"ask-query\"").unwrap()..];
+        assert!(
+            input[..input.find('>').unwrap()].contains("disabled"),
+            "{input}"
+        );
+        assert!(html.contains("<noscript>"));
+        // The status line is announced as it changes.
+        assert!(html.contains("role=\"status\" aria-live=\"polite\""));
+    }
+
+    /// The Ask script is inlined verbatim, so the HTML parser sees it: any
+    /// `<script` or `</script` text inside would end it early (and the deploy
+    /// guard counts `<script` occurrences per page).
+    #[test]
+    fn the_inlined_ask_script_cannot_close_its_own_tag() {
+        let lower = ASK_SCRIPT.to_lowercase();
+        assert!(!lower.contains("<script"));
+        assert!(!lower.contains("</script"));
+        assert!(!lower.contains("<!--"));
+    }
+
+    #[test]
+    fn the_sitemap_lists_the_article_and_timeline() {
+        let article = real_article();
+        let xml = Sitemap {
+            posts: &[],
+            article: &article,
+            base: BASE_URL,
+        }
+        .render()
+        .unwrap();
+        assert!(
+            xml.contains("<loc>https://sasin91.xyz/blog/ai/</loc>"),
+            "{xml}"
+        );
+        assert!(
+            xml.contains("<loc>https://sasin91.xyz/blog/ai/timeline/</loc>"),
+            "{xml}"
+        );
+    }
+
+    #[test]
+    fn hashed_asset_names_match_the_immutable_cache_shape() {
+        let name = hashed_name("model", "bin", b"weights");
+        let (stem, rest) = name.split_once('.').unwrap();
+        let (hash, ext) = rest.split_once('.').unwrap();
+        assert_eq!((stem, ext), ("model", "bin"));
+        assert_eq!(hash.len(), 16);
+        assert!(
+            hash.chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+        );
     }
 
     #[test]

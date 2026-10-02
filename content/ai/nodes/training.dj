@@ -1,0 +1,40 @@
++++
+id = "training"
+title = "Inference versus training"
+summary = "Training changes a model's weights. Inference, meaning ordinary use, runs fixed weights and changes nothing in the model."
+concepts = ["training", "inference", "pretraining", "fine-tuning", "weights", "in-context learning", "gradient descent"]
+prerequisites = ["transformer-layers", "sampling"]
+related = ["synthetic-data", "external-memory", "kv-cache"]
+search_terms = ["does chatgpt learn from my conversations", "does the model learn while chatting", "rlhf", "backpropagation", "post-training", "weights update"]
+learning_objectives = [
+    "Distinguish what changes during training from what changes during inference",
+    "Explain in-context learning without weight updates",
+]
+misconceptions = [
+    "A model learns from each conversation as it happens.",
+    "In-context learning updates the model's weights.",
+]
++++
+
+*Training* is where a model's weights come from. In pretraining, the model
+predicts the next token across an enormous body of text; each prediction is
+compared with the real next token, and gradient descent nudges every weight
+slightly in the direction that would have made the right token more likely.
+*Post-training* then shapes behaviour: supervised fine-tuning on example
+conversations, learning from human or AI preference judgements, and
+reinforcement learning on tasks whose answers can be checked.
+
+*Inference* is everything that happens when the model is used. It runs the
+network forward only. No error is measured, no gradients are computed, and
+the weights are read but never written. Inside a conversation, what changes
+is the context and the [KV cache](#kv-cache), and both are discarded
+afterwards.
+
+Models can still adapt to a prompt: show one a few examples of a format and
+it follows the format. This *in-context learning* is computation over the
+context by fixed weights, not training. Remove the examples and the
+behaviour goes with them.
+
+Whether a provider later uses conversations as training data is a matter of
+policy, and if it happens, it happens in a separate training run that
+produces a new model, not inside the conversation.

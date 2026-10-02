@@ -1,0 +1,40 @@
++++
+id = "transformer-layers"
+title = "Transformer layers"
+summary = "A transformer is a stack of blocks. Each one lets tokens exchange information (attention), then transforms every token on its own (an MLP)."
+concepts = ["transformer", "layer", "transformer block", "feed-forward network", "mlp", "residual connection", "mixture of experts"]
+prerequisites = ["contextual-representations"]
+related = ["attention", "training"]
+search_terms = ["decoder only", "architecture", "ffn", "layer norm", "moe", "how many layers", "parameters"]
+learning_objectives = [
+    "Name the two sublayers of a transformer block and what each does",
+    "Explain why the same weights can process inputs of any length",
+]
+misconceptions = ["Each layer of the model handles a different word of the input."]
++++
+
+A large language model is a stack of dozens of transformer blocks, often
+somewhere between 30 and 100 or more. Each block reads the residual stream,
+computes something, and adds its result back, so information accumulates
+rather than being replaced.
+
+Every block has two parts:
+
+- *Attention* moves information between positions. It is the only place
+  where one token's representation can be influenced by another's. See
+  [self-attention](#attention).
+- A *feed-forward network* (MLP) then transforms each position separately,
+  with the same weights at every position. Much of what a model has absorbed
+  about the world appears to be stored in these weights.
+
+Normalisation steps keep the numbers in a stable range between the two.
+
+The weights of each block are fixed after training and shared across
+positions, which is why one model can process a prompt of five tokens or five
+thousand: the same computation is applied at every position. Chat models are
+*decoder-only* transformers with a causal mask, meaning each position can
+only attend to positions before it.
+
+Many recent large models replace the single MLP with a *mixture of experts*:
+several MLPs, of which a small router picks a few for each token. The model
+has more parameters in total, but each token only uses a fraction of them.

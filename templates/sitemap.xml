@@ -4,6 +4,14 @@
   <url><loc>{{ base }}/about/</loc></url>
   <url><loc>{{ base }}/cv/</loc></url>
   <url><loc>{{ base }}/blog/</loc></url>
+  <url>
+    <loc>{{ base }}{{ article.url() }}</loc>
+    <lastmod>{{ article.updated_iso() }}</lastmod>
+  </url>
+  <url>
+    <loc>{{ base }}{{ article.url() }}timeline/</loc>
+    <lastmod>{{ article.updated_iso() }}</lastmod>
+  </url>
 {%- for post in posts %}
   <url>
     <loc>{{ base }}{{ post.url() }}</loc>

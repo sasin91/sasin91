@@ -1,0 +1,32 @@
++++
+id = "softmax"
+title = "Probabilities and softmax"
+summary = "Softmax turns the logits into a probability distribution over the entire vocabulary."
+concepts = ["softmax", "probability distribution", "probability", "normalization", "calibration"]
+prerequisites = ["logits"]
+related = ["sampling-controls", "qkv"]
+search_terms = ["probabilities", "next token probability", "exponential", "logprobs", "confidence"]
+learning_objectives = [
+    "Compute softmax for a small list of logits",
+    "Explain why a high probability is not the same as a correct answer",
+]
+misconceptions = ["A token with high probability is likely to be factually correct."]
++++
+
+Softmax exponentiates each logit and divides by the sum, so every token gets
+a positive probability and all of them add up to one:
+
+$$`p_i = \frac{e^{z_i}}{\sum_j e^{z_j}}`
+
+It keeps the order of the logits and exaggerates the gaps between them: a
+logit two points higher than another becomes about seven times as probable.
+Every token in the vocabulary, however unlikely, keeps a probability above
+zero.
+
+The distribution describes what tends to come next in text like the context,
+as learned in training. It is not a calibrated measure of truth. A fluent,
+confident continuation and a correct one are different things, which is part
+of why models can state falsehoods with high probability.
+
+The same function appears inside [attention](#qkv), where it turns query-key
+scores into weights. Same arithmetic, different job.

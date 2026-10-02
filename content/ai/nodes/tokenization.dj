@@ -1,0 +1,41 @@
++++
+id = "tokenization"
+title = "Tokenization"
+summary = "Text is split into units from a fixed vocabulary: whole words, pieces of words, or raw bytes."
+concepts = ["tokenization", "token", "vocabulary", "subword", "byte pair encoding", "wordpiece"]
+prerequisites = ["text"]
+related = ["token-ids", "context-window"]
+search_terms = ["tokenizer", "tokens", "bpe", "sentencepiece", "subwords", "word pieces", "how many tokens"]
+learning_objectives = [
+    "Describe how a subword tokenizer splits common and rare words",
+    "Explain why token counts differ between models",
+]
+misconceptions = ["One token is one word."]
++++
+
+A tokenizer splits text into units drawn from a fixed vocabulary, typically
+tens of thousands to a few hundred thousand entries. Modern tokenizers work
+on *subwords*: common words get a single token, while rare words are built
+from several pieces. Byte pair encoding (BPE), WordPiece and Unigram are the
+common algorithms; byte-level variants fall back to individual bytes, so any
+input at all can be encoded.
+
+The vocabulary is chosen before the model is trained, from statistics of a
+large text sample, and it never changes afterwards. The model learns to work
+with whatever pieces the tokenizer produces.
+
+This is the actual output of the WordPiece tokenizer behind this article's
+[Ask](/blog/ai/ask/) view. `##` marks a piece that continues the previous one:
+
+```text
+"Why doesn't a larger context window replace RAG?"
+why | doesn | ' | t | a | larger | context | window | replace | rag | ?
+
+"transformers hallucinate unfathomably"
+transformers | hall | ##uc | ##inate | un | ##fat | ##hom | ##ably
+```
+
+Tokens are not words. Punctuation and word fragments are tokens too, and a
+different model's tokenizer would split the same sentence differently, which
+is why token counts and per-token prices are only comparable within one model
+family.

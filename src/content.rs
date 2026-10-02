@@ -11,7 +11,7 @@ use walkdir::WalkDir;
 
 /// TOML has a native date type, so `date = 2026-07-26` arrives as a structured
 /// value rather than a string. Accept it and hand back a chrono date.
-fn toml_date<'de, D>(de: D) -> Result<NaiveDate, D::Error>
+pub(crate) fn toml_date<'de, D>(de: D) -> Result<NaiveDate, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -103,6 +103,8 @@ pub struct Post {
     pub part: Option<u32>,
     /// Rendered HTML, not source.
     pub body: String,
+    /// The Djot source of the body, kept for the search index.
+    pub source: String,
     /// Set by `main.rs`, after loading, when `hero` points at a local
     /// `.svg`: the pre-rendered `<figure>` markup produced the same way the
     /// body inlines a diagram, so the hero inherits the page theme too. A
@@ -171,9 +173,15 @@ impl Post {
 
 /// `+++ toml +++` frontmatter, then the body.
 pub fn split_frontmatter(source: &str) -> Result<(FrontMatter, &str)> {
+    split_toml_frontmatter(source)
+}
+
+/// The same `+++` split, for any frontmatter shape -- posts and knowledge
+/// nodes share the file format but not the fields.
+pub fn split_toml_frontmatter<T: serde::de::DeserializeOwned>(source: &str) -> Result<(T, &str)> {
     let rest = source
         .strip_prefix("+++")
-        .context("post must start with a +++ frontmatter block")?;
+        .context("file must start with a +++ frontmatter block")?;
     let (raw, body) = rest
         .split_once("+++")
         .context("frontmatter block is never closed")?;
@@ -209,6 +217,7 @@ pub fn load_posts(dir: &Path, render: impl Fn(&str) -> Result<String>) -> Result
             series: front.series,
             part: front.part,
             body: render(body).with_context(|| format!("rendering {}", file.display()))?,
+            source: body.to_string(),
             // Filled in by `main.rs` after `load_posts` returns; it needs
             // the SVG-inlining helper `djot.rs` owns, and this function has
             // no reason to depend on that module.
@@ -298,6 +307,7 @@ Body text here.
             series: None,
             part: None,
             body: String::new(),
+            source: String::new(),
             hero_html: None,
         };
         // The bug this guards: deriving the slug from a filename would
@@ -320,6 +330,7 @@ Body text here.
             series: None,
             part: None,
             body: body.into(),
+            source: String::new(),
             hero_html: hero_html.map(Into::into),
         }
     }
@@ -390,6 +401,7 @@ Body text here.
             series: None,
             part: None,
             body: String::new(),
+            source: String::new(),
             hero_html: None,
         };
         assert_eq!(post.date_iso(), "2025-03-03");

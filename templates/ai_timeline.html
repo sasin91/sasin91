@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>{{ article.title }}</h1>
+  <p class="lede">
+    The whole article as a progression of ideas, one line each. Every step links
+    to its full section.
+  </p>
+
+  {% include "ai_views.html" %}
+
+  {# Generated from the same nodes and the same order as the article: there
+     is nothing here to keep in sync by hand. One ordered list per part, with
+     `start` carrying the numbering across parts so screen readers announce
+     the same step numbers that are shown. #}
+  {% for part in article.parts %}
+    <section class="timeline-part">
+      <h2>{{ part.title }}</h2>
+      {% let nodes = article.nodes_in(part) %}
+      <ol class="timeline" start="{{ nodes[0].order }}">
+        {% for node in nodes %}
+          <li>
+            <a href="{{ article.url() }}#{{ node.id }}">
+              <span class="timeline-title">{{ node.title }}</span>
+              <span class="timeline-summary">{{ node.summary }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% endfor %}
+{% endblock %}
