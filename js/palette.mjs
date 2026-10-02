@@ -61,6 +61,8 @@ function load() {
   search.loading ??= (async () => {
     try {
       search.index = prepareIndex(await fetchIndex(SEARCH_INDEX_URL));
+      // A retry after an earlier failure must not keep reporting it.
+      search.failed = false;
     } catch {
       search.failed = true;
       search.loading = null; // try the network again next time
