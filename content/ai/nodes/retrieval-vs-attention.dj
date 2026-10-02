@@ -1,0 +1,42 @@
++++
+id = "retrieval-vs-attention"
+title = "Retrieval versus attention"
+summary = "Attention mixes information among tokens already in the context. Retrieval decides which outside information gets into the context at all."
+concepts = ["retrieval", "attention", "similarity search", "context selection"]
+prerequisites = ["attention", "sparse-attention", "rag"]
+related = ["context-window", "external-memory"]
+search_terms = ["difference between attention and retrieval", "is attention retrieval", "does a bigger context window replace rag", "long context vs rag", "retrieval vs long context"]
+learning_objectives = [
+    "Contrast attention and retrieval by where they run and what they operate on",
+    "Explain why sparse attention and long contexts do not replace retrieval",
+]
+misconceptions = [
+    "Attention and retrieval are the same thing at different scales.",
+    "A long enough context window makes retrieval unnecessary.",
+]
++++
+
+Both mechanisms compare vectors and favour the most similar, which is why
+they are easy to confuse. They do different jobs.
+
+*Attention* runs inside the model, in every layer, for every token. Its
+queries and keys are the model's own internal states, computed with weights
+learned during training. Its scope is exactly the current context window:
+nothing more, nothing less.
+
+*Retrieval* usually runs outside the model, before or between generation
+steps. It is a separate system: a search index, an embedding model and a
+store of documents. Its scope is whatever collection it indexes, which can
+be far larger than any context window. Its output is text that gets placed
+into the context, where attention can then use it.
+
+So [sparse attention](#sparse-attention) is not retrieval: it narrows what a
+token may look at among tokens already present. And a bigger context window
+does not replace retrieval: it raises the ceiling on how much can be placed
+in context, but something still has to choose what goes there, and with a
+large collection it cannot be everything.
+
+A few research architectures build retrieval into the model itself, letting
+it look up neighbours in a large external store during the forward pass.
+Even there, the lookup over the store is a separate step from ordinary
+attention over the context.

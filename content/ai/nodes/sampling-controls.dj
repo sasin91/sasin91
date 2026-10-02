@@ -1,0 +1,33 @@
++++
+id = "sampling-controls"
+title = "Temperature, top-k and top-p"
+summary = "Temperature reshapes the distribution; top-k and top-p cut off its unlikely tail before a token is drawn."
+concepts = ["temperature", "top-k", "top-p", "nucleus sampling", "min-p"]
+prerequisites = ["sampling"]
+related = ["softmax"]
+search_terms = ["top p", "top k", "nucleus", "creativity", "randomness", "deterministic output", "temperature 0"]
+learning_objectives = ["Describe the effect of temperature, top-k and top-p on the next-token distribution"]
+misconceptions = ["Raising the temperature makes the model think more creatively."]
++++
+
+These settings act on the final distribution, just before a token is drawn:
+
+- *Temperature* divides every logit by a number $`T` before
+  [softmax](#softmax). Below 1 the distribution gets sharper and the likely
+  tokens dominate; as $`T` approaches 0 it approaches greedy decoding. Above
+  1 it flattens, and unlikely tokens are chosen more often.
+- *Top-k* keeps only the $`k` most probable tokens and renormalises.
+- *Top-p*, or nucleus sampling, keeps the smallest set of tokens whose
+  probabilities add up to at least $`p`, so the cut adapts to how spread out
+  the distribution is.
+- *Min-p* keeps tokens whose probability is at least some fraction of the
+  top token's.
+
+None of these change what the model computed. They change which of its
+candidates are eligible and how often each is picked. "More creative" output
+at a high temperature is the same model drawing more often from the tail of
+the same distribution.
+
+Even at temperature 0, output is not always perfectly repeatable in practice,
+because of how floating-point work is batched and parallelised on
+accelerators.

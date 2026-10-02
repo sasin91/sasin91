@@ -1,0 +1,40 @@
++++
+id = "rag"
+title = "Retrieval-augmented generation"
+summary = "RAG searches an external collection at request time and places the most relevant passages in the context before the model answers."
+concepts = ["retrieval-augmented generation", "rag", "retrieval", "vector search", "chunking", "reranking"]
+prerequisites = ["context-window", "embeddings"]
+related = ["retrieval-vs-attention", "external-memory", "code-retrieval"]
+search_terms = ["retrieval augmented generation", "vector database", "semantic search", "knowledge base", "grounding", "citations", "document search"]
+learning_objectives = [
+    "Walk through the steps of a RAG pipeline",
+    "Name the main ways a RAG system fails",
+]
+misconceptions = ["RAG teaches the model new facts by updating it."]
++++
+
+A model knows only what it absorbed in training plus what is in its
+[context](#context-window). Retrieval-augmented generation adds a step
+before generation that decides what else should be in that context:
+
+1. Ahead of time, split a document collection into passages ("chunks") and
+   index them, usually by computing an [embedding](#embeddings) for each and
+   often with a keyword index as well.
+2. When a question arrives, embed it the same way and find the passages
+   whose vectors are most similar, optionally re-scoring the best few with a
+   more expensive model.
+3. Insert those passages into the prompt, and let the model generate with
+   them in view.
+
+That gives a model access to private, recent or very large collections
+without retraining anything, and lets it cite its sources. The model's
+weights are not changed at all.
+
+RAG fails in recognisable ways. If retrieval misses the passage that
+matters, the model answers without it, often fluently. If it retrieves
+near-misses, they can distract or mislead. Most of the work in a good RAG
+system is in the retrieval, not the generation.
+
+The [Ask](/ai/ask/) view of this article is the retrieval half of this
+pipeline, without the generating half: it embeds your question in your
+browser and returns the closest sections, which you then read yourself.

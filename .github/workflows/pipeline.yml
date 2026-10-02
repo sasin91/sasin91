@@ -30,3 +30,13 @@ jobs:
         run: cargo clippy -- -D warnings
       - name: Test
         run: cargo test
+      # The Ask view's retrieval code runs in the browser, so it is tested
+      # with Node's built-in runner (no npm, no dependencies). Its last tests
+      # ask real questions of the built search index, hence the build first.
+      - name: Build the site
+        run: cargo run --release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test the Ask view's retrieval
+        run: node --test js/retrieval.test.mjs

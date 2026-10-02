@@ -1,0 +1,34 @@
++++
+id = "position"
+title = "Positional information"
+summary = "Attention on its own ignores word order, so position has to be injected. Most current models do it by rotating queries and keys (RoPE)."
+concepts = ["positional encoding", "position", "word order", "rotary position embedding", "rope"]
+prerequisites = ["embeddings"]
+related = ["attention", "qkv", "context-window"]
+search_terms = ["positional embeddings", "sinusoidal", "alibi", "relative position", "token order", "rotary embeddings"]
+learning_objectives = [
+    "Explain why a transformer needs positional information",
+    "Contrast absolute position embeddings with rotary embeddings",
+]
+misconceptions = ["Every model adds a position vector to each token embedding."]
++++
+
+[Self-attention](#attention) compares tokens with each other, but nothing in
+that comparison depends on where they are. Without extra information, "dog
+bites man" and "man bites dog" would give the model the same tokens in a
+different order, and it would have no way to tell them apart.
+
+Early transformers fixed this by *adding* a position vector to each token's
+embedding: fixed sinusoidal patterns in the original Transformer, a learned
+table of positions in BERT and GPT-2.
+
+Most current large models use *rotary position embeddings* (RoPE) instead.
+Nothing is added to the embedding. Inside every attention layer, query and
+key vectors are rotated by an angle that depends on their position, so the
+score between two tokens ends up depending on how far apart they are. Other
+schemes, such as ALiBi, add a distance-based penalty to attention scores
+directly.
+
+The choice matters for [context length](#context-window): a model handles
+positions well mostly within the range it was trained on, and many
+long-context techniques work by adjusting how RoPE behaves beyond that range.

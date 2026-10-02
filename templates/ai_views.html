@@ -1,0 +1,8 @@
+{# Read / Timeline / Ask: three views of the same knowledge nodes. Plain
+   links between three static pages, so every view works without JavaScript
+   and has its own URL. #}
+<nav class="view-nav" aria-label="Views of this article">
+  <a href="{{ article.url() }}"{% if view == "read" %} aria-current="page"{% endif %}>Read</a>
+  <a href="{{ article.url() }}timeline/"{% if view == "timeline" %} aria-current="page"{% endif %}>Timeline</a>
+  <a href="{{ article.url() }}ask/"{% if view == "ask" %} aria-current="page"{% endif %}>Ask</a>
+</nav>

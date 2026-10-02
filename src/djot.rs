@@ -100,6 +100,127 @@ pub fn render_with_assets(source: &str, hl: &Highlighter, assets: &Path) -> Resu
     Ok(html)
 }
 
+/// The heading a passage sits under: the anchor jotdown gives its section
+/// (the same `id` as in the rendered HTML) and the heading's text.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Section {
+    pub id: String,
+    pub heading: String,
+}
+
+/// One searchable passage of a document.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Passage {
+    pub text: String,
+    /// The innermost heading above it, if any, so a search result can link
+    /// to that part of the page rather than its top.
+    pub section: Option<Section>,
+}
+
+/// The prose of a document as plain-text passages, one per top-level block
+/// (a paragraph, a whole list, a block quote), for embedding and searching.
+///
+/// Code blocks, raw HTML and math are left out: they are what a reader
+/// recognises on the page, not what a question is phrased in. A paragraph
+/// ending in a colon introduces whatever follows it, so it is joined to the
+/// next passage in the same section rather than embedded on its own.
+pub fn passages(source: &str) -> Vec<Passage> {
+    let mut passages: Vec<Passage> = Vec::new();
+    let mut current = String::new();
+    let mut sections: Vec<Section> = Vec::new();
+    let mut in_heading = false;
+    let mut depth = 0usize;
+    let mut skipping = 0usize;
+
+    let flush = |text: &mut String, section: Option<&Section>, passages: &mut Vec<Passage>| {
+        let text = std::mem::take(text);
+        let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+        if text.is_empty() {
+            return;
+        }
+        let section = section.cloned();
+        match passages.last_mut() {
+            Some(previous) if previous.text.ends_with(':') && previous.section == section => {
+                previous.text.push(' ');
+                previous.text.push_str(&text);
+            }
+            _ => passages.push(Passage { text, section }),
+        }
+    };
+
+    for event in Parser::new(source) {
+        match event {
+            Event::Start(Container::Section { id }, _) => sections.push(Section {
+                id: id.to_string(),
+                heading: String::new(),
+            }),
+            Event::End(Container::Section { .. }) => {
+                sections.pop();
+            }
+            // Headings label the passages after them rather than being
+            // passages of their own.
+            Event::Start(Container::Heading { .. }, _) => in_heading = true,
+            Event::End(Container::Heading { .. }) => in_heading = false,
+            event if in_heading => {
+                if let Some(section) = sections.last_mut() {
+                    push_alt_text(&mut section.heading, event);
+                }
+            }
+
+            // Wrappers with no prose of their own: their children are the
+            // top-level blocks.
+            Event::Start(Container::Document | Container::Div { .. }, _)
+            | Event::End(Container::Document | Container::Div { .. }) => {}
+
+            Event::Start(container, _) => {
+                if is_unsearchable(&container) {
+                    skipping += 1;
+                }
+                if container.is_block() {
+                    depth += 1;
+                }
+            }
+            Event::End(container) => {
+                if is_unsearchable(&container) {
+                    skipping -= 1;
+                }
+                if container.is_block() {
+                    depth -= 1;
+                    if depth == 0 {
+                        flush(&mut current, sections.last(), &mut passages);
+                    } else {
+                        current.push(' ');
+                    }
+                }
+            }
+
+            event if skipping == 0 && depth > 0 => push_alt_text(&mut current, event),
+            _ => {}
+        }
+    }
+
+    passages
+}
+
+fn is_unsearchable(container: &Container) -> bool {
+    matches!(
+        container,
+        Container::CodeBlock { .. }
+            | Container::RawBlock { .. }
+            | Container::RawInline { .. }
+            | Container::Math { .. }
+            | Container::LinkDefinition { .. }
+            | Container::Footnote { .. }
+    )
+}
+
+/// Whether a document contains any heading. Knowledge nodes may not: the
+/// node's own title is its heading, and jotdown would give an inner heading
+/// a generated id that could collide with a node's anchor.
+pub fn has_heading(source: &str) -> bool {
+    Parser::new(source).any(|event| matches!(event, Event::Start(Container::Heading { .. }, _)))
+}
+
 /// True for images that should be inlined: a root-relative path ending in
 /// `.svg`. Remote URLs and non-SVG images are left to jotdown's normal
 /// `<img>` rendering. `pub(crate)` so `main.rs` can apply the same rule to a
@@ -345,6 +466,85 @@ mod tests {
         assert!(result.is_err(), "a broken diagram must not ship silently");
 
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn passages_are_top_level_blocks_as_plain_text() {
+        let source = "First *paragraph* with [a link](#x) and `code`.\n\n\
+                      Second paragraph,\nwrapped.\n\n\
+                      > A quote.\n";
+        assert_eq!(
+            texts(source),
+            [
+                "First paragraph with a link and code.",
+                "Second paragraph, wrapped.",
+                "A quote."
+            ]
+        );
+    }
+
+    #[test]
+    fn passages_leave_out_code_and_math() {
+        let source = "Before $`x^2` after.\n\n```rust\nfn main() {}\n```\n\n$$`e = mc^2`\n";
+        assert_eq!(texts(source), ["Before after."]);
+    }
+
+    #[test]
+    fn a_lead_in_ending_in_a_colon_joins_the_list_it_introduces() {
+        let source = "Three things:\n\n- one\n- two\n- three\n\nAfter.\n";
+        assert_eq!(texts(source), ["Three things: one two three", "After."]);
+    }
+
+    #[test]
+    fn passages_look_inside_divs() {
+        assert_eq!(texts("::: note\nInside.\n:::\n"), ["Inside."]);
+    }
+
+    fn texts(source: &str) -> Vec<String> {
+        passages(source).into_iter().map(|p| p.text).collect()
+    }
+
+    /// The section id must be the one jotdown puts on the rendered
+    /// `<section>`, or a search result would link to an anchor that does not
+    /// exist on the page.
+    #[test]
+    fn passages_know_the_heading_they_sit_under() {
+        let source = "Intro.\n\n## What it costs\n\nMoney.\n\nMore money:\n\n- lots\n\n## Where *k3s* wins\n\nHere.\n";
+        let found = passages(source);
+        assert_eq!(found[0].section, None);
+        assert_eq!(found[0].text, "Intro.");
+
+        let costs = found[1].section.clone().unwrap();
+        assert_eq!(costs.heading, "What it costs");
+        assert_eq!(found[2].section, found[1].section);
+        assert_eq!(found[2].text, "More money: lots");
+
+        let wins = found[3].section.clone().unwrap();
+        assert_eq!(wins.heading, "Where k3s wins");
+
+        let html = render_str(source);
+        for section in [costs, wins] {
+            assert!(
+                html.contains(&format!("<section id=\"{}\">", section.id)),
+                "{} not in {html}",
+                section.id
+            );
+        }
+        assert_eq!(found.len(), 4, "headings are labels, not passages");
+    }
+
+    #[test]
+    fn passages_keep_smart_punctuation_as_text() {
+        assert_eq!(
+            texts("It's \"quoted\" -- and...\n"),
+            ["It\u{2019}s \u{201c}quoted\u{201d} \u{2013} and\u{2026}"]
+        );
+    }
+
+    #[test]
+    fn detects_headings() {
+        assert!(has_heading("Text.\n\n## Heading\n"));
+        assert!(!has_heading("Text with a # hash.\n"));
     }
 
     fn write_test_svg(dir: &std::path::Path) {
