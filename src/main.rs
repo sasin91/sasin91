@@ -713,7 +713,7 @@ fn build_ai(
             cv,
             article,
             year,
-            nav: "",
+            nav: "ai",
             view: "read",
             meta: meta(
                 article.title.clone(),
@@ -733,7 +733,7 @@ fn build_ai(
             cv,
             article,
             year,
-            nav: "",
+            nav: "ai",
             view: "timeline",
             meta: meta(
                 format!("Timeline: {}", article.title),
@@ -756,7 +756,7 @@ fn build_ai(
             cv,
             article,
             year,
-            nav: "",
+            nav: "ai",
             view: "ask",
             meta: meta(
                 format!("Ask: {}", article.title),
@@ -861,7 +861,7 @@ email = "x"
     /// nav rendering identically on every page, so no link is ever marked
     /// active.
     fn asserts_single_nav_link_current(html: &str, expected: &[&str]) {
-        for label in ["Writing", "About", "CV"] {
+        for label in ["Writing", "AI", "About", "CV"] {
             let marked = html.contains(&format!("aria-current=\"page\">{label}"));
             assert_eq!(
                 marked,
@@ -1077,7 +1077,7 @@ email = "x"
             cv: &cv,
             article: &article,
             year: 2026,
-            nav: "",
+            nav: "ai",
             view: "read",
             meta: meta_fixture("/ai/", "article"),
             syntax: article.has_syntax(),
@@ -1095,7 +1095,7 @@ email = "x"
             cv: &cv,
             article: &article,
             year: 2026,
-            nav: "",
+            nav: "ai",
             view: "timeline",
             meta: meta_fixture("/ai/timeline/", "website"),
             syntax: false,
@@ -1114,7 +1114,7 @@ email = "x"
             cv: &cv,
             article: &article,
             year: 2026,
-            nav: "",
+            nav: "ai",
             view: "ask",
             meta: meta_fixture("/ai/ask/", "website"),
             syntax: false,
@@ -1209,7 +1209,9 @@ email = "x"
             (ai_timeline_html(), "Timeline"),
             (ai_ask_html(), "Ask"),
         ] {
-            assert_eq!(html.matches("aria-current=\"page\"").count(), 1);
+            // The site nav's "AI" link, plus this view in the switcher.
+            assert_eq!(html.matches("aria-current=\"page\"").count(), 2);
+            asserts_single_nav_link_current(&html, &["AI"]);
             assert!(
                 html.contains(&format!("aria-current=\"page\">{current}</a>")),
                 "{current}"
