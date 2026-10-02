@@ -127,8 +127,8 @@ dd {
   color: var(--accent);
 }
 
-/* Seven items do not fit a phone at desktop spacing. Tighter gaps keep them
-   on one line down to 360px; below that the nav wraps rather than pushing
+/* The nav does not fit a phone at desktop spacing. Tighter gaps keep it
+   on one line on common phone widths; below that it wraps rather than pushing
    the page sideways. */
 @media (max-width: 30rem) {
   .site-nav {

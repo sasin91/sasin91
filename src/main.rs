@@ -100,11 +100,73 @@ struct CvPage<'a> {
     syntax_css: &'a str,
 }
 
+/// One item on the /blog/ listing: a post, or the AI article, which lives
+/// under /blog/ too but is not a post.
+struct Entry {
+    url: String,
+    title: String,
+    date_iso: String,
+    date_long: String,
+    description: String,
+    /// Shown after the date, to say what kind of thing this is.
+    label: Option<&'static str>,
+}
+
+impl Entry {
+    fn from_post(post: &Post) -> Self {
+        Self {
+            url: post.url(),
+            title: post.title.clone(),
+            date_iso: post.date_iso(),
+            date_long: post.date_long(),
+            description: post.description.clone(),
+            label: None,
+        }
+    }
+
+    fn from_article(article: &Article) -> Self {
+        Self {
+            url: article.url(),
+            title: article.title.clone(),
+            date_iso: article.published_iso(),
+            date_long: article.published_long(),
+            description: article.description.clone(),
+            label: Some("Long read, with a timeline and Ask"),
+        }
+    }
+}
+
+/// The /blog/ listing: the posts in their existing order (newest first, a
+/// series kept together), with the article placed by its publication date.
+///
+/// A post is compared by the date it is listed under: its own, or for a
+/// series the date of its newest part, as `content::load_posts` sorts them.
+/// Every part of a series shares that date, so the article can never land
+/// between two of them.
+fn listing(posts: &[Post], article: &Article) -> Vec<Entry> {
+    let listed_date = |post: &Post| {
+        posts
+            .iter()
+            .filter(|p| post.series.is_some() && p.series == post.series)
+            .map(|p| p.date)
+            .max()
+            .unwrap_or(post.date)
+    };
+    let at = posts
+        .iter()
+        .position(|p| listed_date(p) < article.published)
+        .unwrap_or(posts.len());
+
+    let mut entries: Vec<Entry> = posts.iter().map(Entry::from_post).collect();
+    entries.insert(at, Entry::from_article(article));
+    entries
+}
+
 #[derive(Template)]
 #[template(path = "blog.html")]
 struct BlogPage<'a> {
     cv: &'a Cv,
-    posts: &'a [Post],
+    entries: &'a [Entry],
     year: i32,
     nav: &'static str,
     meta: Meta,
@@ -571,7 +633,7 @@ fn build() -> Result<()> {
         format!("{OUT}/blog/index.html"),
         &BlogPage {
             cv: &cv,
-            posts: &posts,
+            entries: &listing(&posts, &article),
             year,
             nav: "blog",
             meta: Meta {
@@ -725,7 +787,7 @@ fn build_ai(
             cv,
             article,
             year,
-            nav: "ai",
+            nav: "blog",
             view: "read",
             meta: meta(
                 article.title.clone(),
@@ -745,7 +807,7 @@ fn build_ai(
             cv,
             article,
             year,
-            nav: "ai",
+            nav: "blog",
             view: "timeline",
             meta: meta(
                 format!("Timeline: {}", article.title),
@@ -768,7 +830,7 @@ fn build_ai(
             cv,
             article,
             year,
-            nav: "ai",
+            nav: "blog",
             view: "ask",
             meta: meta(
                 format!("Ask: {}", article.title),
@@ -873,7 +935,7 @@ email = "x"
     /// nav rendering identically on every page, so no link is ever marked
     /// active.
     fn asserts_single_nav_link_current(html: &str, expected: &[&str]) {
-        for label in ["Writing", "AI", "About", "CV"] {
+        for label in ["Writing", "About", "CV"] {
             let marked = html.contains(&format!("aria-current=\"page\">{label}"));
             assert_eq!(
                 marked,
@@ -939,10 +1001,9 @@ email = "x"
     #[test]
     fn blog_page_highlights_the_writing_link() {
         let cv = cv_fixture();
-        let posts = [];
         let html = BlogPage {
             cv: &cv,
-            posts: &posts,
+            entries: &[],
             year: 2026,
             nav: "blog",
             meta: meta_fixture("/blog/", "website"),
@@ -1033,7 +1094,7 @@ email = "x"
                 "blog",
                 BlogPage {
                     cv: &cv,
-                    posts: &posts,
+                    entries: &[Entry::from_post(&post_fixture())],
                     year: 2026,
                     nav: "blog",
                     meta: meta_fixture("/blog/", "website"),
@@ -1089,7 +1150,7 @@ email = "x"
             cv: &cv,
             article: &article,
             year: 2026,
-            nav: "ai",
+            nav: "blog",
             view: "read",
             meta: meta_fixture("/blog/ai/", "article"),
             syntax: article.has_syntax(),
@@ -1107,7 +1168,7 @@ email = "x"
             cv: &cv,
             article: &article,
             year: 2026,
-            nav: "ai",
+            nav: "blog",
             view: "timeline",
             meta: meta_fixture("/blog/ai/timeline/", "website"),
             syntax: false,
@@ -1126,7 +1187,7 @@ email = "x"
             cv: &cv,
             article: &article,
             year: 2026,
-            nav: "ai",
+            nav: "blog",
             view: "ask",
             meta: meta_fixture("/blog/ai/ask/", "website"),
             syntax: false,
@@ -1214,6 +1275,89 @@ email = "x"
         assert!(PALETTE_SCRIPT.contains("SEARCH_INDEX_URL"));
     }
 
+    fn dated_post(
+        path: &str,
+        date: (i32, u32, u32),
+        series: Option<&str>,
+        part: Option<u32>,
+    ) -> Post {
+        Post {
+            path: path.into(),
+            date: chrono::NaiveDate::from_ymd_opt(date.0, date.1, date.2).unwrap(),
+            series: series.map(Into::into),
+            part,
+            ..post_fixture()
+        }
+    }
+
+    fn listed_urls(posts: &[Post], article: &Article) -> Vec<String> {
+        listing(posts, article).into_iter().map(|e| e.url).collect()
+    }
+
+    #[test]
+    fn the_blog_listing_places_the_article_by_its_date() {
+        let article = real_article(); // published 2026-10-02
+        let posts = [
+            dated_post("blog/newer", (2026, 11, 1), None, None),
+            dated_post("blog/older", (2026, 9, 1), None, None),
+        ];
+        assert_eq!(
+            listed_urls(&posts, &article),
+            ["/blog/newer/", "/blog/ai/", "/blog/older/"]
+        );
+
+        // Newer than everything: first. Older than everything: last.
+        assert_eq!(listed_urls(&posts[1..], &article)[0], "/blog/ai/");
+        assert_eq!(listed_urls(&posts[..1], &article)[1], "/blog/ai/");
+    }
+
+    /// A series is listed together at the date of its newest part, so parts
+    /// can be older than the article while the series sits above it. The
+    /// article goes after the whole series, never between its parts.
+    #[test]
+    fn the_blog_listing_never_splits_a_series() {
+        let article = real_article();
+        let posts = [
+            dated_post("blog/s/one", (2026, 9, 1), Some("s"), Some(1)),
+            dated_post("blog/s/two", (2026, 11, 1), Some("s"), Some(2)),
+            dated_post("blog/older", (2026, 8, 1), None, None),
+        ];
+        assert_eq!(
+            listed_urls(&posts, &article),
+            ["/blog/s/one/", "/blog/s/two/", "/blog/ai/", "/blog/older/"]
+        );
+    }
+
+    #[test]
+    fn the_blog_page_lists_the_article_with_its_label() {
+        let cv = cv_fixture();
+        let article = real_article();
+        let html = BlogPage {
+            cv: &cv,
+            entries: &listing(&[], &article),
+            year: 2026,
+            nav: "blog",
+            meta: meta_fixture("/blog/", "website"),
+            syntax: false,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
+        }
+        .render()
+        .unwrap();
+        assert!(
+            html.contains(&format!(
+                "<a href=\"{}\">{}</a>",
+                article.url(),
+                article.title
+            )),
+            "{html}"
+        );
+        assert!(
+            html.contains("Long read, with a timeline and Ask"),
+            "{html}"
+        );
+    }
+
     #[test]
     fn each_view_marks_itself_current_in_the_view_switcher() {
         for (html, current) in [
@@ -1221,16 +1365,10 @@ email = "x"
             (ai_timeline_html(), "Timeline"),
             (ai_ask_html(), "Ask"),
         ] {
-            // The site nav's "AI" link, plus this view in the switcher.
+            // The article lives under /blog/, so "Writing" is current in the
+            // site nav, as on a post, plus this view in the switcher.
             assert_eq!(html.matches("aria-current=\"page\"").count(), 2);
-            asserts_single_nav_link_current(&html, &["AI"]);
-            // base.html spells the article's URL out; it must be the one
-            // article.toml actually builds.
-            let nav_link = format!(
-                "<a href=\"{}\" aria-current=\"page\">AI</a>",
-                real_article().url()
-            );
-            assert!(html.contains(&nav_link), "{nav_link}");
+            asserts_single_nav_link_current(&html, &["Writing"]);
             assert!(
                 html.contains(&format!("aria-current=\"page\">{current}</a>")),
                 "{current}"

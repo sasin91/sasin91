@@ -5,13 +5,14 @@
   <p class="lede">Notes on things I built and what broke on the way.</p>
 
   <ul class="post-list">
-    {% for post in posts %}
+    {% for entry in entries %}
       <li>
         <div class="meta">
-          <time datetime="{{ post.date_iso() }}">{{ post.date_long() }}</time>
+          <time datetime="{{ entry.date_iso }}">{{ entry.date_long }}</time>
+          {% if let Some(label) = entry.label %} · {{ label }}{% endif %}
         </div>
-        <h2><a href="{{ post.url() }}">{{ post.title }}</a></h2>
-        <p>{{ post.description }}</p>
+        <h2><a href="{{ entry.url }}">{{ entry.title }}</a></h2>
+        <p>{{ entry.description }}</p>
       </li>
     {% endfor %}
   </ul>
