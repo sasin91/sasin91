@@ -32,7 +32,7 @@ embedding *model* that turns a whole passage into one vector, so passages can
 be compared by similarity. That is how [retrieval](#rag) usually finds
 relevant text.
 
-The [Ask](/ai/ask/) view of this article uses the simplest kind: a static
+The [Ask](/blog/ai/ask/) view of this article uses the simplest kind: a static
 embedding table, where a passage's vector is the average of its tokens' rows.
 No context and no layers, so it runs in a browser without a machine-learning
 runtime. It is also why Ask combines it with plain keyword matching: a static

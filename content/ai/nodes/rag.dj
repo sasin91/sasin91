@@ -35,6 +35,6 @@ matters, the model answers without it, often fluently. If it retrieves
 near-misses, they can distract or mislead. Most of the work in a good RAG
 system is in the retrieval, not the generation.
 
-The [Ask](/ai/ask/) view of this article is the retrieval half of this
+The [Ask](/blog/ai/ask/) view of this article is the retrieval half of this
 pipeline, without the generating half: it embeds your question in your
 browser and returns the closest sections, which you then read yourself.

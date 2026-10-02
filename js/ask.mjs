@@ -1,4 +1,4 @@
-// Drives the form on /ai/ask/. Inlined directly after retrieval.mjs into the
+// Drives the form on /blog/ai/ask/. Inlined directly after retrieval.mjs into the
 // same inline module script (see ASK_SCRIPT in src/main.rs), so
 // prepareIndex, rank, fetchIndex and fetchModel are in scope here without an
 // import.

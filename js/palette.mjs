@@ -1,26 +1,26 @@
 // The site-wide search palette: Ctrl/⌘+K, Ctrl+Space or "/" on any page.
 //
 // Written to /search/palette.js by `build_search` in src/main.rs, directly
-// after retrieval.mjs in the same module and after a first line declaring
-// SEARCH_INDEX_URL, so prepareIndex, rank, resultUrl, fetchIndex and
+// after retrieval.mjs in the same module and after first lines declaring
+// SEARCH_INDEX_URL and AI_ARTICLE_URL (from content/ai/article.toml), so prepareIndex, rank, resultUrl, fetchIndex and
 // fetchModel are in scope here without an import. base.html imports it on
 // first use and calls open().
 //
 // It searches the blog posts and the AI article's knowledge nodes with the
-// same hybrid ranking as /ai/ask/, in the reader's browser. Word matches
+// same hybrid ranking as /blog/ai/ask/, in the reader's browser. Word matches
 // show as soon as the index has loaded; ranking by meaning joins in once the
 // embedding model has arrived, unless the reader has asked to save data.
 
-/* global SEARCH_INDEX_URL */
+/* global SEARCH_INDEX_URL, AI_ARTICLE_URL */
 
 // Places on the site, shown before anything is typed and matched by title
 // while typing. A command palette's "go to" list, not search results.
 const COMMANDS = [
   { title: "Home", url: "/" },
   { title: "Writing", hint: "Every post", url: "/blog/" },
-  { title: "How modern language models work", hint: "The AI article", url: "/ai/" },
-  { title: "Timeline", hint: "The AI article, one line per idea", url: "/ai/timeline/" },
-  { title: "Ask this article", hint: "Retrieval over the AI article", url: "/ai/ask/" },
+  { title: "How modern language models work", hint: "The AI article", url: AI_ARTICLE_URL },
+  { title: "Timeline", hint: "The AI article, one line per idea", url: `${AI_ARTICLE_URL}timeline/` },
+  { title: "Ask this article", hint: "Retrieval over the AI article", url: `${AI_ARTICLE_URL}ask/` },
   { title: "About", url: "/about/" },
   { title: "CV", url: "/cv/" },
   { title: "Download CV", hint: "PDF", url: "/cv_jonas_hansen_software_developer.pdf" },

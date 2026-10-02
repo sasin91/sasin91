@@ -4,7 +4,7 @@
 //! per build and written as `public/search/index.<hash>.json`.
 //!
 //! The browser downloads it only when a reader opens the search palette or
-//! uses /ai/ask/, and ranks documents with `js/retrieval.mjs`. The index does
+//! uses /blog/ai/ask/, and ranks documents with `js/retrieval.mjs`. The index does
 //! not carry full text, which is already on the pages: just a short snippet
 //! per passage, so a result can show which part of a document matched.
 
@@ -261,7 +261,7 @@ mod tests {
                 "{id}: orders are unique and sequential"
             );
             match doc["kind"].as_str().unwrap() {
-                "ai" => assert_eq!(doc["url"], format!("/ai/#{id}")),
+                "ai" => assert_eq!(doc["url"], format!("/blog/ai/#{id}")),
                 "post" => assert_eq!(doc["url"], format!("/{id}/")),
                 other => panic!("unknown kind {other}"),
             }

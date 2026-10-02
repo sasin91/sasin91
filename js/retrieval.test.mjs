@@ -1,7 +1,7 @@
 // Tests for js/retrieval.mjs. Run with: node --test js/
 //
 // No test framework beyond Node's own. The last group runs real questions
-// against the built index in public/ai/, so `cargo run --release` must have
+// against the built index in public/search/, so `cargo run --release` must have
 // run first; CI does that (see .github/workflows/pipeline.yml), and locally
 // those tests are skipped with a note if public/ is missing.
 
@@ -82,7 +82,7 @@ function tinyIndex() {
   const node = (id, order, vector, extra = {}) => ({
     id,
     order,
-    url: `/ai/#${id}`,
+    url: `/blog/ai/#${id}`,
     title: extra.title ?? id,
     summary: extra.summary ?? "",
     concepts: extra.concepts ?? [],
@@ -155,7 +155,7 @@ test("results carry the evidence the page explains", () => {
     "semantic",
     "semanticRank",
   ]);
-  assert.equal(result.node.url, "/ai/#kv-cache");
+  assert.equal(result.node.url, "/blog/ai/#kv-cache");
   assert.equal(result.passage.snippet, "kv-cache snippet");
   assert.equal(result.semanticRank, 1);
   assert.ok(Math.abs(result.score - (result.semantic + WEIGHTS.lexical * result.lexical)) < 1e-9);
@@ -174,7 +174,7 @@ test("a result links to the section its best passage is in", () => {
   assert.equal(resultUrl({ node, passage: { snippet: "no heading" } }), "/blog/post/");
   assert.equal(resultUrl({ node, passage: null }), "/blog/post/");
   // A node's URL already carries its own anchor.
-  assert.equal(resultUrl({ node: { url: "/ai/#rag" }, passage: null }), "/ai/#rag");
+  assert.equal(resultUrl({ node: { url: "/blog/ai/#rag" }, passage: null }), "/blog/ai/#rag");
 });
 
 // ---------- the real site ----------
@@ -188,7 +188,7 @@ function realIndex(kind = null) {
   return prepareIndex(kind ? { ...index, nodes: index.nodes.filter((n) => n.kind === kind) } : index);
 }
 
-/** As /ai/ask/ asks: the article's nodes only. */
+/** As /blog/ai/ask/ asks: the article's nodes only. */
 function ask(question) {
   return rank(realIndex("ai"), question, model.encode(question).vector).map((r) => r.node.id);
 }

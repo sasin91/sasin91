@@ -31,5 +31,5 @@ The agent chooses which to use, reads the results into context, and lets
 attention do the reasoning from there. Each tool is a different kind of
 [retrieval](#rag), and they complement each other: an exact identifier such
 as a function name is found reliably by text search and easily blurred by
-semantic similarity. The [Ask](/ai/ask/) view of this article uses the same
+semantic similarity. The [Ask](/blog/ai/ask/) view of this article uses the same
 idea, letting exact keyword matches outrank vague semantic ones.

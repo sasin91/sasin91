@@ -1,15 +1,15 @@
 # Knowledge nodes: the AI article
 
-`/ai/` is not written as one long file. It is assembled from small *knowledge
+`/blog/ai/` is not written as one long file. It is assembled from small *knowledge
 nodes*, one Djot file each, and the same nodes produce three views:
 
 | URL | View | Built from |
 | --- | --- | --- |
-| `/ai/` | the long-form article | every node's body, in article order |
-| `/ai/timeline/` | one line per idea | every node's `title` and `summary` |
-| `/ai/ask/` | retrieval, in the browser | a search index generated from the nodes |
+| `/blog/ai/` | the long-form article | every node's body, in article order |
+| `/blog/ai/timeline/` | one line per idea | every node's `title` and `summary` |
+| `/blog/ai/ask/` | retrieval, in the browser | a search index generated from the nodes |
 
-Every node has a stable anchor, so `/ai/#kv-cache` links to that section from
+Every node has a stable anchor, so `/blog/ai/#kv-cache` links to that section from
 anywhere: other posts, search results, the timeline, Ask.
 
 ```
@@ -57,8 +57,8 @@ Unknown fields are an error, so a misspelt `prerequisite` cannot silently mean
 1. Create `content/ai/nodes/<id>.dj` with the frontmatter above.
 2. Add its id to a `[[part]]` in `content/ai/article.toml`, where it should be
    read.
-3. `cargo run` and check `/ai/#<id>`, `/ai/timeline/` and a question in
-   `/ai/ask/` that should find it.
+3. `cargo run` and check `/blog/ai/#<id>`, `/blog/ai/timeline/` and a question in
+   `/blog/ai/ask/` that should find it.
 
 ## Editing
 
@@ -78,7 +78,7 @@ one of its `prerequisites`; either move the prerequisite too, or change it to
 
 ## Linking from elsewhere
 
-`/ai/#<id>` from anywhere on the site or off it. Because the id is the
+`/blog/ai/#<id>` from anywhere on the site or off it. Because the id is the
 contract, renaming a node breaks inbound links; prefer changing the title.
 
 ## What the build checks
@@ -167,7 +167,7 @@ shape:
 - **Lessons** are `[[learning_path]]` entries in `article.toml`: an id, a
   title and an ordered list of node ids, validated today but not rendered. A
   lesson view would render those nodes in that order, reusing the node markup
-  from `templates/ai.html`, at `/ai/learn/<path-id>/`.
+  from `templates/ai.html`, at `/blog/ai/learn/<path-id>/`.
 - **Quizzes** can be built from what nodes already carry:
   `learning_objectives` as what to test, `misconceptions` as plausible wrong
   answers. Hand-written questions would be a new optional frontmatter table,

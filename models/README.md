@@ -1,4 +1,4 @@
-# Embedding model for /ai/ask/
+# Embedding model for /blog/ai/ask/
 
 `potion-base-4M/` is the model behind the AI article's Ask view. The build uses
 it to embed every passage of the article (`src/embed.rs`), and the reader's

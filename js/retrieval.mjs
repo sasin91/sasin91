@@ -1,4 +1,4 @@
-// Retrieval for /ai/ask/: everything that turns a question into ranked
+// Retrieval for /blog/ai/ask/: everything that turns a question into ranked
 // knowledge nodes, with no DOM access, so it can be tested under `node --test`
 // and inlined into the page unchanged (see `ask_script` in src/main.rs).
 //
@@ -366,7 +366,7 @@ export function resultUrl(result) {
   return anchor ? `${result.node.url.split("#")[0]}#${anchor}` : result.node.url;
 }
 
-// ---------- loading (shared by /ai/ask/ and the search palette) ----------
+// ---------- loading (shared by /blog/ai/ask/ and the search palette) ----------
 
 async function fetchOk(url) {
   const response = await fetch(url);

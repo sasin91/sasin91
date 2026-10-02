@@ -133,7 +133,7 @@ struct PostPage<'a> {
     syntax_css: &'a str,
 }
 
-/// The long-form article at /ai/: every knowledge node, in reading order.
+/// The long-form article at /blog/ai/: every knowledge node, in reading order.
 #[derive(Template)]
 #[template(path = "ai.html")]
 struct AiPage<'a> {
@@ -149,7 +149,7 @@ struct AiPage<'a> {
     syntax_css: &'a str,
 }
 
-/// /ai/timeline/: the same nodes, one line each.
+/// /blog/ai/timeline/: the same nodes, one line each.
 #[derive(Template)]
 #[template(path = "ai_timeline.html")]
 struct AiTimelinePage<'a> {
@@ -164,7 +164,7 @@ struct AiTimelinePage<'a> {
     syntax_css: &'a str,
 }
 
-/// /ai/ask/: retrieval over the nodes, run in the reader's browser.
+/// /blog/ai/ask/: retrieval over the nodes, run in the reader's browser.
 #[derive(Template)]
 #[template(path = "ai_ask.html")]
 struct AiAskPage<'a> {
@@ -453,6 +453,18 @@ fn build() -> Result<()> {
     let mut posts = content::load_posts(Path::new("content/blog"), |body| djot::render(body, &hl))?;
     inline_svg_heroes(&mut posts)?;
     let article = knowledge::load(Path::new("content/ai"), |body| djot::render(body, &hl))?;
+    // The article lives under /blog/ beside the posts, so a post path inside
+    // its tree would silently overwrite one of its pages.
+    if let Some(post) = posts
+        .iter()
+        .find(|p| p.path == article.path || p.path.starts_with(&format!("{}/", article.path)))
+    {
+        anyhow::bail!(
+            "post {:?} collides with the AI article at {}; pick another path",
+            post.path,
+            article.url()
+        );
+    }
     let year = chrono::Local::now().year();
 
     // Hashed once here, not per page: the hash is a pure function of each
@@ -675,8 +687,8 @@ fn build_search(article: &Article, posts: &[Post]) -> Result<SearchAssets> {
     write(
         format!("{base}/palette.js"),
         &format!(
-            "const SEARCH_INDEX_URL = {index_url:?};
-{PALETTE_SCRIPT}"
+            "const SEARCH_INDEX_URL = {index_url:?};\nconst AI_ARTICLE_URL = {:?};\n{PALETTE_SCRIPT}",
+            article.url()
         ),
     )?;
 
@@ -1079,7 +1091,7 @@ email = "x"
             year: 2026,
             nav: "ai",
             view: "read",
-            meta: meta_fixture("/ai/", "article"),
+            meta: meta_fixture("/blog/ai/", "article"),
             syntax: article.has_syntax(),
             site_css: SITE_CSS_FIXTURE,
             syntax_css: SYNTAX_CSS_FIXTURE,
@@ -1097,7 +1109,7 @@ email = "x"
             year: 2026,
             nav: "ai",
             view: "timeline",
-            meta: meta_fixture("/ai/timeline/", "website"),
+            meta: meta_fixture("/blog/ai/timeline/", "website"),
             syntax: false,
             site_css: SITE_CSS_FIXTURE,
             syntax_css: SYNTAX_CSS_FIXTURE,
@@ -1116,7 +1128,7 @@ email = "x"
             year: 2026,
             nav: "ai",
             view: "ask",
-            meta: meta_fixture("/ai/ask/", "website"),
+            meta: meta_fixture("/blog/ai/ask/", "website"),
             syntax: false,
             site_css: SITE_CSS_FIXTURE,
             syntax_css: SYNTAX_CSS_FIXTURE,
@@ -1212,6 +1224,13 @@ email = "x"
             // The site nav's "AI" link, plus this view in the switcher.
             assert_eq!(html.matches("aria-current=\"page\"").count(), 2);
             asserts_single_nav_link_current(&html, &["AI"]);
+            // base.html spells the article's URL out; it must be the one
+            // article.toml actually builds.
+            let nav_link = format!(
+                "<a href=\"{}\" aria-current=\"page\">AI</a>",
+                real_article().url()
+            );
+            assert!(html.contains(&nav_link), "{nav_link}");
             assert!(
                 html.contains(&format!("aria-current=\"page\">{current}</a>")),
                 "{current}"
@@ -1225,7 +1244,7 @@ email = "x"
         let article = real_article();
         let mut last = 0;
         for node in &article.nodes {
-            let link = format!("href=\"/ai/#{}\"", node.id);
+            let link = format!("href=\"/blog/ai/#{}\"", node.id);
             let at = html
                 .find(&link)
                 .unwrap_or_else(|| panic!("no timeline entry for {}", node.id));
@@ -1286,9 +1305,12 @@ email = "x"
         }
         .render()
         .unwrap();
-        assert!(xml.contains("<loc>https://sasin91.xyz/ai/</loc>"), "{xml}");
         assert!(
-            xml.contains("<loc>https://sasin91.xyz/ai/timeline/</loc>"),
+            xml.contains("<loc>https://sasin91.xyz/blog/ai/</loc>"),
+            "{xml}"
+        );
+        assert!(
+            xml.contains("<loc>https://sasin91.xyz/blog/ai/timeline/</loc>"),
             "{xml}"
         );
     }

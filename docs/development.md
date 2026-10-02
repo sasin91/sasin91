@@ -49,7 +49,7 @@ A post is one `.dj` file under `content/blog/` with a `+++` TOML header. The
 `path` key is the URL, and is deliberately not derived from the filename — this
 is what keeps `/blog/trongate/mx-transition` nested rather than flattened.
 
-The AI article at `/ai/` is different: it is assembled from knowledge nodes
+The AI article at `/blog/ai/` is different: it is assembled from knowledge nodes
 under `content/ai/`, with a timeline and an in-browser Ask view generated from
 the same nodes. See [knowledge-nodes.md](knowledge-nodes.md) for how to add,
 edit, reorder and link nodes.

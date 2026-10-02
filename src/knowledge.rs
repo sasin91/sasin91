@@ -40,7 +40,7 @@ pub const MAX_SUMMARY_CHARS: usize = 200;
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NodeFront {
-    /// Stable identifier, also the URL anchor (`/ai/#kv-cache`) and the
+    /// Stable identifier, also the URL anchor (`/blog/ai/#kv-cache`) and the
     /// file name (`kv-cache.dj`). Changing it breaks inbound links.
     pub id: String,
     pub title: String,
@@ -126,7 +126,7 @@ impl Node {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Manifest {
-    /// URL path of the article, without slashes: `ai` serves `/ai/`.
+    /// URL path of the article, without slashes: `blog/ai` serves `/blog/ai/`.
     pub path: String,
     pub title: String,
     pub description: String,
@@ -550,7 +550,7 @@ mod tests {
 
     fn manifest(parts: &[&[&str]]) -> Manifest {
         Manifest {
-            path: "ai".into(),
+            path: "blog/ai".into(),
             title: "t".into(),
             description: "d".into(),
             published: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
@@ -691,7 +691,7 @@ mod tests {
     #[test]
     fn rejects_in_body_links_to_missing_anchors() {
         let mut a = node("a");
-        a.body = r##"<p><a href="#b">ok</a> <a href="/ai/#part-1">ok</a> <a href="#gone">x</a> <a href="/ai/#also-gone">y</a> <a href="/blog/#x">elsewhere</a></p>"##.into();
+        a.body = r##"<p><a href="#b">ok</a> <a href="/blog/ai/#part-1">ok</a> <a href="#gone">x</a> <a href="/blog/ai/#also-gone">y</a> <a href="/blog/#x">elsewhere</a></p>"##.into();
         let err = error_of(assemble(manifest(&[&["a", "b"]]), vec![a, node("b")]));
         assert!(err.contains("#gone"), "{err}");
         assert!(err.contains("#also-gone"), "{err}");

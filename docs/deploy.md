@@ -191,7 +191,7 @@ nothing failing loudly to say so.
 ### Search assets
 
 Applied 2026-10-02 (backup `sasin91.caddy.bak.20261002202423`). The search
-palette (Ctrl+K on any page) and the AI article's Ask view (`/ai/ask/`) fetch
+palette (Ctrl+K on any page) and the AI article's Ask view (`/blog/ai/ask/`) fetch
 three more content-hashed files when a reader first uses them:
 `/search/model.<hash>.bin` (3.9 MB), `/search/vocab.<hash>.txt` (220 kB) and
 `/search/index.<hash>.json` (about 340 kB, 106 kB compressed). Their names come from the same

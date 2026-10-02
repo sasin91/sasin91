@@ -25,7 +25,7 @@ large text sample, and it never changes afterwards. The model learns to work
 with whatever pieces the tokenizer produces.
 
 This is the actual output of the WordPiece tokenizer behind this article's
-[Ask](/ai/ask/) view. `##` marks a piece that continues the previous one:
+[Ask](/blog/ai/ask/) view. `##` marks a piece that continues the previous one:
 
 ```text
 "Why doesn't a larger context window replace RAG?"

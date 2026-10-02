@@ -82,7 +82,7 @@ jobs:
 
           # Every page carries the two theme scripts and the search palette's
           # loader (data-search); a page with diagrams carries one more for
-          # the lightbox, and /ai/ask/ one more for the Ask form (data-ask).
+          # the lightbox, and /blog/ai/ask/ one more for the Ask form (data-ask).
           # The loader only import()s /search/palette.js -- same origin --
           # when a reader opens the palette, and the Ask form fetches its
           # model and index only once used, so nothing can gate reading.
@@ -112,7 +112,7 @@ jobs:
           for u in index about/index cv/index blog/index blog/trongate/index \
                    blog/trongate/mx-transition/index \
                    blog/freebsd-on-hetzner/index blog/athletos-freebsd/index \
-                   ai/index ai/timeline/index ai/ask/index; do
+                   blog/ai/index blog/ai/timeline/index blog/ai/ask/index; do
             test -f "public/$u.html" || { echo "missing: $u"; exit 1; }
           done
           test -f public/cv_jonas_hansen_software_developer.pdf || { echo "missing: cv_jonas_hansen_software_developer.pdf"; exit 1; }
@@ -210,7 +210,7 @@ jobs:
           fail=0
           for path in / /blog /blog/trongate /blog/trongate/mx-transition \
                       /blog/freebsd-on-hetzner /blog/athletos-freebsd /about/ /cv/ \
-                      /ai/ /ai/timeline/ /ai/ask/ \
+                      /blog/ai/ /blog/ai/timeline/ /blog/ai/ask/ \
                       /cv_jonas_hansen_software_developer.pdf /rss.xml; do
             # 308 is expected on the extensionless paths: Caddy canonicalises to
             # the trailing-slash form, which browsers and crawlers follow.

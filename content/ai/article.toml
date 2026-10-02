@@ -1,13 +1,13 @@
 # The AI knowledge stream: how the nodes in nodes/ are presented as one
-# long-form article at /ai/, a timeline at /ai/timeline/ and a retrieval
-# interface at /ai/ask/.
+# long-form article at /blog/ai/, a timeline at /blog/ai/timeline/ and a retrieval
+# interface at /blog/ai/ask/.
 #
 # Nodes do not carry their own position. The order of the article is the
 # order the ids appear in the [[part]] lists below, so reordering the article
 # is moving an id, and a node can appear in any number of learning paths
 # without its file changing. See docs/knowledge-nodes.md.
 
-path = "ai"
+path = "blog/ai"
 title = "How modern language models work"
 description = "From text to tokens, attention, sampling, retrieval and tools: how a large language model turns a prompt into an answer, and what it does not do along the way."
 published = 2026-10-02
