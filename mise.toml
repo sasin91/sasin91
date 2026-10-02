@@ -3,9 +3,9 @@
 # docs/development.md.
 
 [tools]
-# CI builds with the latest stable Rust and Node 22; match it.
+# CI builds with the latest stable Rust and Node 24 (LTS); match it.
 rust = { version = "stable", components = "rustfmt,clippy" }
-node = "22"
+node = "24"
 watchexec = "latest"
 
 [tasks.build]
