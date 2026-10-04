@@ -37,9 +37,8 @@ policies, so other tenants cannot reach in.
 
 ### Scales with you
 
-Pick how much memory your app gets, from 256 MB to 1 GB. CPU is not capped
-while we watch what real apps use, and a Trongate app's throughput follows the
-CPU it gets almost one for one.
+No size to pick, and CPU is not capped. We watch what real apps use, and a
+Trongate app's throughput follows the CPU it gets almost one for one.
 
 ## Built for Trongate
 
