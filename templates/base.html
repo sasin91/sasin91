@@ -112,6 +112,7 @@
         <span>&copy; {{ year }} {{ cv.site.name }}</span>
         <nav class="site-foot-links" aria-label="Projects">
           <a href="https://athletos.app">AthletOS</a>
+          <a href="https://trongate.cloud">trongate.cloud</a>
         </nav>
         <a href="/rss.xml">RSS</a>
       </footer>
@@ -158,6 +159,10 @@
       // palette itself (/search/palette.js) and its index and model are
       // fetched the first time a reader opens it, so reading costs nothing.
       (function () {
+        // A post's Ask box. The module only wires the form up; its index and
+        // model are fetched once the reader focuses the field.
+        if (document.querySelector('form[data-post-ask]')) import('/search/ask.js');
+
         var button = document.querySelector('[data-search]');
         if (!button) return;
         if (/Mac|iPhone|iPad/.test(navigator.platform)) {

@@ -111,6 +111,12 @@ posts go into the same index, split the same way, with each passage
 remembering the heading it sits under; Ask filters the index to the article's
 nodes, while the site-wide palette below uses all of it.
 
+Every post opens with an Ask box too. The build indexes each of a post's
+sections as a document, nested under the post so the palette still finds the
+post once, and the box ranks only those. The loader in `base.html` imports
+`/search/ask.js` (the same script /blog/ai/ask/ inlines) on pages with the
+box. A post may suggest questions in its frontmatter (`ask = ["...", ...]`).
+
 In the browser (`js/retrieval.mjs`), only once the reader focuses the
 question field, the page fetches that index and the model, then for each
 question:

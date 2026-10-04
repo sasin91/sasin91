@@ -193,6 +193,10 @@ struct PostPage<'a> {
     syntax: bool,
     site_css: &'a str,
     syntax_css: &'a str,
+    /// For the Ask box at the top of every post: the hashed search index,
+    /// whose `sections` of this post it ranks, and the model it downloads.
+    index_url: &'a str,
+    model: &'a search_index::ModelInfo,
 }
 
 /// The long-form article at /blog/ai/: every knowledge node, in reading order.
@@ -226,23 +230,49 @@ struct AiTimelinePage<'a> {
     syntax_css: &'a str,
 }
 
-/// /blog/ai/ask/: retrieval over the nodes, run in the reader's browser.
+/// An Ask page: retrieval over one document's sections, run in the reader's
+/// browser. Today only /blog/ai/ask/, over the AI article's knowledge nodes;
+/// posts carry the same form inline instead, at the top of the post.
 #[derive(Template)]
-#[template(path = "ai_ask.html")]
-struct AiAskPage<'a> {
+#[template(path = "ask.html")]
+struct AskPage<'a> {
     cv: &'a Cv,
-    article: &'a Article,
     year: i32,
     nav: &'static str,
-    view: &'static str,
     meta: Meta,
     syntax: bool,
     site_css: &'a str,
     syntax_css: &'a str,
+    /// What is being asked: its title and the URL of its Read view.
+    title: &'a str,
+    read_url: String,
+    /// Only the AI article has a timeline.
+    timeline_url: Option<String>,
+    /// The AI article, which "How this works" links into from any Ask page.
+    ai_url: String,
+    /// Which documents of the index this page ranks: `ai` for the
+    /// article's nodes (`post:<path>` would be a post's sections, as the
+    /// inline form on a post uses). Read by js/ask.mjs.
+    scope: String,
+    /// Example questions, the first doubling as the placeholder.
+    examples: &'a [String],
     /// Root-relative URL of the hashed search index.
     index_url: &'a str,
     model: &'a search_index::ModelInfo,
     script: &'static str,
+}
+
+/// The examples /blog/ai/ask/ offers. A post may list its own in `ask`.
+fn ai_ask_examples() -> Vec<String> {
+    [
+        "Why doesn't a larger context window replace RAG?",
+        "What is stored in the KV cache?",
+        "Is MCP the same thing as RAG?",
+        "Does the model learn from my conversation?",
+        "top-p",
+    ]
+    .map(String::from)
+    .to_vec()
 }
 
 /// The Ask page's only script: the retrieval logic followed by the code that
@@ -651,6 +681,7 @@ fn build() -> Result<()> {
         .render()?,
     )?;
 
+    let search = build_search(&article, &posts)?;
     for post in &posts {
         let (image, image_alt) = og_image(post)?;
         write(
@@ -671,12 +702,13 @@ fn build() -> Result<()> {
                 syntax: post.has_syntax(),
                 site_css: &site_css,
                 syntax_css: &syntax_css,
+                index_url: &search.index_url,
+                model: &search.model,
             }
             .render()?,
         )?;
     }
 
-    let search = build_search(&article, &posts)?;
     build_ai(&cv, &article, year, &site_css, &syntax_css, &search)?;
 
     let last_build_date = posts.first().map(|p| p.date_rfc2822()).unwrap_or_default();
@@ -745,6 +777,11 @@ fn build_search(article: &Article, posts: &[Post]) -> Result<SearchAssets> {
     let index_name = hashed_name("index", "json", index.as_bytes());
     write(format!("{base}/{index_name}"), &index)?;
     let index_url = format!("{url}{index_name}");
+
+    // The Ask box at the top of every post: the same script /blog/ai/ask/
+    // inlines, imported by the loader in base.html only on pages that have
+    // the box, so a post costs no inline script for it.
+    write(format!("{base}/ask.js"), ASK_SCRIPT)?;
 
     write(
         format!("{base}/palette.js"),
@@ -826,12 +863,10 @@ fn build_ai(
     )?;
     write(
         format!("{base}/ask/index.html"),
-        &AiAskPage {
+        &AskPage {
             cv,
-            article,
             year,
             nav: "blog",
-            view: "ask",
             meta: meta(
                 format!("Ask: {}", article.title),
                 "Ask a question and get the most relevant sections of the article, found by \
@@ -843,6 +878,12 @@ fn build_ai(
             syntax: false,
             site_css,
             syntax_css,
+            title: &article.title,
+            read_url: article.url(),
+            timeline_url: Some(format!("{}timeline/", article.url())),
+            ai_url: article.url(),
+            scope: "ai".to_string(),
+            examples: &ai_ask_examples(),
             index_url: &search.index_url,
             model: &search.model,
             script: ASK_SCRIPT,
@@ -900,6 +941,7 @@ email = "x"
             card_alt: None,
             series: None,
             part: None,
+            ask: Vec::new(),
             body: String::new(),
             source: String::new(),
             hero_html: None,
@@ -1031,6 +1073,8 @@ email = "x"
             syntax: false,
             site_css: SITE_CSS_FIXTURE,
             syntax_css: SYNTAX_CSS_FIXTURE,
+            index_url: "/search/index.eeeeeeeeeeeeeeee.json",
+            model: &model_info_fixture(),
         }
         .render()
         .unwrap();
@@ -1116,6 +1160,8 @@ email = "x"
                     syntax: false,
                     site_css: SITE_CSS_FIXTURE,
                     syntax_css: SYNTAX_CSS_FIXTURE,
+                    index_url: "/search/index.eeeeeeeeeeeeeeee.json",
+                    model: &model_info_fixture(),
                 }
                 .render()
                 .unwrap(),
@@ -1183,16 +1229,20 @@ email = "x"
         let cv = cv_fixture();
         let article = real_article();
         let model = model_info_fixture();
-        AiAskPage {
+        AskPage {
             cv: &cv,
-            article: &article,
             year: 2026,
             nav: "blog",
-            view: "ask",
             meta: meta_fixture("/blog/ai/ask/", "website"),
             syntax: false,
             site_css: SITE_CSS_FIXTURE,
             syntax_css: SYNTAX_CSS_FIXTURE,
+            title: &article.title,
+            read_url: article.url(),
+            timeline_url: Some(format!("{}timeline/", article.url())),
+            ai_url: article.url(),
+            scope: "ai".to_string(),
+            examples: &ai_ask_examples(),
             index_url: "/search/index.eeeeeeeeeeeeeeee.json",
             model: &model,
             script: ASK_SCRIPT,
@@ -1558,6 +1608,8 @@ email = "x"
             syntax: post.has_syntax(),
             site_css: SITE_CSS_FIXTURE,
             syntax_css: SYNTAX_CSS_FIXTURE,
+            index_url: "/search/index.eeeeeeeeeeeeeeee.json",
+            model: &model_info_fixture(),
         }
         .render()
         .unwrap();
@@ -1622,6 +1674,8 @@ email = "x"
             syntax: post.has_syntax(),
             site_css: SITE_CSS_FIXTURE,
             syntax_css: SYNTAX_CSS_FIXTURE,
+            index_url: "/search/index.eeeeeeeeeeeeeeee.json",
+            model: &model_info_fixture(),
         }
         .render()
         .unwrap();
@@ -1745,10 +1799,44 @@ email = "x"
             syntax: true,
             site_css: SITE_CSS_FIXTURE,
             syntax_css: SYNTAX_CSS_FIXTURE,
+            index_url: "/search/index.eeeeeeeeeeeeeeee.json",
+            model: &model_info_fixture(),
         }
         .render()
         .unwrap();
         assert!(html.contains(SYNTAX_CSS_FIXTURE), "{html}");
+    }
+
+    /// Every post has its Ask box under the title and date, scoped to the
+    /// post's own sections. It adds no inline script: the loader in
+    /// base.html imports /search/ask.js, and only on pages with the box.
+    #[test]
+    fn every_post_opens_with_an_ask_box_and_no_extra_script() {
+        let cv = cv_fixture();
+        let post = post_fixture();
+        let html = PostPage {
+            cv: &cv,
+            post: &post,
+            year: 2026,
+            nav: "blog",
+            meta: meta_fixture(&post.url(), "article"),
+            syntax: false,
+            site_css: SITE_CSS_FIXTURE,
+            syntax_css: SYNTAX_CSS_FIXTURE,
+            index_url: "/search/index.eeeeeeeeeeeeeeee.json",
+            model: &model_info_fixture(),
+        }
+        .render()
+        .unwrap();
+        let form = html.find("data-post-ask").expect("no Ask box");
+        let date = html.find("<time").unwrap();
+        assert!(date < form, "Ask comes after the title and date");
+        assert!(form < html.find("</article>").unwrap());
+        assert!(html.contains(&format!("data-scope=\"post:{}\"", post.path)));
+        assert_eq!(html.matches("<script").count(), 3);
+        assert!(html.contains("import('/search/ask.js')"));
+        let input = &html[html.find("id=\"ask-query\"").unwrap()..];
+        assert!(input[..input.find('>').unwrap()].contains("disabled"));
     }
 
     /// The whole caching scheme rests on this: unchanged bytes must hash

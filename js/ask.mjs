@@ -1,4 +1,5 @@
-// Drives the form on /blog/ai/ask/. Inlined directly after retrieval.mjs into the
+// Drives the Ask form: on /blog/ai/ask/, and the box at the top of every post
+// (where it arrives as /search/ask.js, imported by the loader in base.html). Inlined directly after retrieval.mjs into the
 // same inline module script (see ASK_SCRIPT in src/main.rs), so
 // prepareIndex, rank, fetchIndex and fetchModel are in scope here without an
 // import.
@@ -9,7 +10,7 @@
 // an example: the article and timeline never load any of this, and the Ask
 // page itself renders without it.
 
-const form = document.querySelector("form[data-ask]");
+const form = document.querySelector("form[data-ask], form[data-post-ask]");
 if (form) setUp(form);
 
 function setUp(form) {
@@ -29,11 +30,16 @@ function setUp(form) {
 
   const say = (message) => (status.textContent = message);
 
-  input.disabled = submit.disabled = meaning.disabled = false;
-  examples.hidden = false;
+  // The post box has no examples unless the post lists some, and no
+  // meaning toggle or pipeline: those only exist on /blog/ai/ask/.
+  input.disabled = submit.disabled = false;
+  if (meaning) meaning.disabled = false;
+  if (examples) examples.hidden = false;
+  const byMeaning = () => !meaning || meaning.checked;
 
   let loading = null;
-  const load = () => (loading ??= loadEverything(form.dataset.index, Number(form.dataset.modelBytes), say));
+  const load = () =>
+    (loading ??= loadEverything(form.dataset.index, form.dataset.scope, Number(form.dataset.modelBytes), say));
   input.addEventListener("focus", load, { once: true });
 
   let lastQuery = "";
@@ -52,12 +58,12 @@ function setUp(form) {
     }
 
     const encoded = model ? model.encode(query) : null;
-    const vector = meaning.checked && encoded ? encoded.vector : null;
+    const vector = byMeaning() && encoded ? encoded.vector : null;
     const ranked = rank(index, query, vector);
 
     showResults(results, ranked, index, Boolean(vector));
     resultsSection.hidden = false;
-    showPipeline(steps, index, encoded, vector, ranked, model, meaning.checked);
+    if (steps.tokens) showPipeline(steps, index, encoded, vector, ranked, model, byMeaning());
 
     const how = vector
       ? "by meaning and matching words"
@@ -76,14 +82,14 @@ function setUp(form) {
     ask(input.value);
   });
 
-  for (const button of examples.querySelectorAll("button")) {
+  for (const button of examples?.querySelectorAll("button") ?? []) {
     button.addEventListener("click", () => {
       input.value = button.textContent;
       ask(input.value);
     });
   }
 
-  meaning.addEventListener("change", () => {
+  meaning?.addEventListener("change", () => {
     if (lastQuery) ask(lastQuery);
   });
 }
@@ -94,14 +100,14 @@ function setUp(form) {
  * works by keyword matching. Resolves to { index, model }, either of which
  * may be null.
  */
-async function loadEverything(indexUrl, modelBytes, say) {
+async function loadEverything(indexUrl, scope, modelBytes, say) {
   let index = null;
   try {
     say("Loading the search index…");
-    // The index covers the whole site; this page asks the article only.
-    index = prepareIndex(await fetchIndex(indexUrl, "ai"));
+    // The index covers the whole site; this page asks one document only.
+    index = prepareIndex(scoped(await fetchIndex(indexUrl), scope));
   } catch {
-    say("The search index could not be loaded. Please try again later, or use the timeline.");
+    say("The search index could not be loaded. Please try again later.");
     return { index: null, model: null };
   }
 
@@ -115,6 +121,20 @@ async function loadEverything(indexUrl, modelBytes, say) {
     say("The embedding model could not be loaded, so results use matching words only.");
     return { index, model: null };
   }
+}
+
+/**
+ * The documents an Ask page ranks: "ai" is the article's knowledge nodes,
+ * "post:<path>" the sections of that post (written by src/search_index.rs
+ * for posts with `ask` questions).
+ */
+function scoped(index, scope) {
+  if (scope.startsWith("post:")) {
+    const post = index.nodes.find((n) => n.kind === "post" && n.id === scope.slice(5));
+    if (!post?.sections) throw new Error(`no sections for ${scope}`);
+    return { ...index, nodes: post.sections };
+  }
+  return { ...index, nodes: index.nodes.filter((n) => n.kind === scope) };
 }
 
 // ---------- rendering ----------

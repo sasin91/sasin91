@@ -82,10 +82,51 @@ dd {
   text-wrap: pretty;
 }
 
+/* The page is wide; the text is not. Header, footer, charts, tables, code
+   and the Ask box use the whole width, while running text keeps to a
+   centred --measure column, so lines stay at 72-74 characters however wide
+   the window is. */
 .wrap {
-  max-width: var(--measure);
+  max-width: 76rem;
   margin: 0 auto;
   padding: 0 1.5rem;
+}
+
+/* --measure is in `ch`, which depends on the element's own font size, so a
+   heading's 62ch would be wider than a paragraph's and their left edges
+   would not line up. Registered as a <length>, it is computed once here, at
+   body text size, and inherited as an absolute width. */
+@property --column {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+#content {
+  --column: var(--measure);
+}
+
+/* Margins rather than max-width, so an element that sizes to its content
+   (the view switcher, a button) starts at the column's left edge instead of
+   being centred. `#content` outranks each element's own margin rules for
+   the left and right margins only. */
+#content > *,
+#content > article > *,
+#content > article section > * {
+  margin-inline: max(0px, (100% - var(--column)) / 2);
+}
+
+/* Djot wraps each heading and what follows it in a <section>, so sections
+   pass the full width through to their children rather than taking the
+   column themselves. */
+#content > article,
+#content > article > section,
+#content > article section > section {
+  margin-inline: 0;
+}
+
+#content > article :is(.diagram, .codeblock, table) {
+  margin-inline: 0;
 }
 
 /* ---------- header / footer ---------- */
@@ -976,6 +1017,26 @@ figcaption {
 }
 
 /* ---- ask ---- */
+
+/* The box under every post's title and date, in the text column. */
+.ask-inline {
+  margin-bottom: 2.6rem;
+}
+
+.ask input[type="search"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ask-inline input[type="search"] {
+  font-size: 1.05rem;
+  padding: 0.7rem 0.9rem;
+}
+
+.ask-inline .ask-results {
+  margin-top: 0.4rem;
+}
+
 .ask > label {
   display: block;
   margin-bottom: 0.4rem;
@@ -1245,6 +1306,43 @@ figcaption {
   display: block;
   width: 100%;
   height: auto;
+}
+
+/* Tables span the page, like the charts, with numbers right-aligned so
+   their digits line up. */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.8rem 0;
+  font-size: 0.94rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.prose th,
+.prose td {
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose th {
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom-color: var(--text);
+}
+
+.prose td:not(:first-child),
+.prose th:not(:first-child) {
+  text-align: right;
+}
+
+/* A table too wide for a phone scrolls inside itself, never the page. */
+@media (max-width: 40rem) {
+  .prose table {
+    display: block;
+    overflow-x: auto;
+  }
 }
 
 .prose blockquote {

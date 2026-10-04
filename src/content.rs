@@ -82,6 +82,10 @@ pub struct FrontMatter {
     /// Position within `series`, counting from 1. Ignored without `series`.
     #[serde(default)]
     pub part: Option<u32>,
+    /// Example questions offered under the Ask box at the top of the post.
+    /// Optional: every post has the box, these only suggest what to ask.
+    #[serde(default)]
+    pub ask: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -101,6 +105,8 @@ pub struct Post {
     pub series: Option<String>,
     /// See [`FrontMatter::part`].
     pub part: Option<u32>,
+    /// See [`FrontMatter::ask`]. Often empty.
+    pub ask: Vec<String>,
     /// Rendered HTML, not source.
     pub body: String,
     /// The Djot source of the body, kept for the search index.
@@ -216,6 +222,7 @@ pub fn load_posts(dir: &Path, render: impl Fn(&str) -> Result<String>) -> Result
             card_alt: front.card_alt,
             series: front.series,
             part: front.part,
+            ask: front.ask,
             body: render(body).with_context(|| format!("rendering {}", file.display()))?,
             source: body.to_string(),
             // Filled in by `main.rs` after `load_posts` returns; it needs
@@ -306,6 +313,7 @@ Body text here.
             card_alt: None,
             series: None,
             part: None,
+            ask: Vec::new(),
             body: String::new(),
             source: String::new(),
             hero_html: None,
@@ -329,6 +337,7 @@ Body text here.
             card_alt: None,
             series: None,
             part: None,
+            ask: Vec::new(),
             body: body.into(),
             source: String::new(),
             hero_html: hero_html.map(Into::into),
@@ -400,6 +409,7 @@ Body text here.
             card_alt: None,
             series: None,
             part: None,
+            ask: Vec::new(),
             body: String::new(),
             source: String::new(),
             hero_html: None,

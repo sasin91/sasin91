@@ -12,6 +12,10 @@ Right now I am building [**AthletOS**](https://athletos.app): a training app
 that prescribes the weights and records what you actually lifted next to what
 it asked for. Rust backend, one FreeBSD box, two jails behind Caddy.
 
+On the side, [**trongate.cloud**](https://trongate.cloud): hosting for
+[Trongate](https://trongate.io) apps on Kubernetes. You push, we deploy. Still
+a work in progress.
+
 ### Writing
 
 I write occasionally at [sasin91.xyz](https://sasin91.xyz), mostly about things
@@ -19,6 +23,7 @@ that broke and what fixed them.
 
 - [FreeBSD on a Hetzner Cloud VPS](https://sasin91.xyz/blog/freebsd-on-hetzner) — installing 15.1 on root-on-ZFS unattended, from media you can verify, and the five things that went wrong
 - [One box, two jails and a five second deploy](https://sasin91.xyz/blog/athletos-freebsd) — what the boring infrastructure choices bought, measured rather than estimated
+- [trongate.cloud: you push, we deploy your Trongate app](https://sasin91.xyz/blog/trongate/benchmarks/) — hosting for Trongate apps, with the benchmarks behind it
 - [Trongate PHP](https://sasin91.xyz/blog/trongate) — a framework that breaks with common standards, and why that turns out to be interesting
 
 ### Tools
