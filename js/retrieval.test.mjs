@@ -193,6 +193,14 @@ function ask(question) {
   return rank(realIndex("ai"), question, model.encode(question).vector).map((r) => r.node.id);
 }
 
+/** As the Ask box at the top of a post asks: that post's sections only. */
+function askPost(path, question) {
+  const index = JSON.parse(readFileSync(new URL(indexFile, built), "utf8"));
+  const post = index.nodes.find((n) => n.kind === "post" && n.id === path);
+  const prepared = prepareIndex({ ...index, nodes: post.sections });
+  return rank(prepared, question, model.encode(question).vector).map(resultUrl);
+}
+
 /** As the palette asks: the whole site. */
 function searchSite(question) {
   return rank(realIndex(), question, model.encode(question).vector);
@@ -203,6 +211,8 @@ test("the palette finds posts as well as article sections", { skip }, () => {
   assert.equal(top("FreeBSD on Hetzner Cloud").node.id, "blog/freebsd-on-hetzner");
   assert.equal(top("k3s platform kit").node.id, "blog/k3s-platform-kit");
   assert.equal(top("Trongate PHP framework").node.kind, "post");
+  assert.equal(top("Trongate benchmarks").node.id, "blog/trongate/benchmarks");
+  assert.equal(top("trongate.cloud CPU limit").node.id, "blog/trongate/benchmarks");
   assert.equal(top("What is stored in the KV cache?").node.id, "kv-cache");
   assert.equal(top("MCP").node.id, "mcp");
 });
@@ -213,6 +223,11 @@ test("palette results deep-link into the section that matched", { skip }, () => 
     .map(resultUrl);
   assert.ok(linked.some((url) => url.includes("#")), linked.join(", "));
   for (const url of linked) assert.match(url, /^\/blog\/[^#]+\/(#[^#]+)?$/);
+
+  assert.match(
+    resultUrl(searchSite("is Valkey faster than files for PHP sessions")[0]),
+    /^\/blog\/trongate\/benchmarks\/#/,
+  );
 });
 
 test("exact technical terms find their node first", { skip }, () => {
@@ -238,4 +253,26 @@ test("natural questions find the sections that answer them", { skip }, () => {
   assert.equal(ask("Does the model learn from my conversation?")[0], "training");
   assert.equal(ask("Is MCP the same thing as RAG?")[0], "mcp");
   assert.equal(ask("does the model remember previous chats")[0], "external-memory");
+});
+
+test("a post's Ask box answers from that post's sections", { skip }, () => {
+  const benchmarks = "/blog/trongate/benchmarks/";
+  for (const [question, anchor] of [
+    ["How do I deploy my app?", "You-push-we-deploy"],
+    ["Do I need to manage servers?", "Nothing-to-manage"],
+    ["Does it scale with me?", "Scales-with-you"],
+    ["Is it built for Trongate?", "Built-for-Trongate"],
+    ["Is it a proven platform?", "A-proven-platform-we-run-it-ourselves"],
+    ["What did the benchmarks find?", "Benchmarks"],
+    ["What is the lazy session fix?", "For-the-Trongate-team-the-session-finding"],
+  ]) {
+    assert.equal(askPost("blog/trongate/benchmarks", question)[0], `${benchmarks}#${anchor}`, question);
+  }
+});
+
+test("every post's sections are in the index", { skip }, () => {
+  const index = JSON.parse(readFileSync(new URL(indexFile, built), "utf8"));
+  for (const post of index.nodes.filter((n) => n.kind === "post")) {
+    assert.ok(post.sections?.length, post.id);
+  }
 });

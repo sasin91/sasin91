@@ -83,6 +83,7 @@ jobs:
           # Every page carries the two theme scripts and the search palette's
           # loader (data-search); a page with diagrams carries one more for
           # the lightbox, and /blog/ai/ask/ one more for the Ask form (data-ask).
+          # A post's Ask box (data-post-ask) adds none: the loader imports it.
           # The loader only import()s /search/palette.js -- same origin --
           # when a reader opens the palette, and the Ask form fetches its
           # model and index only once used, so nothing can gate reading.

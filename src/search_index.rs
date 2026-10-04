@@ -62,6 +62,13 @@ struct Document {
     /// Distinct lowercase words of the body, for keyword matching.
     words: Vec<String>,
     passages: Vec<Passage>,
+    /// For a post: each of its sections as a document of its own, kind
+    /// "section", so the Ask box at the top of the post can rank sections
+    /// the way /blog/ai/ask/ ranks nodes. Nested rather than listed beside
+    /// the post, so the palette, which searches `nodes`, still finds the
+    /// post once and not once per section.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    sections: Vec<Document>,
 }
 
 #[derive(Serialize)]
@@ -146,6 +153,62 @@ fn body_words(body: &[djot::Passage]) -> Vec<String> {
     lexical_words(&text.join(" "))
 }
 
+/// A post's sections as documents, in page order: the text above the first
+/// heading as "Introduction", then one per heading. Passages are
+/// grouped by their innermost heading, so a subsection is its own document.
+fn post_sections(model: &StaticModel, post: &Post, body: &[djot::Passage]) -> Vec<Document> {
+    let mut groups: Vec<(Option<&djot::Section>, Vec<djot::Passage>)> = Vec::new();
+    for passage in body {
+        let section = passage.section.as_ref();
+        match groups.last_mut() {
+            Some((last, passages)) if *last == section => passages.push(passage.clone()),
+            _ => groups.push((section, vec![passage.clone()])),
+        }
+    }
+
+    groups
+        .into_iter()
+        .enumerate()
+        .map(|(i, (section, passages))| {
+            let (id, title, url) = match section {
+                Some(s) => (
+                    s.id.clone(),
+                    s.heading.clone(),
+                    format!("{}#{}", post.url(), s.id),
+                ),
+                // Not the post's title: a question about anything in the
+                // post shares words with it, so the opening would outrank
+                // the section that answers.
+                None => ("top".to_string(), "Introduction".to_string(), post.url()),
+            };
+            // Like a node's head passage: the heading, embedded with the
+            // section's opening, so a question phrased like the heading is
+            // close in meaning and not only in words.
+            let summary = snippet(&passages[0].text);
+            let head = format!("{title}. {}", passages[0].text);
+            let mut embedded_passages: Vec<Passage> = section
+                .and_then(|_| embedded(model, &head, summary.clone(), section))
+                .into_iter()
+                .collect();
+            embedded_passages.extend(body_passages(model, &passages));
+            Document {
+                kind: "section",
+                context: post.title.clone(),
+                id,
+                order: i + 1,
+                url,
+                title,
+                summary,
+                concepts: Vec::new(),
+                search_terms: Vec::new(),
+                words: body_words(&passages),
+                passages: embedded_passages,
+                sections: Vec::new(),
+            }
+        })
+        .collect()
+}
+
 /// Serialises the index as JSON: every node of `article`, in reading order,
 /// then every post, in listing order.
 pub fn build(
@@ -176,6 +239,7 @@ pub fn build(
             search_terms: node.search_terms.clone(),
             words: body_words(&body),
             passages,
+            sections: Vec::new(),
         });
     }
 
@@ -199,6 +263,7 @@ pub fn build(
             search_terms: Vec::new(),
             words: body_words(&body),
             passages,
+            sections: post_sections(model, post, &body),
         });
     }
 
@@ -279,6 +344,23 @@ mod tests {
             assert!(!doc["words"].as_array().unwrap().is_empty());
         }
         assert_eq!(json["model"]["dim"], dim);
+    }
+
+    /// Every post carries its sections, each linking into the post, for
+    /// the Ask box at its top.
+    #[test]
+    fn every_post_carries_its_sections() {
+        let (json, _, posts, _) = built_index();
+        let docs = json["nodes"].as_array().unwrap();
+        for (doc, post) in docs.iter().filter(|d| d["kind"] == "post").zip(&posts) {
+            let sections = doc["sections"].as_array().unwrap();
+            assert!(!sections.is_empty(), "{}", post.path);
+            for s in sections {
+                assert_eq!(s["kind"], "section");
+                assert!(s["url"].as_str().unwrap().starts_with(&post.url()));
+                assert!(!s["passages"].as_array().unwrap().is_empty());
+            }
+        }
     }
 
     /// Post passages under a heading carry its anchor, so the palette can

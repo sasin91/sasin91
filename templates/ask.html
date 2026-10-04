@@ -4,21 +4,29 @@
   <h1>Ask this article</h1>
   <p class="lede">
     Ask a question in your own words, and get back the sections of
-    <a href="{{ article.url() }}">{{ article.title }}</a> that answer it best.
+    <a href="{{ read_url }}">{{ title }}</a> that answer it best.
     This is retrieval, not a chatbot: it finds sections, it does not write
     answers.
   </p>
 
-  {% include "ai_views.html" %}
+  {# The same Read / Timeline / Ask switcher as ai_views.html, for any
+     document with an Ask page; a post has no timeline. #}
+  <nav class="view-nav" aria-label="Views of this article">
+    <a href="{{ read_url }}">Read</a>
+    {% if let Some(timeline_url) = timeline_url %}
+    <a href="{{ timeline_url }}">Timeline</a>
+    {% endif %}
+    <a href="{{ read_url }}ask/" aria-current="page">Ask</a>
+  </nav>
 
   {# The controls start disabled and the script enables them. Without
      JavaScript a submit would put the question in a URL and send it to the
      server, which is exactly what this page promises not to do. #}
-  <form class="ask" role="search" data-ask data-index="{{ index_url }}" data-model-bytes="{{ model.bytes }}">
+  <form class="ask" role="search" data-ask data-index="{{ index_url }}" data-scope="{{ scope }}" data-model-bytes="{{ model.bytes }}">
     <label for="ask-query">Your question</label>
     <div class="ask-row">
       <input id="ask-query" name="q" type="search" autocomplete="off" spellcheck="false"
-             placeholder="Why doesn't a larger context window replace RAG?" disabled>
+             placeholder="{{ examples[0] }}" disabled>
       <button type="submit" disabled>Ask</button>
     </div>
     <label class="ask-option">
@@ -28,9 +36,10 @@
     <p id="ask-status" class="ask-status" role="status" aria-live="polite"></p>
     <noscript>
       <p class="ask-status">
-        Ask runs entirely in your browser, so it needs JavaScript. Without it, the
-        <a href="{{ article.url() }}timeline/">timeline</a> is the quickest way to
-        find a section.
+        Ask runs entirely in your browser, so it needs JavaScript.
+        {% if let Some(timeline_url) = timeline_url %}Without it, the
+        <a href="{{ timeline_url }}">timeline</a> is the quickest way to
+        find a section.{% endif %}
       </p>
     </noscript>
   </form>
@@ -38,11 +47,9 @@
   <div class="ask-examples" hidden>
     <p>Or try:</p>
     <ul>
-      <li><button type="button">Why doesn't a larger context window replace RAG?</button></li>
-      <li><button type="button">What is stored in the KV cache?</button></li>
-      <li><button type="button">Is MCP the same thing as RAG?</button></li>
-      <li><button type="button">Does the model learn from my conversation?</button></li>
-      <li><button type="button">top-p</button></li>
+      {% for example in examples %}
+      <li><button type="button">{{ example }}</button></li>
+      {% endfor %}
     </ul>
   </div>
 
@@ -54,22 +61,22 @@
   <section class="ask-how" aria-labelledby="ask-how-title">
     <h2 id="ask-how-title">How this works</h2>
     <p>
-      This page is a small retrieval system of the kind the article describes in
-      <a href="{{ article.url() }}#rag">Retrieval-augmented generation</a>. Every
+      This page is a small retrieval system of the kind described in
+      <a href="{{ ai_url }}#rag">Retrieval-augmented generation</a>. Every
       step happens in your browser; your question is never sent anywhere.
     </p>
     <ol class="pipeline">
       <li>
         <strong>Tokenize.</strong> Your question is split into the WordPiece
         tokens of the model's vocabulary
-        (<a href="{{ article.url() }}#tokenization">tokenization</a>).
+        (<a href="{{ ai_url }}#tokenization">tokenization</a>).
         <output id="ask-step-tokens" class="pipeline-output"></output>
       </li>
       <li>
         <strong>Embed.</strong> Each token selects one row of a static embedding
         table, and the rows are averaged into a single vector of
         {{ model.dim }} numbers
-        (<a href="{{ article.url() }}#embeddings">embeddings</a>).
+        (<a href="{{ ai_url }}#embeddings">embeddings</a>).
         <output id="ask-step-vector" class="pipeline-output"></output>
       </li>
       <li>
