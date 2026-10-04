@@ -32,14 +32,14 @@ live over HTTPS at `{slug}.trongate.dev`.
 
 ### Nothing to manage
 
-No servers, no Dockerfile, and no size or tier to pick. Each project gets its
-own MariaDB database. Each team gets its own Kubernetes namespace with network
+No servers and no Dockerfile. Each project gets its own MariaDB database. Each team gets its own Kubernetes namespace with network
 policies, so other tenants cannot reach in.
 
 ### Scales with you
 
-Apps grow as needed. There is no CPU limit while we watch what real apps use,
-and a Trongate app's throughput follows the CPU it gets almost one for one.
+Pick how much memory your app gets, from 256 MB to 1 GB. CPU is not capped
+while we watch what real apps use, and a Trongate app's throughput follows the
+CPU it gets almost one for one.
 
 ## Built for Trongate
 
