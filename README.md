@@ -13,8 +13,8 @@ that prescribes the weights and records what you actually lifted next to what
 it asked for. Rust backend, one FreeBSD box, two jails behind Caddy.
 
 On the side, [**trongate.cloud**](https://trongate.cloud): hosting for
-[Trongate](https://trongate.io) apps on Kubernetes. You push, we deploy, and an
-MCP server lets an assistant do the same. Still a work in progress.
+[Trongate](https://trongate.io) apps on Kubernetes. You push, we deploy. Still
+a work in progress.
 
 To dogfood it, [**Recruiter**](https://recruiter.trongate.dev): a Trongate app
 running on trongate.cloud. Its core is `cv_match`: paste or upload a job post,
