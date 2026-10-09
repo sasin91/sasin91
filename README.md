@@ -16,6 +16,10 @@ On the side, [**trongate.cloud**](https://trongate.cloud): hosting for
 [Trongate](https://trongate.io) apps on Kubernetes. You push, we deploy. Still
 a work in progress.
 
+To dogfood it, [**Recruiter**](https://recruiter.trongate.dev): a recruitment
+app built on Trongate and hosted on trongate.cloud. Its core feature is
+`cv_match`, which matches CVs against the job they were sent in for.
+
 ### Writing
 
 I write occasionally at [sasin91.xyz](https://sasin91.xyz), mostly about things
