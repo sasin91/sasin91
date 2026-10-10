@@ -30,6 +30,7 @@ that broke and what fixed them.
 - [FreeBSD on a Hetzner Cloud VPS](https://sasin91.xyz/blog/freebsd-on-hetzner) — installing 15.1 on root-on-ZFS unattended, from media you can verify, and the five things that went wrong
 - [One box, two jails and a five second deploy](https://sasin91.xyz/blog/athletos-freebsd) — what the boring infrastructure choices bought, measured rather than estimated
 - [trongate.cloud: you push, we deploy your Trongate app](https://sasin91.xyz/blog/trongate/benchmarks/) — hosting for Trongate apps, with the benchmarks behind it
+- [Recruiter: see how your CV matches a job post](https://sasin91.xyz/blog/trongate/recruiter/) — matching a CV against every requirement in a job post, and the numbers behind it
 - [Trongate PHP](https://sasin91.xyz/blog/trongate) — a framework that breaks with common standards, and why that turns out to be interesting
 
 ### Tools

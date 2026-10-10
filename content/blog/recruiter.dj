@@ -1,0 +1,133 @@
++++
+path = "blog/trongate/recruiter"
+title = "Recruiter: see how your CV matches a job post"
+date = 2026-10-09
+description = "Recruiter matches a CV against every requirement in a job post and shows why: met, partly met or missing, with the line from the CV that decided it. A Trongate app that dogfoods trongate.cloud."
+ask = [
+    "What does Recruiter do?",
+    "What problem does it solve?",
+    "How does cv_match work?",
+    "Is it free?",
+    "Which AI model does it use?",
+    "Why build it on trongate.cloud?",
+    "How accurate is it?",
+]
++++
+
+::: note
+Recruiter is still a work in progress at the time of writing, 9 October 2026.
+:::
+
+Add your CV and a job post, and [Recruiter](https://recruiter.trongate.dev)
+tells you how well you fit, requirement by requirement, and why. Then it
+writes the application.
+
+## The problem
+
+A Danish job post asks for six or eight things, written as sentences: "uddannet
+pædagog eller pædagogisk assistent", "flydende dansk", "gerne erfaring med
+Kubernetes". Some are must-haves, some are nice to have, and some are
+alternatives. A candidate reads the post, then their own CV, and guesses.
+
+Keyword matching, the usual answer, gets this wrong in both directions. It
+counts "Kubernets" with a typo as missing, and it cannot tell that a CV naming
+a closely related skill is partly there. I spent years
+on a job and candidate matching platform at JUICE, and the ranking engine I
+built there had the same blind spot: a requirement was either in or out.
+
+## What cv_match does
+
+`cv_match` is the core of Recruiter. You upload or paste a CV, then paste a
+job post, upload one, or give it a link. You can add up to ten posts and
+compare them against the same CV.
+
+For each post it shows:
+
+- every requirement, marked *met*, *partly met* or *missing*;
+- the phrase from your CV that decided it, and a one-line reason ("Needs 3,
+  CV shows 5.", "Named in the CV.");
+- the soft skills as tags, not scored, because no CV proves "engageret";
+- one match score, with the posts ranked by it.
+
+From a match it writes a job application and a résumé tailored to that post,
+both from your own CV, with room for notes on what to stress. Matches are
+saved, so you can come back to them.
+
+## How it decides
+
+Each requirement goes through the cheapest step that can decide it, and only
+what is left goes to a language model:
+
+1. *Rules.* Years of experience are arithmetic: a post asking for 3 years
+   against a CV showing 5 is met, against 2 it is partly met.
+2. *The taxonomy.* A Danish and English vocabulary of 9,926 skills, 401 roles
+   and 620 job titles, with 23,533 labels and synonyms. A requirement the CV
+   names, spelled the same or with a typo or two, is met. One that names a
+   broader, narrower or sibling skill is partly met.
+3. *The model.* Requirements written as sentences, levels ("flydende dansk",
+   a master's degree) and responsibilities go to the model, which answers with
+   a verdict, the evidence and a reason.
+
+Alternatives ("pædagog eller pædagogisk assistent") count as one requirement,
+met by the best of them. The score weighs formal requirements at 150,
+nice-to-haves at 50, and the job title and responsibilities at 30 each; a
+partial match counts half.
+
+Pasted links are read carefully: only public web pages, every redirect
+checked, and the post's own structured data when the job board has it. Page
+fetches are capped per session, so a list of links can't turn it into a
+crawler.
+
+## Free, or with your own key
+
+Without an account you get the free keyword match: the taxonomy and the rules,
+no model, nothing that costs anything per request. It is honest about what it
+can't do. It finds requirements the post names as a skill, tool or title, and
+counts anything your CV doesn't name word for word as missing.
+
+Sign in and add your own OpenAI or Anthropic API key, and you get the AI
+match: it reads the whole post, judges related experience, fetches posts from
+a link, saves your matches and writes the application. The model calls run on
+your key, so Recruiter never needs to charge for them.
+
+## How accurate it is
+
+Before building the match, I measured the step that turns a job post into a
+list of requirements. 200 real Danish job ads, with expected fields labelled
+one ad at a time and spot-checked by hand:
+
+| Extractor | Hard fields | Median time per ad |
+|---|---|---|
+| gpt-5.4-mini | 78% | 3.5 s |
+| Claude Haiku 4.5 | 77% | not measured |
+| gpt-4.1-mini | 72% | 1.9 s |
+| Gemini Nano, in the browser | 49% | 7.3 s |
+| Rules only, no model | 33% | 0 |
+
+"Hard fields" are the ones a default can't get: title, education level,
+years, skills and certifications. The WebLLM models I tried in the browser
+scored between 17% and 57% and needed a 1.5 to 3 GB download, so extraction
+runs on the server.
+The postcode and full or part time come from plain rules, which matched the
+labels 98% and 82% of the time.
+
+For a second opinion, a match can also go to
+Laya, a small decision model. Given the job
+post and CV raw, in Danish, it was close to chance. Given the code's own
+verdicts as one English sentence ("meets 3 of 5; missing: …"), it separated
+candidates who meet every requirement from those who don't with an AUC of
+0.98. That is on 20 hand-written pairs, so its thresholds still need
+calibrating against real recruiter decisions.
+
+## Built on trongate.cloud
+
+Recruiter is a [Trongate](/blog/trongate/) app, and it runs on
+[trongate.cloud](/blog/trongate/benchmarks/), the same way a customer's app
+does: push to GitHub, and it is built and deployed to `recruiter.trongate.dev`
+with its own database. That is the point. A hosting platform is only proven by
+running something real on it, and Recruiter is the app I would have built
+anyway.
+
+## Try it
+
+Match your CV at [recruiter.trongate.dev](https://recruiter.trongate.dev).

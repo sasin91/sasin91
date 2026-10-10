@@ -268,6 +268,17 @@ test("a post's Ask box answers from that post's sections", { skip }, () => {
   ]) {
     assert.equal(askPost("blog/trongate/benchmarks", question)[0], `${benchmarks}#${anchor}`, question);
   }
+  const recruiter = "/blog/trongate/recruiter/";
+  for (const [question, anchor] of [
+    ["What problem does it solve?", "The-problem"],
+    ["How does cv_match work?", "What-cv_match-does"],
+    ["Is it free?", "Free-or-with-your-own-key"],
+    ["Which AI model does it use?", "Free-or-with-your-own-key"],
+    ["Why build it on trongate.cloud?", "Built-on-trongatecloud"],
+    ["How accurate is it?", "How-accurate-it-is"],
+  ]) {
+    assert.equal(askPost("blog/trongate/recruiter", question)[0], `${recruiter}#${anchor}`, question);
+  }
 });
 
 test("every post's sections are in the index", { skip }, () => {
