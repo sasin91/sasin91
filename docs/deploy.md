@@ -11,7 +11,7 @@ not to merge.
 
 - PHP 8.4 with `intl` and `mbstring`, both declared in `composer.json`, so the
   builder installs them.
-- `composer install`, which puts the four content libraries in `packages/`
+- `composer install`, which puts the libraries the site needs in `packages/`
   (Trongate's convention for Composer's vendor directory).
 - Nothing else. `content/`, `models/` and `public/` are read as they are in the
   repository; there is no build output.
