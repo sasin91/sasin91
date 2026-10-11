@@ -1,5 +1,5 @@
 --TEST--
-a .phtml post is a plain view built from components: sections, callouts and code, ids in page order, the header cut off
+a .phtml post is a plain view written with the prose helpers: sections, callouts and code, ids in page order, the header cut off
 --FILE--
 <?php
 require __DIR__ . '/setup.inc';
@@ -10,14 +10,14 @@ file_put_contents("$dir/post.phtml", <<<'PHTML'
 path = "blog/x"
 +++
 <p>Intro.</p>
-<?php open_component('section', ['title' => 'Result']) ?>
-<?php open_component('callout', ['kind' => 'note', 'title' => 'Result']) ?>
+<?= section_open('Result') ?>
+<?= callout_open('note', 'Result') ?>
 <p>It worked: <?= math('x^2') ?></p>
-<?php close_component() ?>
-<?php open_component('code', ['language' => 'bash', 'title' => 'run.sh']) ?>
+<?= callout_close() ?>
+<?= code_open('bash', 'run.sh') ?>
 ssh root@<ip>
-<?php close_component() ?>
-<?php close_component() ?>
+<?= code_close() ?>
+<?= section_close() ?>
 PHTML);
 
 $post = ['format' => 'phtml', 'file' => "$dir/post.phtml"];
@@ -29,7 +29,7 @@ var_dump(str_contains($html, '<math'));
 echo json_encode(Post_body::passages($post)), "\n";
 
 try {
-    component('nope');
+    callout_open('tip');
 } catch (InvalidArgumentException $error) {
     echo $error->getMessage(), "\n";
 }
@@ -42,4 +42,4 @@ bool(true)
 bool(true)
 bool(true)
 [{"text":"Intro.","section":null},{"text":"It worked:","section":{"id":"Result-1","heading":"Result"}}]
-there is no component "nope" (modules/components/nope/)
+a callout is a note or a warning, not "tip"

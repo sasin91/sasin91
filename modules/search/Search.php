@@ -109,7 +109,7 @@ class Search extends Trongate {
             hash_update_file($hash, $file);
         }
         // The code that builds the index is part of what it is built from.
-        foreach (['Search_index.php', 'Static_model.php', '../content/Markdown_html.php', '../content/Markdown_extensions.php', '../content/Post_body.php'] as $code) {
+        foreach (['Search_index.php', 'Static_model.php', '../content/Markdown_html.php', '../content/Markdown_extensions.php', '../content/Post_body.php', '../prose/Prose.php'] as $code) {
             hash_update_file($hash, __DIR__ . '/' . $code);
         }
         // So is the model the passages are embedded with.

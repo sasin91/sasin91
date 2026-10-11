@@ -1,11 +1,10 @@
 <?php
 require_once __DIR__ . '/Markdown_html.php';
-require_once APPPATH . 'modules/components/components_helper.php';
-require_once APPPATH . 'modules/components/section/Section.php';
+require_once APPPATH . 'modules/prose/prose_helper.php';
 
 /**
  * A post's body as HTML and as search passages, whichever way it is written:
- * Markdown (.md), or a plain view built from components (.phtml).
+ * Markdown (.md), or a plain view written with the prose helpers (.phtml).
  *
  * A .phtml post is an ordinary PHP view. Its +++ TOML header is not PHP, so
  * rendering the file outputs the header as text first; it is cut off here.
@@ -17,9 +16,10 @@ class Post_body {
             return (new Markdown_html())->render($post['source']);
         }
 
-        Section::reset_ids();
-        $output = Component::template($post['file']);
-        return self::without_header($output);
+        Modules::run('prose/reset_ids', []);
+        ob_start();
+        require $post['file'];
+        return self::without_header(ob_get_clean());
     }
 
     /**

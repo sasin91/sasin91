@@ -9,6 +9,10 @@
 define('APPPATH', str_replace('\\', '/', dirname(__DIR__)) . '/');
 
 require APPPATH . 'packages/autoload.php';
+// Posts written with the prose helpers reach their module through Trongate.
+define('BASE_URL', 'http://localhost/');
+require APPPATH . 'engine/Trongate.php';
+require APPPATH . 'engine/Modules.php';
 require APPPATH . 'modules/content/Markdown_html.php';
 require APPPATH . 'modules/content/Posts.php';
 require APPPATH . 'modules/content/Knowledge_article.php';

@@ -15,9 +15,9 @@ card_alt = "Bar chart of mean latency for a fresh TLS connection at 100, 250 and
 <p>— I picked FreeBSD for ZFS boot environments and jails, so a bad deploy is a rollback instead of an incident.</p>
 </blockquote>
 <p>This is the whole procedure, in order, with the things that went wrong and what fixed them. I used FreeBSD’s own ISO rather than a prebuilt image, so the checksum can be verified against the project’s manifest.</p>
-<?php open_component('section', ['title' => '1. Create the server']) ?>
+<?= section_open('1. Create the server') ?>
 <p>A CX23 gives 2 vCPU and 4 GB, which is plenty. Firewall first, then the box.</p>
-<?php open_component('code', ['language' => 'bash', 'title' => '1-create-server.sh']) ?>
+<?= code_open('bash', '1-create-server.sh') ?>
 hcloud firewall create --name athletos
 for p in 22 80 443; do
   hcloud firewall add-rule athletos --direction in --protocol tcp \
@@ -26,22 +26,22 @@ done
 
 hcloud server create --name athletos --type cx23 --location hel1 \
   --image debian-12 --ssh-key my-key --firewall athletos
-<?php close_component() ?>
+<?= code_close() ?>
 <p>The image is a throwaway. It only exists so the server boots at all.</p>
-<?php close_component() ?>
+<?= section_close() ?>
 
-<?php open_component('section', ['title' => '2. Boot into rescue']) ?>
-<?php open_component('code', ['language' => 'bash', 'title' => '2-rescue.sh']) ?>
+<?= section_open('2. Boot into rescue') ?>
+<?= code_open('bash', '2-rescue.sh') ?>
 hcloud server enable-rescue athletos --ssh-key my-key
 hcloud server reset athletos
 
 ssh root@<ip>          # linux rescue, ~1.9GB overlay in RAM
-<?php close_component() ?>
-<?php close_component() ?>
+<?= code_close() ?>
+<?= section_close() ?>
 
-<?php open_component('section', ['title' => '3. Fetch and verify the ISO']) ?>
+<?= section_open('3. Fetch and verify the ISO') ?>
 <p>Take <code>bootonly</code>, not <code>disc1</code>. The rescue root is a small RAM overlay and a 1.3 GB ISO plus its extraction plus the rebuild will not fit.</p>
-<?php open_component('code', ['language' => 'bash', 'title' => '3-fetch-iso.sh']) ?>
+<?= code_open('bash', '3-fetch-iso.sh') ?>
 B=https://download.freebsd.org/releases/amd64/amd64/ISO-IMAGES/15.1
 I=FreeBSD-15.1-RELEASE-amd64-bootonly.iso
 
@@ -51,12 +51,12 @@ curl -fsSL -o $I $B/$I
 E=$(grep -E "\($I\)" CHECKSUM | sed 's/.*= //')
 A=$(sha256sum $I | cut -d' ' -f1)
 [ "$E" = "$A" ] && echo "verified" || echo "STOP"
-<?php close_component() ?>
-<?php close_component() ?>
+<?= code_close() ?>
+<?= section_close() ?>
 
-<?php open_component('section', ['title' => '4. Remaster the ISO']) ?>
+<?= section_open('4. Remaster the ISO') ?>
 <p>Three edits: a serial console so we can watch it, the prompt that would otherwise block forever, and the network the scripted install never configures for itself.</p>
-<?php open_component('code', ['language' => 'bash', 'title' => '4-remaster.sh']) ?>
+<?= code_open('bash', '4-remaster.sh') ?>
 apt-get install -y xorriso qemu-system-x86
 
 mkdir -p isowork isomnt
@@ -78,16 +78,16 @@ sed -i 's/^\([[:space:]]*\)read TERM$/\1:/' \
 # a scripted install never configures the network
 sed -i 's|^mkdir /tmp/bsdinstall_etc$|&\nifconfig vtnet0 inet 10.0.2.15/24 up\nroute add default 10.0.2.2\necho "nameserver 10.0.2.3" > /tmp/bsdinstall_etc/resolv.conf|' \
     isowork/etc/rc.local
-<?php close_component() ?>
-<?php open_component('callout', ['kind' => 'warning', 'title' => 'What went wrong']) ?>
+<?= code_close() ?>
+<?= callout_open('warning', 'What went wrong') ?>
 <p>I replaced <code>loader.conf</code> instead of appending, which threw away <code>vfs.root.mountfrom</code> and left it at a mountroot prompt.</p>
 <p>Then it hung at <code>Console type [vt100]:</code> because that <code>read</code> runs before the script is ever looked for.</p>
 <p>Then distfetch died on DNS, because the interactive path exports <code>BSDINSTALL_CONFIGCURRENT</code> and the scripted path does not.</p>
-<?php close_component() ?>
-<?php close_component() ?>
+<?= callout_close() ?>
+<?= section_close() ?>
 
-<?php open_component('section', ['title' => '5. Write the unattended install script']) ?>
-<?php open_component('code', ['language' => 'bash', 'title' => 'isowork/etc/installerconfig']) ?>
+<?= section_open('5. Write the unattended install script') ?>
+<?= code_open('bash', 'isowork/etc/installerconfig') ?>
 PARTITIONS=DEFAULT
 DISTRIBUTIONS="kernel.txz base.txz"
 export ZFSBOOT_VDEV_TYPE=stripe
@@ -110,9 +110,9 @@ echo 'vfs.zfs.arc_max="512M"' >> /boot/loader.conf
 mkdir -p /root/.ssh && chmod 700 /root/.ssh
 echo 'ssh-ed25519 AAAA... you@host' > /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
-<?php close_component() ?>
+<?= code_close() ?>
 <p><code>10.0.2.2</code> is QEMU’s host address. Serving the distribution sets from rescue skips DNS entirely and is quicker than fetching them twice.</p>
-<?php open_component('code', ['language' => 'bash', 'title' => '5-serve-dist.sh']) ?>
+<?= code_open('bash', '5-serve-dist.sh') ?>
 mkdir -p dist && cd dist
 B=https://download.freebsd.org/releases/amd64/15.1-RELEASE
 for f in MANIFEST base.txz kernel.txz; do curl -fsSL -O $B/$f; done
@@ -123,13 +123,13 @@ while read -r name sha rest; do
 done < MANIFEST
 
 setsid nohup python3 -m http.server 8000 >/dev/null 2>&1 &
-<?php close_component() ?>
+<?= code_close() ?>
 <p>Tip: leave that server running. The installer fetches from it in step 7, not now.</p>
-<?php close_component() ?>
+<?= section_close() ?>
 
-<?php open_component('section', ['title' => '6. Build the ISO and wipe the disk']) ?>
+<?= section_open('6. Build the ISO and wipe the disk') ?>
 <p>Delete the source ISO before building, or you run out of space in the overlay.</p>
-<?php open_component('code', ['language' => 'bash', 'title' => '6-build-and-wipe.sh']) ?>
+<?= code_open('bash', '6-build-and-wipe.sh') ?>
 rm -f $I
 xorriso -as mkisofs -r -V FREEBSD_INSTALL -b boot/cdboot -no-emul-boot \
         -o athletos-install.iso isowork/
@@ -141,16 +141,16 @@ MIB=$(( SECTORS / 2048 ))
 wipefs -a /dev/sda
 dd if=/dev/zero of=/dev/sda bs=1M count=64 conv=fsync
 dd if=/dev/zero of=/dev/sda bs=1M seek=$(( MIB - 64 )) count=64 conv=fsync
-<?php close_component() ?>
-<?php open_component('callout', ['kind' => 'warning', 'title' => 'What went wrong']) ?>
+<?= code_close() ?>
+<?= callout_open('warning', 'What went wrong') ?>
 <p>An earlier attempt got far enough to create a <code>zroot</code> pool before failing.</p>
 <p>The next run found it and stopped to ask for a different pool name, which is another dialog nobody is there to answer. Wipe both ends between attempts.</p>
-<?php close_component() ?>
-<?php close_component() ?>
+<?= callout_close() ?>
+<?= section_close() ?>
 
-<?php open_component('section', ['title' => '7. Run the installer under QEMU']) ?>
+<?= section_open('7. Run the installer under QEMU') ?>
 <p>Hetzner Cloud has no nested virtualisation, so there is no <code>/dev/kvm</code> and this runs under TCG emulation. It takes roughly half an hour. Nothing to do but watch the log.</p>
-<?php open_component('code', ['language' => 'bash', 'title' => '7-install.sh']) ?>
+<?= code_open('bash', '7-install.sh') ?>
 qemu-system-x86_64 -accel tcg,thread=multi -m 2048 -smp 2 \
   -drive file=/dev/sda,format=raw,if=virtio,cache=writeback \
   -cdrom athletos-install.iso -boot d \
@@ -160,12 +160,12 @@ qemu-system-x86_64 -accel tcg,thread=multi -m 2048 -smp 2 \
 grep -aoE "Running installation step: [a-z]+" /root/install.log | uniq
 # zfsboot mount distfetch checksum distextract bootconfig config
 # entropy umount script
-<?php close_component() ?>
+<?= code_close() ?>
 <p>Kill QEMU once the script step finishes, or it reboots straight back into the installer.</p>
-<?php close_component() ?>
+<?= section_close() ?>
 
-<?php open_component('section', ['title' => '8. Boot it, and fix fstab']) ?>
-<?php open_component('code', ['language' => 'bash', 'title' => '8-boot.sh']) ?>
+<?= section_open('8. Boot it, and fix fstab') ?>
+<?= code_open('bash', '8-boot.sh') ?>
 hcloud server disable-rescue athletos
 hcloud server reset athletos
 
@@ -175,15 +175,15 @@ ssh root@<ip>
 # the pool is fine because zfs scans devices. swap is not.
 printf '/dev/gpt/swap0\tnone\tswap\tsw\t0\t0\n' > /etc/fstab
 swapon -a
-<?php close_component() ?>
-<?php open_component('callout', ['kind' => 'warning', 'title' => 'What went wrong']) ?>
+<?= code_close() ?>
+<?= callout_open('warning', 'What went wrong') ?>
 <p>The generated fstab pointed at <code>/dev/vtbd0p2</code>, which does not exist on the real machine.</p>
 <p>It booted with no swap and said nothing about it. Refer to it by GPT label and the device name stops mattering.</p>
-<?php close_component() ?>
-<?php close_component() ?>
+<?= callout_close() ?>
+<?= section_close() ?>
 
-<?php open_component('section', ['title' => 'Result']) ?>
-<?php open_component('code', ['language' => 'bash', 'title' => 'athletos']) ?>
+<?= section_open('Result') ?>
+<?= code_open('bash', 'athletos') ?>
 FreeBSD athletos 15.1-RELEASE ... GENERIC amd64
 
 zroot            658M / 34.2G      all pools are healthy
@@ -193,35 +193,35 @@ vfs.zfs.arc_max  536870912                (512 MiB)
 1  gptboot0   512 KiB   A501  freebsd-boot
 2  swap0      2.0 GiB   A502  freebsd-swap
 3  zfs0      36.1 GiB   A504  freebsd-zfs
-<?php close_component() ?>
-<?php open_component('callout', ['kind' => 'note', 'title' => 'Result']) ?>
+<?= code_close() ?>
+<?= callout_open('note', 'Result') ?>
 <p>15.1 on root-on-ZFS, a release the ISO library does not carry, from media you can verify.</p>
-<?php close_component() ?>
-<?php close_component() ?>
+<?= callout_close() ?>
+<?= section_close() ?>
 
-<?php open_component('section', ['title' => 'Under load']) ?>
+<?= section_open('Under load') ?>
 <p>I measured this from a separate Hetzner VPS in the same datacentre, hel1, against a control: an identical CX23 running Ubuntu 24.04, the same Caddy 2.11.4 serving byte-identical files, with an ECDSA P-256 certificate to match. <code>vegeta</code>, a fresh TCP and TLS connection per request, which is what a crawler does and what a browser never does.</p>
-<?php open_component('code', ['language' => 'bash', 'title' => '9-load.sh']) ?>
+<?= code_open('bash', '9-load.sh') ?>
 vegeta attack -targets targets.txt -rate 500 -duration 10s \
        -keepalive=false -timeout 20s | vegeta report
 
 # freebsd   100/s  4.9ms   250/s  4.7ms   500/s  4.0ms   mean
 # ubuntu    100/s  5.7ms   250/s  5.0ms   500/s  5.2ms   mean
-<?php close_component() ?>
+<?= code_close() ?>
 <p>At 100, 250 and 500 fresh connections a second both boxes delivered the full offered rate with 100% success, and the FreeBSD box was the faster of the two at every step.</p>
 <p>The crypto is not the constraint either.</p>
-<?php open_component('code', ['language' => 'bash', 'title' => 'openssl speed ecdsap256']) ?>
+<?= code_open('bash', 'openssl speed ecdsap256') ?>
 # sign/s
 #  37920   this box (epyc, one core)
 #  32614   ubuntu control (xeon, one core)
-<?php close_component() ?>
+<?= code_close() ?>
 <p>The EPYC signs 16% faster than the control’s Xeon, which is worth stating because it means the hardware favours the FreeBSD box rather than the other way round. Against 500 connections a second, 37,920 signatures is roughly 75x headroom. Whatever the ceiling is, it is not asymmetric crypto.</p>
-<?php open_component('callout', ['kind' => 'warning', 'title' => 'Two things I did not establish']) ?>
+<?= callout_open('warning', 'Two things I did not establish') ?>
 <p>Above 500/s the measurements were not reproducible. One clean run at 1000/s had FreeBSD at 497/s and the Ubuntu control at 999/s. A later run gave 179/s at 1000/s, and then 566/s at 1500/s — more offered load producing more throughput, which is not a property a server can have. It is the single load generator accumulating TIME_WAIT between runs. A real answer needs several generators.</p>
 <p>An earlier attempt measured this from a Windows laptop over the public internet and got 50-100 connections a second. That was low by five to ten times, and the cause was ephemeral-port exhaustion on the client. The first measurement was wrong, and it was wrong in a way that produced a confident and completely incorrect explanation.</p>
-<?php close_component() ?>
+<?= callout_close() ?>
 <p>One hypothesis died on the way. FreeBSD’s <code>kern.ipc.soacceptqueue</code> is 128 and Ubuntu’s <code>net.core.somaxconn</code> is 4096, so the listen backlog differs by 32x, which looked like the obvious cause and survived the arithmetic. I set the control to 128, restarted Caddy so the listener picked the new value up, and it still delivered 999.9/s. Refuted.</p>
 <p>That leaves <code>pf</code>, which redirects 443 to Caddy’s high port, as the untested suspect. Untested because that high port is not reachable from outside, so there was no way to bypass the redirect and compare against it.</p>
 <p>The same steps work for any release. Change the version in step 3 and the rest follows.</p>
 <p>Every command above ran against a real CX23 in hel1.</p>
-<?php close_component() ?>
+<?= section_close() ?>
