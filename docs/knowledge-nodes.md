@@ -57,7 +57,7 @@ Unknown fields are an error, so a misspelt `prerequisite` cannot silently mean
 1. Create `content/ai/nodes/<id>.dj` with the frontmatter above.
 2. Add its id to a `[[part]]` in `content/ai/article.toml`, where it should be
    read.
-3. `cargo run` and check `/blog/ai/#<id>`, `/blog/ai/timeline/` and a question in
+3. Reload and check `/blog/ai/#<id>`, `/blog/ai/timeline/` and a question in
    `/blog/ai/ask/` that should find it.
 
 ## Editing
@@ -81,9 +81,10 @@ one of its `prerequisites`; either move the prerequisite too, or change it to
 `/blog/ai/#<id>` from anywhere on the site or off it. Because the id is the
 contract, renaming a node breaks inbound links; prefer changing the title.
 
-## What the build checks
+## What is checked
 
-`cargo run` and `cargo test` (`src/knowledge.rs`) both refuse content where:
+The article's pages and the tests (`modules/content/Knowledge_article.php`,
+`php bin/run-tests.php modules/content/tests`) both refuse content where:
 
 - two files share an id, or an id does not match its file name;
 - an id is not a safe anchor, or collides with other ids on the page;
@@ -95,29 +96,31 @@ contract, renaming a node breaks inbound links; prefer changing the title.
 - a summary is empty or over 200 characters, or `concepts` is empty;
 - a learning path is duplicated, empty, or names a node that does not exist.
 
-All problems are reported at once.
+All problems are reported at once, as an error on /blog/ai/ and a failing test.
 
 ## How Ask finds things
 
 Ask is retrieval, not a chatbot, and it runs entirely in the reader's
 browser: no API, no key, and the question never leaves the page.
 
-At build time (`src/search_index.rs`) each node is split into passages: one
+On the server (`modules/search/Search_index.php`) each node is split into passages: one
 for its metadata (title, summary, concepts, search terms) and one per
 paragraph or list of its body. Each passage is embedded with a static
 embedding model (`models/README.md`), and the vectors are written with the
-node metadata and a short snippet to `public/search/index.<hash>.json`. Blog
+node metadata and a short snippet to the index served at
+`/search/index.json?v=<hash>`, built the first time it is asked for after the
+content changes and kept on disk until it changes again. Blog
 posts go into the same index, split the same way, with each passage
 remembering the heading it sits under; Ask filters the index to the article's
 nodes, while the site-wide palette below uses all of it.
 
-Every post opens with an Ask box too. The build indexes each of a post's
+Every post opens with an Ask box too. The index holds each of a post's
 sections as a document, nested under the post so the palette still finds the
-post once, and the box ranks only those. The loader in `base.html` imports
+post once, and the box ranks only those. The loader in `modules/layout/views/page.php` imports
 `/search/ask.js` (the same script /blog/ai/ask/ inlines) on pages with the
 box. A post may suggest questions in its frontmatter (`ask = ["...", ...]`).
 
-In the browser (`js/retrieval.mjs`), only once the reader focuses the
+In the browser (`modules/search/js/retrieval.mjs`), only once the reader focuses the
 question field, the page fetches that index and the model, then for each
 question:
 
@@ -139,9 +142,10 @@ If a reasonable question does not find a node, the fix is usually a
 the static model itself (wrong word sense, paraphrases with no shared words),
 see "When to switch to a transformer model" in `models/README.md`.
 
-Tests: `cargo test` covers the build side, and `node --test
-js/retrieval.test.mjs` the browser side, including real questions against the
-built index (run `cargo run --release` first).
+Tests: `php bin/run-tests.php modules/search/tests` covers the server side, and
+`node --test modules/search/js/` the browser side, including real questions
+against the index (write it first with
+`php bin/search-index.php > build/search-index.json`).
 
 ## The search palette
 
@@ -150,18 +154,17 @@ Every page has a search palette: <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd>,
 header. (<kbd>Alt</kbd>+<kbd>Space</kbd> is listened for too, but Windows
 usually takes it for the window menu before the browser sees it.)
 
-- `templates/base.html` carries only a small inline loader. It reveals the
+- `modules/layout/views/page.php` carries only a small inline loader. It reveals the
   button and, on first use, imports `/search/palette.js`, so no page is
   heavier for readers who never search.
-- `palette.js` is written by `build_search` in `src/main.rs`:
-  `js/retrieval.mjs` plus `js/palette.mjs`, with the hashed index URL
-  prefixed. It searches posts and nodes with the same ranking as Ask, shows
+- `palette.js` is served by `Search::palette_js` (`modules/search`):
+  `retrieval.mjs` plus `palette.mjs`, with the current index URL prefixed. It searches posts and nodes with the same ranking as Ask, shows
   word matches as soon as the index arrives, and adds meaning once the model
   has loaded (skipped when the browser asks to save data).
 - A post result links to the section its best passage is in
   (`/blog/x/#Section-heading`); a node result to the node.
 - With nothing typed, it lists the site's pages and a theme toggle, from the
-  `COMMANDS` list at the top of `js/palette.mjs`.
+  `COMMANDS` list at the top of `modules/search/js/palette.mjs`.
 - Results scoring under 65% of the best one are dropped, so a precise query
   shows one or two results rather than a full list.
 
@@ -173,7 +176,7 @@ shape:
 - **Lessons** are `[[learning_path]]` entries in `article.toml`: an id, a
   title and an ordered list of node ids, validated today but not rendered. A
   lesson view would render those nodes in that order, reusing the node markup
-  from `templates/ai.html`, at `/blog/ai/learn/<path-id>/`.
+  from `modules/knowledge/views/read.php`, at `/blog/ai/learn/<path-id>/`.
 - **Quizzes** can be built from what nodes already carry:
   `learning_objectives` as what to test, `misconceptions` as plausible wrong
   answers. Hand-written questions would be a new optional frontmatter table,

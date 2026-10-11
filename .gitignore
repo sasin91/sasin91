@@ -1,3 +1,29 @@
-/target
-/public
 /.superpowers
+
+# Composer packages (djot, toml, highlight.php, latex2mathml)
+/packages/
+
+# What bin/run-tests.php leaves next to a failed .phpt
+modules/*/tests/*.php
+modules/*/tests/*.diff
+modules/*/tests/*.exp
+modules/*/tests/*.log
+modules/*/tests/*.out
+modules/*/tests/*.sh
+
+\.phpintel/
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Runtime uploads (per-record picture folders created by image_uploader)
+modules/*/uploads/
+/build/

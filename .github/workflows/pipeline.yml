@@ -14,29 +14,85 @@ concurrency:
 permissions:
   contents: read
 
+# Deploying is trongate.cloud's job: it builds and rolls out every push to
+# main through its GitHub App. This only checks the push is fit to go.
 jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: shivammathur/setup-php@v2
         with:
-          components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
-      - name: Format
-        run: cargo fmt --check
-      - name: Clippy
-        run: cargo clippy -- -D warnings
-      - name: Test
-        run: cargo test
+          php-version: "8.4"
+          extensions: intl, mbstring
+          tools: composer
+      - name: Install packages
+        run: composer install --no-interaction --no-progress
+      - name: PHP tests
+        run: php bin/run-tests.php -q --show-diff modules/content/tests modules/search/tests modules/cv/tests
+
       # The Ask view's retrieval code runs in the browser, so it is tested
       # with Node's built-in runner (no npm, no dependencies). Its last tests
-      # ask real questions of the built search index, hence the build first.
-      - name: Build the site
-        run: cargo run --release
+      # ask real questions of the index the site serves.
+      - name: Build the search index
+        run: mkdir -p build && php bin/search-index.php > build/search-index.json
       - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Test the Ask view's retrieval
-        run: node --test js/retrieval.test.mjs
+        run: node --test modules/search/js/
+
+      - name: Serve the site
+        run: |
+          APP_ENV=prod php -S 127.0.0.1:8000 -t public bin/dev-router.php > /tmp/server.log 2>&1 &
+          sleep 1
+
+      - name: Every page answers
+        run: |
+          set -euo pipefail
+          fail=0
+          for path in / /about/ /cv/ /blog/ /blog/trongate/ /blog/trongate/mx-transition/ \
+                      /blog/freebsd-on-hetzner/ /blog/athletos-freebsd/ \
+                      /blog/ai/ /blog/ai/timeline/ /blog/ai/ask/ \
+                      /cv_jonas_hansen_software_developer.pdf /rss.xml /sitemap.xml /robots.txt \
+                      /search/palette.js /search/ask.js; do
+            code=$(curl -s -o /tmp/page -w '%{http_code}' "http://127.0.0.1:8000$path")
+            printf '%-45s %s\n' "$path" "$code"
+            [ "$code" = "200" ] || fail=1
+            if grep -q '<b>\(Warning\|Notice\|Deprecated\|Fatal error\)</b>' /tmp/page; then
+              echo "  PHP reported a problem on $path"; fail=1
+            fi
+          done
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/no-such-page/)
+          echo "/no-such-page/ $code"; [ "$code" = "404" ] || fail=1
+          index=$(curl -s http://127.0.0.1:8000/blog/ai/ask/ | grep -o 'data-index="[^"]*"' | cut -d'"' -f2)
+          code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8000$index")
+          echo "$index $code"; [ "$code" = "200" ] || fail=1
+          exit $fail
+
+      # An external script is the thing that would genuinely gate reading: a
+      # CDN that is slow, blocked or gone takes the page with it. Every page
+      # carries the theme script, the theme toggle and the search loader; a
+      # page with diagrams one more for the lightbox, /blog/ai/ask/ one more
+      # for the Ask form. Anything else arrived without anyone deciding to
+      # add it.
+      - name: No unexpected JavaScript
+        run: |
+          set -euo pipefail
+          fail=0
+          for path in / /about/ /cv/ /blog/ /blog/trongate/ /blog/freebsd-on-hetzner/ \
+                      /blog/athletos-freebsd/ /blog/ai/ /blog/ai/timeline/ /blog/ai/ask/; do
+            curl -s "http://127.0.0.1:8000$path" > /tmp/page
+            external=$({ grep -o '<script[^>]*src=' /tmp/page || true; } | wc -l)
+            n=$({ grep -o '<script' /tmp/page || true; } | wc -l)
+            want=3
+            if grep -q 'data-lightbox' /tmp/page || grep -q 'data-ask' /tmp/page; then want=4; fi
+            echo "$path: $n scripts, $external external"
+            if [ "$external" -ne 0 ] || [ "$n" -ne "$want" ]; then fail=1; fi
+          done
+          exit $fail
+
+      - name: Server log
+        if: always()
+        run: cat /tmp/server.log
