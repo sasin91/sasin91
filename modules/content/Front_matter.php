@@ -8,7 +8,7 @@ use Devium\Toml\TomlLocalDate;
 class Front_matter {
 
     /**
-     * Splits a file into its decoded header and its Markdown body.
+     * Splits a file into its decoded header and its body.
      *
      * @return array{0: array, 1: string}
      */

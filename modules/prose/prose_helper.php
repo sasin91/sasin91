@@ -71,6 +71,23 @@ function code_close(): string {
 }
 
 /**
+ * A code block given as a string, for code that contains PHP's own <?
+ * tags, which code_open() would run instead of show:
+ *
+ *   <?= code('php', <<<'CODE'
+ *   <?= anchor('account') ?>
+ *   CODE, 'header.php') ?>
+ *
+ * @param string $language The language to highlight as.
+ * @param string $code The code.
+ * @param string|null $title An optional file name shown above the code.
+ * @return string The code block, highlighted.
+ */
+function code(string $language, string $code, ?string $title = null): string {
+    return Modules::run('prose/code', ['language' => $language, 'code' => $code, 'title' => $title]);
+}
+
+/**
  * A local SVG, inlined so its colours follow the theme toggle.
  *
  * @param string $src The file's path under public/, e.g. /images/x/y.svg.

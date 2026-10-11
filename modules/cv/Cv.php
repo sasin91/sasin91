@@ -2,7 +2,7 @@
 require_once APPPATH . 'packages/autoload.php';
 
 /**
- * /cv/ and the same CV as a PDF, both from content/cv.toml.
+ * /cv/ and the same CV as a PDF, both from cv.toml in this module.
  */
 class Cv extends Trongate {
 

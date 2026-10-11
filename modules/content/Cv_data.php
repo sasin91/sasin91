@@ -2,7 +2,7 @@
 require_once __DIR__ . '/Front_matter.php';
 
 /**
- * content/cv.toml: the person behind the site. The /cv page, the /about page,
+ * modules/cv/cv.toml: the person behind the site. The /cv page, the /about page,
  * the home page header and the CV PDF all read from this one file, so they
  * cannot disagree.
  */
@@ -48,7 +48,7 @@ class Cv_data {
         $errors = DateTimeImmutable::getLastErrors();
         $invalid = $date === false || ($errors !== false && $errors['warning_count'] + $errors['error_count'] > 0);
         if ($invalid) {
-            throw new RuntimeException("content/cv.toml has a bad date: {$where}: invalid date \"{$value}\" (want YYYY-MM)");
+            throw new RuntimeException("cv.toml has a bad date: {$where}: invalid date \"{$value}\" (want YYYY-MM)");
         }
         return $date->format('F Y');
     }

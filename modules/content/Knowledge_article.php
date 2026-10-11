@@ -1,10 +1,11 @@
 <?php
 require_once __DIR__ . '/Front_matter.php';
-require_once __DIR__ . '/Markdown_html.php';
+require_once __DIR__ . '/Prose_view.php';
 
 /**
  * The long-form article at /blog/ai/, assembled from the knowledge nodes in
- * content/ai/nodes and the reading order in content/ai/article.toml.
+ * modules/knowledge/views/nodes (one view each) and the reading order in
+ * modules/knowledge/article.toml.
  *
  * Nodes do not carry their own position: the article's order is the order
  * their ids appear in the manifest's parts. See docs/knowledge-nodes.md.
@@ -20,11 +21,8 @@ class Knowledge_article {
         'search_terms', 'learning_objectives', 'misconceptions'];
 
     private string $dir;
-    private Markdown_html $markdown;
-
-    public function __construct(string $dir, Markdown_html $markdown) {
+    public function __construct(string $dir) {
         $this->dir = rtrim($dir, '/');
-        $this->markdown = $markdown;
     }
 
     /**
@@ -48,13 +46,13 @@ class Knowledge_article {
 
     /** @return string[] */
     private function node_files(): array {
-        $files = glob($this->dir . '/nodes/*.md');
+        $files = glob($this->dir . '/views/nodes/*.php');
         sort($files);
         return $files;
     }
 
     private function load_node(string $file, bool $render_body): array {
-        [$front, $body] = Front_matter::split(file_get_contents($file), $file);
+        [$front] = Front_matter::split(file_get_contents($file), $file);
 
         $unknown = array_diff(array_keys($front), self::NODE_FIELDS);
         if ($unknown !== []) {
@@ -73,7 +71,7 @@ class Knowledge_article {
 
         $html = '';
         if ($render_body) {
-            $html = $this->markdown->render($body);
+            $html = Prose_view::html($file);
         }
 
         return [
@@ -86,7 +84,7 @@ class Knowledge_article {
             'search_terms' => $front['search_terms'] ?? [],
             'learning_objectives' => $front['learning_objectives'] ?? [],
             'misconceptions' => $front['misconceptions'] ?? [],
-            'source' => $body,
+            'file' => $file,
             'body' => $html,
             'order' => 0,
             'builds_on' => [],
@@ -152,7 +150,7 @@ class Knowledge_article {
         $errors = array_merge($errors, $this->learning_path_errors($manifest['learning_path'] ?? [], $by_id));
 
         if ($errors !== []) {
-            throw new RuntimeException("content/ai is invalid:\n  - " . implode("\n  - ", $errors));
+            throw new RuntimeException("the AI article is invalid:\n  - " . implode("\n  - ", $errors));
         }
 
         $ordered = [];
@@ -218,7 +216,7 @@ class Knowledge_article {
         if ($node['concepts'] === []) {
             $errors[] = "node \"{$id}\": list at least one concept";
         }
-        if ($this->markdown->has_heading($node['source'])) {
+        if (preg_match('/<h[1-6][\s>]/', $node['body']) === 1) {
             $errors[] = "node \"{$id}\": the body contains a heading; the node title is the heading, so split the node instead";
         }
         return $errors;

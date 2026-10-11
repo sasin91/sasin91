@@ -13,12 +13,12 @@ not to merge.
   builder installs them.
 - `composer install`, which puts the libraries the site needs in `packages/`
   (Trongate's convention for Composer's vendor directory).
-- Nothing else. `content/`, `models/` and `public/` are read as they are in the
+- Nothing else. The posts, `models/` and `public/` are read as they are in the
   repository; there is no build output.
 
 ## What happens at runtime
 
-- Every page renders from `content/` on request. The slowest is `/blog/ai/`,
+- Every page renders from its view on request. The slowest is `/blog/ai/`,
   which renders all its knowledge nodes, in under 0.1 s.
 - The search index is built the first time it is asked for after a deploy
   changes the content, and kept in the container's temp directory. A new

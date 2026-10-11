@@ -1,7 +1,7 @@
 # Knowledge nodes: the AI article
 
 `/blog/ai/` is not written as one long file. It is assembled from small *knowledge
-nodes*, one Markdown file each, and the same nodes produce three views:
+nodes*, one PHP view each, and the same nodes produce three views:
 
 | URL | View | Built from |
 | --- | --- | --- |
@@ -13,9 +13,9 @@ Every node has a stable anchor, so `/blog/ai/#kv-cache` links to that section fr
 anywhere: other posts, search results, the timeline, Ask.
 
 ```
-content/ai/
+modules/knowledge/
   article.toml        title, parts (the reading order), learning paths
-  nodes/<id>.md       one node per file
+  views/nodes/<id>.php  one node per file
 ```
 
 ## A node
@@ -33,8 +33,8 @@ learning_objectives = ["Explain what the KV cache stores ..."]
 misconceptions = ["The KV cache stores alternative completions the model considered."]
 +++
 
-Body in Markdown, like a blog post: links, `code`, ```` ``` ```` blocks, math
-between dollar signs ($...$, or $$...$$ on its own line), local SVG diagrams.
+<p>Body in HTML, like a blog post, with the same helpers: code_open() and
+code_close(), math(), diagram(). See docs/development.md.</p>
 ```
 
 | Field | Required | Used for |
@@ -54,17 +54,17 @@ Unknown fields are an error, so a misspelt `prerequisite` cannot silently mean
 
 ## Adding a node
 
-1. Create `content/ai/nodes/<id>.md` with the frontmatter above.
-2. Add its id to a `[[part]]` in `content/ai/article.toml`, where it should be
+1. Create `modules/knowledge/views/nodes/<id>.php` with the header above.
+2. Add its id to a `[[part]]` in `modules/knowledge/article.toml`, where it should be
    read.
 3. Reload and check `/blog/ai/#<id>`, `/blog/ai/timeline/` and a question in
    `/blog/ai/ask/` that should find it.
 
 ## Editing
 
-- Bodies are Markdown, but **no headings**: the node's title is its heading. A
+- Bodies are HTML, but **no headings** and no `section_open()`: the node's title is its heading. A
   node that needs subheadings is two nodes.
-- Link to another node with `[text](#other-id)`. Links to anchors that do not
+- Link to another node with `<a href="#other-id">text</a>`. Links to anchors that do not
   exist are an error.
 - Write the body to be readable on its own. Someone arriving from Ask or a
   deep link has not read the node before it.

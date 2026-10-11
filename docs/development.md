@@ -1,7 +1,7 @@
 # Developing sasin91.xyz
 
-The site is a [Trongate](https://trongate.io) v2 app that renders the Markdown
-under `content/` on request. There is no build step: edit a post, reload the
+The site is a [Trongate](https://trongate.io) v2 app. Every post is an ordinary
+PHP view, rendered on request. There is no build step: edit a post, reload the
 page.
 
 Trongate's own modules (`db`, `login`, `templates`, `validation` and the rest)
@@ -10,7 +10,8 @@ these modules:
 
 | Module | What it is |
 | --- | --- |
-| `content` | Reads `content/`: posts, the CV, the AI article. Renders Markdown (`Markdown_html`, `Markdown_extensions`). Answers no URL itself. |
+| `content` | Loads the posts, the CV and the AI article, and renders a post's view (`Prose_view`). Answers no URL itself. |
+| `prose` | What a post is written with: `section_open()`, `code_open()` and the rest (`prose_helper.php`). Answers no URL. |
 | `layout` | The page shell every HTML page shares (`views/page.php`). |
 | `site` | `/`, `/about/`, `/rss.xml`, `/sitemap.xml`, `/robots.txt`, the 404 page. |
 | `blog` | `/blog/` and every post under it. |
@@ -34,23 +35,40 @@ php -S 127.0.0.1:8000 -t public bin/dev-router.php
 Or point Herd (or any web server) at `public/`; `public/.htaccess` sends every
 request that is not a file to `index.php`.
 
-A post is one `.md` file under `content/blog/` with a `+++` TOML header. The
+A post is one view under `modules/blog/views/posts/`, starting with a `+++` TOML
+header. The
 `path` key is the URL, and is deliberately not derived from the filename, which
 is what keeps `/blog/trongate/mx-transition` nested rather than flattened.
 
-Posts are CommonMark with GitHub's tables, and typographic quotes and dashes
-(`"x"` is “x”, `--` is –, `---` is —). Beyond that:
+The body is plain HTML, with helpers in the style of Trongate's `form_open()` and
+`form_close()` for the parts that need more than a tag:
 
-- a callout is a `<div class="note">` (or `warning`) around ordinary Markdown,
-  with a blank line inside each tag;
-- a code block gets a file name bar from its info string:
-  ```` ```bash title="1-create-server.sh" ````;
-- math goes between dollar signs, `$x$` in a sentence and `$$x$$` on its own
-  line, and is rendered as MathML;
-- an image that is a local `.svg` is inlined, so it follows the theme toggle.
+```php
+<?= section_open('4. Remaster the ISO') ?>
+<p>Three edits …</p>
+<?= code_open('bash', '4-remaster.sh') ?>
+apt-get install -y xorriso qemu-system-x86
+<?= code_close() ?>
+<?= callout_open('warning', 'What went wrong') ?>
+<p>I replaced <code>loader.conf</code> …</p>
+<?= callout_close() ?>
+<?= section_close() ?>
+```
+
+- `section_open($title, $level = 2)` / `section_close()`: a heading and what
+  follows it, in a `<section>` with the id links point at;
+- `callout_open('note' or 'warning', $title = null)` / `callout_close()`;
+- `code_open($language, $title = null)` / `code_close()`: the code between them
+  is shown as written, escaped and highlighted. Code that contains PHP's own
+  `<?` tags would run there, so it goes to `code($language, $code, $title)` as a
+  nowdoc string instead;
+- `diagram($src, $alt)`: a local SVG, inlined so it follows the theme toggle;
+- `math($tex)`: TeX as MathML, `math($tex, true)` on its own line.
+
+Write typographic quotes and dashes as the characters themselves (“ ” ’ – —).
 
 The AI article at `/blog/ai/` is different: it is assembled from knowledge nodes
-under `content/ai/`, with a timeline and an in-browser Ask view generated from
+under `modules/knowledge/`, with a timeline and an in-browser Ask view generated from
 the same nodes. See [knowledge-nodes.md](knowledge-nodes.md) for how to add,
 edit, reorder and link nodes.
 
@@ -59,7 +77,7 @@ Stylesheets are linked with a hash of their bytes in the query string
 keep an old copy. `public/css/syntax.css` is generated from highlight.php's
 palettes by `php bin/build-syntax-css.php`.
 
-The search index is built from `content/` the first time anyone asks for it
+The search index is built from the posts and nodes the first time anyone asks for it
 after the content changed, and kept in the system temp directory until it
 changes again (`modules/search/Search.php`).
 

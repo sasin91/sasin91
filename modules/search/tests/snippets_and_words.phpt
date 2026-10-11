@@ -3,7 +3,7 @@ a snippet is cut on a word boundary near 160 characters, and words split like re
 --FILE--
 <?php
 require __DIR__ . '/setup.inc';
-$index = new Search_index($model, new Markdown_html());
+$index = new Search_index($model);
 echo $index->snippet('Short enough.'), "\n";
 $long = str_repeat('word ', 40) . 'end.';
 $snippet = $index->snippet($long);

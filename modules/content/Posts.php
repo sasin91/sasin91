@@ -2,7 +2,7 @@
 require_once __DIR__ . '/Front_matter.php';
 
 /**
- * The blog posts under content/blog: one Markdown (.md) or component view (.phtml) file each, newest first.
+ * The blog posts: one view each under modules/blog/views/posts, newest first.
  *
  * Loading reads every header but renders no body; a page that shows one post
  * renders that one (Content::post).
@@ -65,7 +65,7 @@ class Posts {
         $files = [];
         $walk = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($this->dir, FilesystemIterator::SKIP_DOTS));
         foreach ($walk as $entry) {
-            if (in_array($entry->getExtension(), ['md', 'phtml'], true)) {
+            if ($entry->getExtension() === 'php') {
                 $files[] = str_replace('\\', '/', $entry->getPathname());
             }
         }
@@ -74,7 +74,7 @@ class Posts {
     }
 
     private function load(string $file): array {
-        [$front, $body] = Front_matter::split(file_get_contents($file), $file);
+        [$front] = Front_matter::split(file_get_contents($file), $file);
 
         foreach (['path', 'title', 'date', 'description'] as $required) {
             if (!isset($front[$required])) {
@@ -86,7 +86,6 @@ class Posts {
 
         return [
             'file' => $file,
-            'format' => pathinfo($file, PATHINFO_EXTENSION),
             'path' => $front['path'],
             'url' => '/' . $front['path'] . '/',
             'title' => $front['title'],
@@ -102,7 +101,6 @@ class Posts {
             'series' => $front['series'] ?? null,
             'part' => $front['part'] ?? null,
             'ask' => $front['ask'] ?? [],
-            'source' => $body,
         ];
     }
 

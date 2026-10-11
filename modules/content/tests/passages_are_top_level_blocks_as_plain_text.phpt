@@ -1,12 +1,26 @@
 --TEST--
-passages are the top-level blocks as plain text, in their sections, without code or raw HTML, and a colon joins the next
+passages are the top-level blocks as plain text, in their sections, without code; a diagram reads as its description; a colon joins the next
 --FILE--
 <?php
 require __DIR__ . '/setup.inc';
-$source = "First **paragraph** with [a link](#x) and `code`.\n\n"
-    . "## A heading\n\nLike this:\n\n- one\n- two\n\n```bash\nhidden\n```\n\n![Alt words](/x.png)\n\n"
-    . "<div class=\"note\">\n\nInside a div.\n\n</div>\n";
-echo json_encode($markdown->passages($source), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), "\n";
+$html = render_view(<<<'VIEW'
+<p>First <strong>paragraph</strong> with <a href="#x">a link</a> and <code>code</code>.</p>
+<?= section_open('A heading') ?>
+<p>Like this:</p>
+<ul>
+<li>one</li>
+<li>two</li>
+</ul>
+<?= code_open('bash') ?>
+hidden
+<?= code_close() ?>
+<p><?= diagram('/images/freebsd-on-hetzner/header.svg', 'Alt words') ?></p>
+<?= callout_open('note') ?>
+<p>Inside a callout.</p>
+<?= callout_close() ?>
+<?= section_close() ?>
+VIEW);
+echo json_encode(Prose_view::passages($html), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), "\n";
 ?>
 --EXPECT--
 [
@@ -29,7 +43,7 @@ echo json_encode($markdown->passages($source), JSON_PRETTY_PRINT | JSON_UNESCAPE
         }
     },
     {
-        "text": "Inside a div.",
+        "text": "Inside a callout.",
         "section": {
             "id": "A-heading",
             "heading": "A heading"

@@ -40,7 +40,7 @@ PHP · Laravel · Symfony · Go · Rust · Nuxt · React · Kubernetes · Linux 
 ---
 
 <sub>This repository is the source of [sasin91.xyz](https://sasin91.xyz) — a
-[Trongate](https://trongate.io) app that renders Markdown content on request,
+[Trongate](https://trongate.io) app, every post a plain PHP view,
 hosted on [trongate.cloud](https://trongate.cloud). See
 [docs/development.md](docs/development.md) to run it.</sub>
 
@@ -62,13 +62,13 @@ php bin/search-index.php > build/search-index.json
 node --test modules/search/js/   # Node 22+, nothing to install
 ```
 
-Posts live in `content/blog/`, the CV in `content/cv.toml`, and the AI
-article's knowledge nodes in `content/ai/` — see
+Posts live in `modules/blog/views/posts/`, the CV in `modules/cv/cv.toml`, and
+the AI article's knowledge nodes in `modules/knowledge/` — see
 [docs/knowledge-nodes.md](docs/knowledge-nodes.md).
 
 </details>
 
 <sub>[sasin91.xyz/cv](https://sasin91.xyz/cv/) is itself the source of the
 downloadable [cv_jonas_hansen_software_developer.pdf](https://sasin91.xyz/cv_jonas_hansen_software_developer.pdf):
-both are rendered from the same `content/cv.toml`, so the content cannot
-diverge. The CV is edited in `content/cv.toml`, never in a PDF editor.</sub>
+both are rendered from the same `modules/cv/cv.toml`, so the content cannot
+diverge. The CV is edited in `cv.toml`, never in a PDF editor.</sub>

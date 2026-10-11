@@ -1,6 +1,5 @@
 <?php
 require_once APPPATH . 'packages/autoload.php';
-require_once APPPATH . 'modules/content/Markdown_html.php';
 require_once __DIR__ . '/Search_index.php';
 
 /**
@@ -8,7 +7,7 @@ require_once __DIR__ . '/Search_index.php';
  * index of AI article nodes and blog posts, and the two scripts that use
  * them (the site-wide palette and the Ask form).
  *
- * The index is built from content/ the first time anyone asks for it after
+ * The index is built from the posts and nodes the first time anyone asks for it after
  * the content changed, and kept on disk until it changes again: embedding
  * every passage takes a moment, and asking for the same answer twice should
  * not. Every URL carries a hash of what it serves, so a browser may cache it
@@ -78,7 +77,7 @@ class Search extends Trongate {
         }
 
         $model = Static_model::from_dir($this->model_dir());
-        $builder = new Search_index($model, new Markdown_html());
+        $builder = new Search_index($model);
         $json = $builder->build($this->content->article_outline(), $this->content->posts(), $this->model_info());
 
         if (!is_dir($dir)) {
@@ -99,8 +98,8 @@ class Search extends Trongate {
      * node means a new index and a new URL for it.
      */
     private function content_hash(): string {
-        $files = array_merge(glob(APPPATH . 'content/blog/*.md'), glob(APPPATH . 'content/blog/*.phtml'), glob(APPPATH . 'content/ai/nodes/*.md'));
-        $files[] = APPPATH . 'content/ai/article.toml';
+        $files = array_merge(glob(APPPATH . 'modules/blog/views/posts/*.php'), glob(APPPATH . 'modules/knowledge/views/nodes/*.php'));
+        $files[] = APPPATH . 'modules/knowledge/article.toml';
         sort($files);
 
         $hash = hash_init('md5');
@@ -109,7 +108,7 @@ class Search extends Trongate {
             hash_update_file($hash, $file);
         }
         // The code that builds the index is part of what it is built from.
-        foreach (['Search_index.php', 'Static_model.php', '../content/Markdown_html.php', '../content/Markdown_extensions.php', '../content/Post_body.php', '../prose/Prose.php'] as $code) {
+        foreach (['Search_index.php', 'Static_model.php', '../content/Prose_view.php', '../prose/Prose.php'] as $code) {
             hash_update_file($hash, __DIR__ . '/' . $code);
         }
         // So is the model the passages are embedded with.

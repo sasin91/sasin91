@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/Static_model.php';
-require_once APPPATH . 'modules/content/Post_body.php';
+require_once APPPATH . 'modules/content/Prose_view.php';
 
 /**
  * The search index behind the palette, /blog/ai/ask/ and every post's Ask
@@ -21,11 +21,8 @@ class Search_index {
     const VECTOR_DECIMALS = 4;
 
     private Static_model $model;
-    private Markdown_html $markdown;
-
-    public function __construct(Static_model $model, Markdown_html $markdown) {
+    public function __construct(Static_model $model) {
         $this->model = $model;
-        $this->markdown = $markdown;
     }
 
     /**
@@ -36,7 +33,7 @@ class Search_index {
         $documents = [];
 
         foreach ($article['nodes'] as $node) {
-            $body = $this->markdown->passages($node['source']);
+            $body = Prose_view::passages(Prose_view::html($node['file']));
             $passages = $this->passage_list([
                 $this->embedded($this->node_head($node), $node['summary'], null),
             ]);
@@ -59,7 +56,7 @@ class Search_index {
 
         $node_count = count($article['nodes']);
         foreach ($posts as $index => $post) {
-            $body = Post_body::passages($post);
+            $body = Prose_view::passages(Prose_view::html($post['file']));
             $head = $post['title'] . '. ' . $post['description'];
             $passages = $this->passage_list([
                 $this->embedded($head, $post['description'], null),

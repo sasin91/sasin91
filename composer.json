@@ -1,6 +1,6 @@
 {
     "name": "sasin91/sasin91",
-    "description": "sasin91.xyz (Trongate). Composer is only for the libraries the content needs: Markdown, TOML, syntax highlighting, LaTeX to MathML, and dompdf for the CV PDF.",
+    "description": "sasin91.xyz (Trongate). Composer is only for the libraries the content needs: TOML, syntax highlighting, LaTeX to MathML, and dompdf for the CV PDF.",
     "type": "project",
     "require": {
         "php": ">=8.4",
@@ -9,7 +9,6 @@
         "latex2mathml/latex2mathml-php": "^1.5",
         "ext-intl": "*",
         "ext-mbstring": "*",
-        "league/commonmark": "^2.10",
         "dompdf/dompdf": "^3.1"
     },
     "config": {

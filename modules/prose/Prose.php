@@ -98,11 +98,19 @@ class Prose extends Trongate {
 
         // The code starts on the line after code_open() and ends on the line
         // before code_close(); those two line breaks are not part of it.
-        $code = preg_replace('/^\r?\n/', '', ob_get_clean());
-        $code = rtrim($code) . "\n";
+        $block['code'] = preg_replace('/^\r?\n/', '', ob_get_clean());
+        return $this->code($block);
+    }
 
-        $highlighted = (new Highlighter())->to_html($code, $block['language']);
-        $title = $block['title'] ?? null;
+    /**
+     * A code block given whole, escaped and highlighted.
+     *
+     * @param array $data 'language', 'code', and optionally 'title'.
+     */
+    public function code(array $data): string {
+        $code = rtrim($data['code']) . "\n";
+        $highlighted = (new Highlighter())->to_html($code, $data['language']);
+        $title = $data['title'] ?? null;
         if ($title === null) {
             return $highlighted . "\n";
         }

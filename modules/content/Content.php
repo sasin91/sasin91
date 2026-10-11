@@ -1,19 +1,18 @@
 <?php
 require_once APPPATH . 'packages/autoload.php';
-require_once __DIR__ . '/Markdown_html.php';
-require_once __DIR__ . '/Post_body.php';
+require_once __DIR__ . '/Prose_view.php';
 require_once __DIR__ . '/Posts.php';
 require_once __DIR__ . '/Cv_data.php';
 require_once __DIR__ . '/Knowledge_article.php';
 
 /**
- * Everything the pages show, read from content/: the posts, the CV and the
- * AI article. Other modules ask this one (`$this->content->posts()`); it
+ * Everything the pages show: the posts (modules/blog/views/posts), the CV
+ * (modules/cv/cv.toml) and the AI article (modules/knowledge). Other modules ask this one (`$this->content->posts()`); it
  * answers no URL itself.
  *
  * Nothing is built ahead of time. A post renders when its page is asked for,
- * and the files are the only source, so a push that changes content/ changes
- * the site with no build step in between.
+ * and the files are the only source, so a push that changes them changes the
+ * site with no build step in between.
  */
 class Content extends Trongate {
 
@@ -26,7 +25,7 @@ class Content extends Trongate {
      * Every post's header, newest first, without rendering a body.
      */
     public function posts(): array {
-        $posts = new Posts(APPPATH . 'content/blog');
+        $posts = new Posts(APPPATH . 'modules/blog/views/posts');
         return $posts->all();
     }
 
@@ -43,14 +42,14 @@ class Content extends Trongate {
     }
 
     public function cv(): array {
-        return Cv_data::load(APPPATH . 'content/cv.toml');
+        return Cv_data::load(APPPATH . 'modules/cv/cv.toml');
     }
 
     /**
      * The AI article, every node rendered and the whole checked.
      */
     public function article(): array {
-        $article = new Knowledge_article(APPPATH . 'content/ai', new Markdown_html());
+        $article = new Knowledge_article(APPPATH . 'modules/knowledge');
         return $article->load();
     }
 
@@ -59,7 +58,7 @@ class Content extends Trongate {
      * the search index and the listing.
      */
     public function article_outline(): array {
-        $article = new Knowledge_article(APPPATH . 'content/ai', new Markdown_html());
+        $article = new Knowledge_article(APPPATH . 'modules/knowledge');
         return $article->load(false);
     }
 
@@ -68,17 +67,13 @@ class Content extends Trongate {
      * same way a diagram in the body is, so it follows the theme toggle too.
      */
     private function rendered(array $post): array {
-        $post['body'] = Post_body::html($post);
+        $post['body'] = Prose_view::html($post['file']);
 
         $post['alt_text'] = $post['hero_alt'] ?? '';
         $post['hero_html'] = null;
         $hero = $post['hero'];
-        if ($hero !== null && Markdown_html::is_local_svg($hero)) {
-            $svg_file = APPPATH . 'public/' . ltrim($hero, '/');
-            if (!is_file($svg_file)) {
-                throw new RuntimeException('missing SVG referenced by post hero: ' . $hero);
-            }
-            $post['hero_html'] = Markdown_html::svg_figure($post['alt_text'], file_get_contents($svg_file));
+        if ($hero !== null && str_starts_with($hero, '/') && str_ends_with($hero, '.svg')) {
+            $post['hero_html'] = diagram($hero, $post['alt_text']);
         }
 
         $post['hero_is_img'] = $hero !== null && $post['hero_html'] === null;
