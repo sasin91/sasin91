@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/Static_model.php';
+require_once APPPATH . 'modules/content/Post_body.php';
 
 /**
  * The search index behind the palette, /blog/ai/ask/ and every post's Ask
@@ -58,7 +59,7 @@ class Search_index {
 
         $node_count = count($article['nodes']);
         foreach ($posts as $index => $post) {
-            $body = $this->markdown->passages($post['source']);
+            $body = Post_body::passages($post);
             $head = $post['title'] . '. ' . $post['description'];
             $passages = $this->passage_list([
                 $this->embedded($head, $post['description'], null),

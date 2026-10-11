@@ -99,7 +99,7 @@ class Search extends Trongate {
      * node means a new index and a new URL for it.
      */
     private function content_hash(): string {
-        $files = array_merge(glob(APPPATH . 'content/blog/*.md'), glob(APPPATH . 'content/ai/nodes/*.md'));
+        $files = array_merge(glob(APPPATH . 'content/blog/*.md'), glob(APPPATH . 'content/blog/*.phtml'), glob(APPPATH . 'content/ai/nodes/*.md'));
         $files[] = APPPATH . 'content/ai/article.toml';
         sort($files);
 
@@ -109,7 +109,7 @@ class Search extends Trongate {
             hash_update_file($hash, $file);
         }
         // The code that builds the index is part of what it is built from.
-        foreach (['Search_index.php', 'Static_model.php', '../content/Markdown_html.php', '../content/Markdown_extensions.php'] as $code) {
+        foreach (['Search_index.php', 'Static_model.php', '../content/Markdown_html.php', '../content/Markdown_extensions.php', '../content/Post_body.php'] as $code) {
             hash_update_file($hash, __DIR__ . '/' . $code);
         }
         // So is the model the passages are embedded with.

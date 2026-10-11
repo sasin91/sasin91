@@ -1,6 +1,7 @@
 <?php
 require_once APPPATH . 'packages/autoload.php';
 require_once __DIR__ . '/Markdown_html.php';
+require_once __DIR__ . '/Post_body.php';
 require_once __DIR__ . '/Posts.php';
 require_once __DIR__ . '/Cv_data.php';
 require_once __DIR__ . '/Knowledge_article.php';
@@ -67,8 +68,7 @@ class Content extends Trongate {
      * same way a diagram in the body is, so it follows the theme toggle too.
      */
     private function rendered(array $post): array {
-        $markdown = new Markdown_html();
-        $post['body'] = $markdown->render($post['source']);
+        $post['body'] = Post_body::html($post);
 
         $post['alt_text'] = $post['hero_alt'] ?? '';
         $post['hero_html'] = null;

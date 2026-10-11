@@ -2,7 +2,7 @@
 require_once __DIR__ . '/Front_matter.php';
 
 /**
- * The blog posts under content/blog: one Markdown file each, newest first.
+ * The blog posts under content/blog: one Markdown (.md) or component view (.phtml) file each, newest first.
  *
  * Loading reads every header but renders no body; a page that shows one post
  * renders that one (Content::post).
@@ -65,7 +65,7 @@ class Posts {
         $files = [];
         $walk = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($this->dir, FilesystemIterator::SKIP_DOTS));
         foreach ($walk as $entry) {
-            if ($entry->getExtension() === 'md') {
+            if (in_array($entry->getExtension(), ['md', 'phtml'], true)) {
                 $files[] = str_replace('\\', '/', $entry->getPathname());
             }
         }
@@ -86,6 +86,7 @@ class Posts {
 
         return [
             'file' => $file,
+            'format' => pathinfo($file, PATHINFO_EXTENSION),
             'path' => $front['path'],
             'url' => '/' . $front['path'] . '/',
             'title' => $front['title'],
