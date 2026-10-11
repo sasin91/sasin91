@@ -6,11 +6,11 @@ require __DIR__ . '/setup.inc';
 $dir = fixture_dir('article');
 mkdir("$dir/nodes");
 file_put_contents("$dir/article.toml", "path = \"blog/ai\"\ntitle = \"t\"\ndescription = \"d\"\npublished = 2026-10-02\nupdated = 2026-10-02\n\n[[part]]\ntitle = \"P\"\nnodes = [\"a\", \"b\", \"ghost\"]\n");
-file_put_contents("$dir/nodes/a.dj", "+++\nid = \"a\"\ntitle = \"A\"\nsummary = \"s\"\nconcepts = [\"c\"]\nprerequisites = [\"b\"]\n+++\nSee [b](#b) and [nothing](#nowhere).\n");
-file_put_contents("$dir/nodes/b.dj", "+++\nid = \"b\"\ntitle = \"B\"\nsummary = \"s\"\nconcepts = []\n+++\n## A heading\n");
-file_put_contents("$dir/nodes/c.dj", "+++\nid = \"c\"\ntitle = \"C\"\nsummary = \"s\"\nconcepts = [\"c\"]\n+++\nx\n");
+file_put_contents("$dir/nodes/a.md", "+++\nid = \"a\"\ntitle = \"A\"\nsummary = \"s\"\nconcepts = [\"c\"]\nprerequisites = [\"b\"]\n+++\nSee [b](#b) and [nothing](#nowhere).\n");
+file_put_contents("$dir/nodes/b.md", "+++\nid = \"b\"\ntitle = \"B\"\nsummary = \"s\"\nconcepts = []\n+++\n## A heading\n");
+file_put_contents("$dir/nodes/c.md", "+++\nid = \"c\"\ntitle = \"C\"\nsummary = \"s\"\nconcepts = [\"c\"]\n+++\nx\n");
 try {
-    (new Knowledge_article($dir, $djot))->load();
+    (new Knowledge_article($dir, $markdown))->load();
 } catch (RuntimeException $error) {
     echo $error->getMessage(), "\n";
 }

@@ -1,15 +1,16 @@
 {
     "name": "sasin91/sasin91",
-    "description": "sasin91.xyz (Trongate). Composer is only for the Djot, TOML, syntax highlighting and LaTeX-to-MathML libraries the content needs.",
+    "description": "sasin91.xyz (Trongate). Composer is only for the libraries the content needs: Markdown, TOML, syntax highlighting, LaTeX to MathML, and dompdf for the CV PDF.",
     "type": "project",
     "require": {
         "php": ">=8.4",
-        "php-collective/djot": "^0.1.34",
         "devium/toml": "^1.1",
         "scrivo/highlight.php": "^9.18",
         "latex2mathml/latex2mathml-php": "^1.5",
         "ext-intl": "*",
-        "ext-mbstring": "*"
+        "ext-mbstring": "*",
+        "league/commonmark": "^2.10",
+        "dompdf/dompdf": "^3.1"
     },
     "config": {
         "vendor-dir": "packages"

@@ -1,6 +1,6 @@
 <?php
 require_once APPPATH . 'packages/autoload.php';
-require_once __DIR__ . '/Djot_html.php';
+require_once __DIR__ . '/Markdown_html.php';
 require_once __DIR__ . '/Posts.php';
 require_once __DIR__ . '/Cv_data.php';
 require_once __DIR__ . '/Knowledge_article.php';
@@ -49,7 +49,7 @@ class Content extends Trongate {
      * The AI article, every node rendered and the whole checked.
      */
     public function article(): array {
-        $article = new Knowledge_article(APPPATH . 'content/ai', new Djot_html());
+        $article = new Knowledge_article(APPPATH . 'content/ai', new Markdown_html());
         return $article->load();
     }
 
@@ -58,7 +58,7 @@ class Content extends Trongate {
      * the search index and the listing.
      */
     public function article_outline(): array {
-        $article = new Knowledge_article(APPPATH . 'content/ai', new Djot_html());
+        $article = new Knowledge_article(APPPATH . 'content/ai', new Markdown_html());
         return $article->load(false);
     }
 
@@ -67,18 +67,18 @@ class Content extends Trongate {
      * same way a diagram in the body is, so it follows the theme toggle too.
      */
     private function rendered(array $post): array {
-        $djot = new Djot_html();
-        $post['body'] = $djot->render($post['source']);
+        $markdown = new Markdown_html();
+        $post['body'] = $markdown->render($post['source']);
 
         $post['alt_text'] = $post['hero_alt'] ?? '';
         $post['hero_html'] = null;
         $hero = $post['hero'];
-        if ($hero !== null && Site_renderer::is_local_svg($hero)) {
+        if ($hero !== null && Markdown_html::is_local_svg($hero)) {
             $svg_file = APPPATH . 'public/' . ltrim($hero, '/');
             if (!is_file($svg_file)) {
                 throw new RuntimeException('missing SVG referenced by post hero: ' . $hero);
             }
-            $post['hero_html'] = Site_renderer::svg_figure($post['alt_text'], file_get_contents($svg_file));
+            $post['hero_html'] = Markdown_html::svg_figure($post['alt_text'], file_get_contents($svg_file));
         }
 
         $post['hero_is_img'] = $hero !== null && $post['hero_html'] === null;

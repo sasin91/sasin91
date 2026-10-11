@@ -19,7 +19,7 @@ not to merge.
 ## What happens at runtime
 
 - Every page renders from `content/` on request. The slowest is `/blog/ai/`,
-  which renders all its knowledge nodes, at about 0.2 s.
+  which renders all its knowledge nodes, in under 0.1 s.
 - The search index is built the first time it is asked for after a deploy
   changes the content, and kept in the container's temp directory. A new
   container builds it once, in well under a second, on its first search.

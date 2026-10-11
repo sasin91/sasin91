@@ -20,11 +20,11 @@ class Search_index {
     const VECTOR_DECIMALS = 4;
 
     private Static_model $model;
-    private Djot_html $djot;
+    private Markdown_html $markdown;
 
-    public function __construct(Static_model $model, Djot_html $djot) {
+    public function __construct(Static_model $model, Markdown_html $markdown) {
         $this->model = $model;
-        $this->djot = $djot;
+        $this->markdown = $markdown;
     }
 
     /**
@@ -35,7 +35,7 @@ class Search_index {
         $documents = [];
 
         foreach ($article['nodes'] as $node) {
-            $body = $this->djot->passages($node['source']);
+            $body = $this->markdown->passages($node['source']);
             $passages = $this->passage_list([
                 $this->embedded($this->node_head($node), $node['summary'], null),
             ]);
@@ -58,7 +58,7 @@ class Search_index {
 
         $node_count = count($article['nodes']);
         foreach ($posts as $index => $post) {
-            $body = $this->djot->passages($post['source']);
+            $body = $this->markdown->passages($post['source']);
             $head = $post['title'] . '. ' . $post['description'];
             $passages = $this->passage_list([
                 $this->embedded($head, $post['description'], null),

@@ -5,12 +5,12 @@ a post needs a +++ header that is closed
 require __DIR__ . '/setup.inc';
 foreach (['just a body', "+++\ntitle = \"x\"\n"] as $source) {
     try {
-        Front_matter::split($source, 'x.dj');
+        Front_matter::split($source, 'x.md');
     } catch (RuntimeException $error) {
         echo $error->getMessage(), "\n";
     }
 }
 ?>
 --EXPECT--
-x.dj: file must start with a +++ frontmatter block
-x.dj: frontmatter block is never closed
+x.md: file must start with a +++ frontmatter block
+x.md: frontmatter block is never closed

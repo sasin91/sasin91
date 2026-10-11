@@ -20,6 +20,7 @@ class Cv_data {
             $role['start_label'] = self::month($role['start'], $where . ': start date');
             $role['end'] = $role['end'] ?? null;
             $role['end_label'] = self::optional_month($role['end'], $where . ': end date');
+            $role['end_text'] = $role['end_label'] ?? 'present';
             $role['achievements'] = $role['achievements'] ?? [];
             $role['achievements_html'] = array_map([self::class, 'achievement_html'], $role['achievements']);
             $role['note'] = $role['note'] ?? null;
@@ -31,6 +32,7 @@ class Cv_data {
             $education['start_label'] = self::month($education['start'], $where . ': start date');
             $education['end'] = $education['end'] ?? null;
             $education['end_label'] = self::optional_month($education['end'], $where . ': end date');
+            $education['end_text'] = $education['end_label'] ?? 'present';
             $education['note'] = $education['note'] ?? null;
             $cv['education'][$index] = $education;
         }

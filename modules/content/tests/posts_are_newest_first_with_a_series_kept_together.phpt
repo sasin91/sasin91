@@ -11,7 +11,7 @@ write_post($dir, 'two', 'blog/two', '2026-08-02', "series = \"s\"\npart = 2\n");
 write_post($dir, 'b-post', 'blog/b-post', '2026-07-26');
 write_post($dir, 'a-post', 'blog/a-post', '2026-07-26');
 write_post($dir, 'nested', 'blog/trongate/mx-transition', '2025-03-03');
-file_put_contents("$dir/ignored.md", 'not a post');
+file_put_contents("$dir/ignored.txt", 'not a post');
 
 $posts = (new Posts($dir))->all();
 foreach ($posts as $post) {

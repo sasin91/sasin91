@@ -1,7 +1,7 @@
 # Knowledge nodes: the AI article
 
 `/blog/ai/` is not written as one long file. It is assembled from small *knowledge
-nodes*, one Djot file each, and the same nodes produce three views:
+nodes*, one Markdown file each, and the same nodes produce three views:
 
 | URL | View | Built from |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ anywhere: other posts, search results, the timeline, Ask.
 ```
 content/ai/
   article.toml        title, parts (the reading order), learning paths
-  nodes/<id>.dj       one node per file
+  nodes/<id>.md       one node per file
 ```
 
 ## A node
@@ -33,8 +33,8 @@ learning_objectives = ["Explain what the KV cache stores ..."]
 misconceptions = ["The KV cache stores alternative completions the model considered."]
 +++
 
-Body in Djot, like a blog post: links, `code`, ```` ``` ```` blocks, math with
-$`...`, local SVG diagrams.
+Body in Markdown, like a blog post: links, `code`, ```` ``` ```` blocks, math
+between dollar signs ($...$, or $$...$$ on its own line), local SVG diagrams.
 ```
 
 | Field | Required | Used for |
@@ -54,7 +54,7 @@ Unknown fields are an error, so a misspelt `prerequisite` cannot silently mean
 
 ## Adding a node
 
-1. Create `content/ai/nodes/<id>.dj` with the frontmatter above.
+1. Create `content/ai/nodes/<id>.md` with the frontmatter above.
 2. Add its id to a `[[part]]` in `content/ai/article.toml`, where it should be
    read.
 3. Reload and check `/blog/ai/#<id>`, `/blog/ai/timeline/` and a question in
@@ -62,10 +62,10 @@ Unknown fields are an error, so a misspelt `prerequisite` cannot silently mean
 
 ## Editing
 
-- Bodies are Djot, but **no headings**: the node's title is its heading. A
+- Bodies are Markdown, but **no headings**: the node's title is its heading. A
   node that needs subheadings is two nodes.
 - Link to another node with `[text](#other-id)`. Links to anchors that do not
-  exist fail the build.
+  exist are an error.
 - Write the body to be readable on its own. Someone arriving from Ask or a
   deep link has not read the node before it.
 

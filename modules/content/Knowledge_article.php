@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/Front_matter.php';
-require_once __DIR__ . '/Djot_html.php';
+require_once __DIR__ . '/Markdown_html.php';
 
 /**
  * The long-form article at /blog/ai/, assembled from the knowledge nodes in
@@ -20,11 +20,11 @@ class Knowledge_article {
         'search_terms', 'learning_objectives', 'misconceptions'];
 
     private string $dir;
-    private Djot_html $djot;
+    private Markdown_html $markdown;
 
-    public function __construct(string $dir, Djot_html $djot) {
+    public function __construct(string $dir, Markdown_html $markdown) {
         $this->dir = rtrim($dir, '/');
-        $this->djot = $djot;
+        $this->markdown = $markdown;
     }
 
     /**
@@ -48,7 +48,7 @@ class Knowledge_article {
 
     /** @return string[] */
     private function node_files(): array {
-        $files = glob($this->dir . '/nodes/*.dj');
+        $files = glob($this->dir . '/nodes/*.md');
         sort($files);
         return $files;
     }
@@ -73,7 +73,7 @@ class Knowledge_article {
 
         $html = '';
         if ($render_body) {
-            $html = $this->djot->render($body);
+            $html = $this->markdown->render($body);
         }
 
         return [
@@ -218,7 +218,7 @@ class Knowledge_article {
         if ($node['concepts'] === []) {
             $errors[] = "node \"{$id}\": list at least one concept";
         }
-        if ($this->djot->has_heading($node['source'])) {
+        if ($this->markdown->has_heading($node['source'])) {
             $errors[] = "node \"{$id}\": the body contains a heading; the node title is the heading, so split the node instead";
         }
         return $errors;

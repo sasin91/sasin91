@@ -30,7 +30,7 @@ jobs:
       - name: Install packages
         run: composer install --no-interaction --no-progress
       - name: PHP tests
-        run: php bin/run-tests.php -q --show-diff modules/content/tests modules/search/tests modules/cv/tests
+        run: php bin/run-tests.php -q --show-diff modules/content/tests modules/search/tests
 
       # The Ask view's retrieval code runs in the browser, so it is tested
       # with Node's built-in runner (no npm, no dependencies). Its last tests

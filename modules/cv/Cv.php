@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/Cv_pdf.php';
+require_once APPPATH . 'packages/autoload.php';
 
 /**
  * /cv/ and the same CV as a PDF, both from content/cv.toml.
@@ -29,11 +29,29 @@ class Cv extends Trongate {
     }
 
     /**
-     * The PDF, laid out on request. It is a few kilobytes of text and takes
-     * milliseconds, so there is no file to keep in step with the page.
+     * The CV as an A4 PDF: views/pdf.php, a plain page of the same content,
+     * rendered by dompdf. Nothing remote is loaded.
      */
     public function pdf(): void {
-        $pdf = Cv_pdf::render($this->content->cv());
+        $cv = $this->content->cv();
+        $title = $cv['site']['name'] . ' — CV';
+        $html = $this->view('pdf', ['cv' => $cv, 'title' => $title], true);
+
+        $options = new \Dompdf\Options();
+        $options->setIsRemoteEnabled(false);
+        $options->setIsJavascriptEnabled(false);
+        $options->setChroot(__DIR__);
+        // The app may run without write access to its own folder.
+        $options->setTempDir(sys_get_temp_dir());
+        $options->setFontCache(sys_get_temp_dir());
+
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->setPaper('A4');
+        $dompdf->render();
+        $dompdf->addInfo('Title', $title);
+        $pdf = (string) $dompdf->output();
+
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="' . self::PDF_NAME . '"');
         header('Content-Length: ' . strlen($pdf));

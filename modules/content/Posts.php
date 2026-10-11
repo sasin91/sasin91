@@ -2,7 +2,7 @@
 require_once __DIR__ . '/Front_matter.php';
 
 /**
- * The blog posts under content/blog: one .dj file each, newest first.
+ * The blog posts under content/blog: one Markdown file each, newest first.
  *
  * Loading reads every header but renders no body; a page that shows one post
  * renders that one (Content::post).
@@ -65,7 +65,7 @@ class Posts {
         $files = [];
         $walk = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($this->dir, FilesystemIterator::SKIP_DOTS));
         foreach ($walk as $entry) {
-            if ($entry->getExtension() === 'dj') {
+            if ($entry->getExtension() === 'md') {
                 $files[] = str_replace('\\', '/', $entry->getPathname());
             }
         }

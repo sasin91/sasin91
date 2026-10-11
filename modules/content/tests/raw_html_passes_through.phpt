@@ -3,7 +3,7 @@ raw HTML passes through untouched
 --FILE--
 <?php
 require __DIR__ . '/setup.inc';
-$html = $djot->render("``` =html\n<p class=\"colophon\">Measured.</p>\n```\n");
+$html = $markdown->render("<p class=\"colophon\">Measured.</p>\n");
 var_dump(str_contains($html, '<p class="colophon">Measured.</p>'));
 ?>
 --EXPECT--
