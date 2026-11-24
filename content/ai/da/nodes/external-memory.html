@@ -1,0 +1,16 @@
+<p>Under almindelig brug ændrer en models vægte sig ikke, og dens kontekst
+kasseres, når en forespørgsel slutter. Overladt til sig selv husker den intet fra én
+samtale til den næste.</p>
+<p>Hukommelsesfunktioner bygges i stedet uden om modellen. Applikationen gemmer
+noget — for eksempel et resumé af en samtale, en note modellen blev bedt om at
+gemme, eller de filer en agent har skrevet — og henter senere de relevante dele frem og
+placerer dem tilbage i konteksten. Modellen “husker” kun ved at læse.</p>
+<p>Lageret kan være hvad som helst: en tekstfil, en databasetabel, et vektorindeks.
+De svære dele er de samme som i <a href="#rag">RAG</a>: at afgøre, hvad der er værd
+at gemme, at finde det rigtige stykke senere, og at holde gemte fakta korrekte, efterhånden som
+ting ændrer sig.</p>
+<p>Det er noget andet end <a href="#kv-cache">KV-cachen</a>, som kun lever under én
+forespørgsel, og noget andet end <a href="#training">træning</a>, som ændrer vægte i en separat
+proces. Kodeagenter bruger ekstern hukommelse hele tiden: opgavelister,
+noter og selve kodebasen, som læses igen gennem
+<a href="#tool-use">værktøjer</a>, når der er brug for det.</p>

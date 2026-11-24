@@ -8,7 +8,10 @@ const localePath = useLocalePath()
 const currentLocale = computed(() => normalizeLocale(locale.value))
 const cv = computed(() => getCv(currentLocale.value))
 
-const { data: article } = await useFetch<AiArticleFull>('/api/ai-article')
+const { data: article } = await useFetch<AiArticleFull>('/api/ai-article', {
+  key: () => `ai-article-full-${currentLocale.value}`,
+  query: { lang: currentLocale },
+})
 
 if (!article.value) {
   throw createError({ statusCode: 500, statusMessage: 'Could not load AI article', fatal: true })
@@ -35,18 +38,6 @@ const hasDiagrams = computed(() =>
   (article.value?.nodes ?? []).some((node) => node.body.includes('<figure class="diagram"')),
 )
 
-function formatDate(iso: string, fallback: string): string {
-  if (currentLocale.value === 'en') return fallback
-  const [year, month, day] = iso.split('-').map(Number)
-  if (!year || !month || !day) return fallback
-  return new Intl.DateTimeFormat('da-DK', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(Date.UTC(year, month - 1, day)))
-}
-
 useSiteSeo({
   title: `${article.value.title} — ${cv.value.site.name}`,
   description: article.value.description,
@@ -60,20 +51,13 @@ useSiteSeo({
     <h1>{{ article.title }}</h1>
     <p class="lede">{{ article.description }}</p>
     <div class="meta">
-      <time :datetime="article.publishedIso">
-        {{ formatDate(article.publishedIso, article.publishedLong) }}
-      </time>
+      <time :datetime="article.publishedIso">{{ article.publishedLong }}</time>
       <template v-if="article.wasUpdated">
         · {{ t('ai.updated') }}
-        <time :datetime="article.updatedIso">
-          {{ formatDate(article.updatedIso, article.updatedLong) }}
-        </time>
+        <time :datetime="article.updatedIso">{{ article.updatedLong }}</time>
       </template>
       · {{ t('ai.sectionsCount', { count: article.nodes.length }) }}
     </div>
-    <p v-if="currentLocale === 'da'" class="article-lang-note">
-      {{ t('blog.englishOnlyNote') }}
-    </p>
 
     <KnowledgeViewNav current="read" />
 
@@ -124,6 +108,6 @@ useSiteSeo({
       <a href="#rag">{{ t('ai.codaRagLink') }}</a>{{ t('ai.codaSuffix') }}
     </p>
 
-    <DiagramLightbox v-if="hasDiagrams" content-key="blog/ai" />
+    <DiagramLightbox v-if="hasDiagrams" :content-key="`blog/ai-${currentLocale}`" />
   </article>
 </template>

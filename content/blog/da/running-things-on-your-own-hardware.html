@@ -1,0 +1,26 @@
+<p>Jeg satte Kubernetes op for at lære det. Selve clusteret tog en eftermiddag, men
+alt det efterfølgende tog resten af ugen: delivery, secrets, certifikater,
+isolation mellem tenants, observability, backups. Jeg gad ikke betale for
+den uge to gange, så det andet cluster blev et repository, du kan forke.</p>
+<ul>
+<li>
+<p><strong><a href="/blog/k3s-platform-kit/">K3s-starterkit på Hetzner Cloud</a>.</strong> Hvad det koster
+(<strong>€122,45 om måneden</strong>, målt), hvad det bruger, før noget af din egen kode kører
+(<strong>4.526 Mi</strong>, også målt), og hvor k3s reelt er stærkere end de
+simple løsninger. Hvilket, under cirka ti services, er ingen steder.</p>
+</li>
+<li>
+<p><strong><a href="/blog/what-a-game-world-server-needs/">Hvad en game world-server faktisk
+har brug for</a>.</strong> Et konkret gennemregnet eksempel på den samme
+beslutning: hvad man skal købe til en WoW-emulator, og hvilken halvdel af den et cluster
+overhovedet gavner.</p>
+</li>
+</ul>
+<p>Selve platformen ligger på
+<a href="https://github.com/sasin91/hcloud-k3s-platform-kit">hcloud-k3s-platform-kit</a>:
+fork den, redigér værdierne, kør den. Alle beslutninger er dokumenteret klart med
+deres trade-offs.</p>
+<p>Vælg dine værktøjer med omtanke, og ræk ikke ud efter de komplekse løsninger, hvis du ikke
+har brug for dem. En enkelt <a href="/blog/athletos-freebsd/">€7-maskine</a> er sandsynligvis nok til
+de fleste apps.</p>
+<p>Hvert eneste tal i disse indlæg er målt på et live Hetzner Cloud-cluster.</p>

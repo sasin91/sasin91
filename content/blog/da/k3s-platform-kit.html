@@ -1,0 +1,164 @@
+<p>At oprette et Kubernetes-cluster er et løst problem. Det, der kommer bagefter, er ikke:
+delivery, secrets, certifikater, isolation mellem tenants, observability,
+backups. Det er der, ugen forsvinder.</p>
+<p>Så det andet cluster er et repository, du forker:
+<a href="https://github.com/sasin91/hcloud-k3s-platform-kit">hcloud-k3s-platform-kit</a>.
+Hvert eneste tal nedenfor er målt over fire runder med at bygge og rive et
+live cluster ned på Hetzner Cloud: tre noder i Falkenstein, én cpx22 control
+plane og to cpx32-agenter bag en lb11 load balancer.</p>
+<div class="note">
+<p>En del af <a href="/blog/running-things-on-your-own-hardware/">Hvor man starter med
+self-hosting</a>.</p>
+</div>
+<section id="What-it-is">
+<h2>Hvad det er</h2>
+<ul>
+<li><strong>OpenTofu</strong> til maskinerne, med
+<a href="https://github.com/mysticaltech/terraform-hcloud-kube-hetzner">terraform-hcloud-kube-hetzner</a>
+som en pinnet afhængighed. Ikke en fork af det. Det projekt løser selve
+cluster-oprettelsen, og intet af det er skrevet om her.</li>
+<li><strong>Flux</strong> til delivery, med controller-manifesterne committet fremfor
+bootstrappet. Intet personal access token, og intet bliver skrevet tilbage til dit
+repo.</li>
+<li><strong>SOPS og age</strong> til secrets. Præcis én secret i hele systemet
+apply'es i hånden og kan ikke krypteres.</li>
+<li><strong>Gateway API</strong> til routing, hvor platformen ejer sin Gateway, og tenants
+ejer deres Routes.</li>
+<li><strong>VictoriaMetrics, VictoriaLogs og Tempo</strong> bag en OpenTelemetry collector.
+Collectoren er det, der gør traces værd at have, fordi den stempler
+<code>k8s.pod.name</code>, <code>k8s.namespace.name</code> og <code>k8s.node.name</code> på hvert span. En
+applikation ved, hvad den er. Den ved ikke, hvor scheduleren lagde den.</li>
+<li><strong>Et namespace pr. tenant</strong>, genereret med sin kvote, sine limits, sin network
+policy, sit disruption budget, sit backup-job, sit pod security level og sin
+RBAC.</li>
+</ul>
+</section>
+
+<section id="What-it-costs-to-run">
+<h2>Hvad det koster at køre</h2>
+<p><strong>€122,45 om måneden brutto</strong>, inklusiv 25% dansk moms, for de tre noder og
+load balanceren ovenfor. Kittets standardopsætning er tre control planes og to
+agenter, så der er reelt quorum, hvilket koster €171,17.</p>
+<p>Det tal, der betyder mere, er hvad platformen bruger, før noget af din egen
+kode kører: <strong>4.526 Mi hukommelse og 194m CPU fordelt på 43 pods</strong>, hvor to tredjedele
+er observability, mod <strong>8 Mi</strong> for den statiske side, den serverede. CPU er en
+afrundingsfejl på omkring 2% af allocatable. Det er hukommelsen, du betaler for,
+og de samme 4,5 GiB bærer både den anden og den tiende tenant.</p>
+<p>Opdelingen pr. namespace, de 161.507 aktive tidsserier og de to
+control-plane-histogrammer, som udgør 27% af dem uden at nogen forespørger på dem, findes i
+<a href="https://github.com/sasin91/hcloud-k3s-platform-kit/blob/main/docs/verification-stats-2026-08-04.md">repositoriets
+verifikationsnoter</a>.</p>
+</section>
+
+<section id="Where-k3s-is-genuinely-stronger">
+<h2>Hvor k3s reelt er stærkere</h2>
+<p><figure class="diagram" role="img" aria-label="Tre muligheder langs et spektrum: tre FreeBSD-maskiner, Docker Swarm og k3s-platformkittet, over to akser der peger i hver sin retning: komponenter der handler på dine vegne stiger mod højre, mens ting du selv må skrive falder, og Swarm ligger der, hvor de krydser hinanden."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600" role="img" aria-label="Three options across a spectrum. Left, three FreeBSD boxes running jails, with bhyve available for a full guest kernel, but no cluster layer above them and so no scheduler and no reconciler. Middle, Docker Swarm: three nodes with one manager, a routing mesh across all of them, fed by one compose file. Right, the k3s platform kit: a cluster boundary holding Flux, a Gateway, cert-manager and observability, annotated with 81 custom resource definitions and 4,526 mebibytes. Beneath, two axes running in opposite directions: components acting on your behalf increase to the right, while things you must write yourself decrease. Swarm sits where they cross.">
+  <defs>
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="w-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
+      <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="600" rx="24" fill="url(#w-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="599" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="44" font-size="16" fill="var(--diagram-muted, #9a9aa6)">the spectrum · every step right hands over more, and asks you to write less</text>
+
+    <rect x="48" y="80" width="336" height="290" rx="12" fill="none" stroke="var(--diagram-rule, #2b2b36)" stroke-width="1.5"/>
+    <text x="72" y="108" font-size="14" fill="light-dark(#0f766e, #5eead4)" font-weight="700">three FreeBSD boxes</text>
+    <text x="72" y="128" font-size="11" fill="var(--diagram-muted, #9a9aa6)">jails or bhyve · no cluster layer</text>
+    <g fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5">
+      <rect x="72" y="146" width="288" height="58" rx="8"/>
+      <rect x="72" y="216" width="288" height="58" rx="8"/>
+    </g>
+    <g fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.2">
+      <rect x="86" y="162" width="80" height="28" rx="5"/><rect x="178" y="162" width="80" height="28" rx="5"/><rect x="270" y="162" width="76" height="28" rx="5"/>
+      <rect x="86" y="232" width="80" height="28" rx="5"/><rect x="178" y="232" width="80" height="28" rx="5"/><rect x="270" y="232" width="76" height="28" rx="5"/>
+    </g>
+    <g font-size="9" fill="var(--diagram-text, #e8e8e4)" text-anchor="middle">
+      <text x="126" y="180">jail</text><text x="218" y="180">jail</text><text x="308" y="180">jail</text>
+      <text x="126" y="250">jail</text><text x="218" y="250">jail</text><text x="308" y="250">jail</text>
+    </g>
+    <text x="72" y="300" font-size="11" fill="var(--diagram-muted, #9a9aa6)">you place every service by hand</text>
+    <text x="72" y="320" font-size="11" fill="var(--diagram-muted, #9a9aa6)">you write the failover</text>
+    <text x="72" y="340" font-size="11" fill="var(--diagram-muted, #6c6c68)">no scheduler, no reconciler</text>
+
+    <rect x="432" y="80" width="336" height="290" rx="12" fill="var(--diagram-panel, #1b1b26)" fill-opacity="0.5" stroke="light-dark(#b45309, #fbbf24)" stroke-width="2"/>
+    <text x="456" y="108" font-size="14" fill="light-dark(#b45309, #fbbf24)" font-weight="700">Docker Swarm</text>
+    <text x="456" y="128" font-size="11" fill="var(--diagram-muted, #9a9aa6)">just enough orchestration</text>
+    <g fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5">
+      <rect x="456" y="146" width="92" height="60" rx="8"/><rect x="562" y="146" width="92" height="60" rx="8"/><rect x="668" y="146" width="76" height="60" rx="8"/>
+    </g>
+    <text x="502" y="172" text-anchor="middle" font-size="10" fill="light-dark(#b45309, #fbbf24)" font-weight="700">manager</text>
+    <text x="502" y="190" text-anchor="middle" font-size="9" fill="var(--diagram-muted, #9a9aa6)">raft</text>
+    <text x="608" y="180" text-anchor="middle" font-size="10" fill="var(--diagram-text, #e8e8e4)">worker</text>
+    <text x="706" y="180" text-anchor="middle" font-size="10" fill="var(--diagram-text, #e8e8e4)">worker</text>
+    <rect x="456" y="218" width="288" height="24" rx="5" fill="light-dark(#b45309, #fbbf24)" fill-opacity="0.18" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1"/>
+    <text x="600" y="234" text-anchor="middle" font-size="10" fill="light-dark(#b45309, #fbbf24)">routing mesh · any node answers</text>
+    <rect x="456" y="256" width="150" height="34" rx="6" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.2"/>
+    <text x="531" y="277" text-anchor="middle" font-size="10" fill="var(--diagram-text, #e8e8e4)">compose file</text>
+    <path d="M 610 273 H 660" fill="none" stroke="var(--diagram-rule, #6b7280)" stroke-width="1.2"/>
+    <text x="666" y="270" font-size="10" fill="var(--diagram-muted, #9a9aa6)">docker stack</text>
+    <text x="666" y="284" font-size="10" fill="var(--diagram-muted, #9a9aa6)">deploy</text>
+    <text x="456" y="320" font-size="11" fill="var(--diagram-muted, #9a9aa6)">scheduling, rollout, secrets</text>
+    <text x="456" y="340" font-size="11" fill="var(--diagram-muted, #6c6c68)">and very little else</text>
+
+    <rect x="816" y="80" width="336" height="290" rx="12" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="840" y="108" font-size="14" fill="light-dark(#5b3fd8, #a78bfa)" font-weight="700">the k3s platform kit</text>
+    <text x="840" y="128" font-size="11" fill="var(--diagram-muted, #9a9aa6)">a cluster, and its opinions</text>
+    <g fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.2">
+      <rect x="840" y="146" width="140" height="34" rx="6"/><rect x="992" y="146" width="136" height="34" rx="6"/>
+      <rect x="840" y="192" width="140" height="34" rx="6"/><rect x="992" y="192" width="136" height="34" rx="6"/>
+    </g>
+    <g font-size="10" fill="var(--diagram-text, #e8e8e4)" text-anchor="middle">
+      <text x="910" y="167">Flux</text><text x="1060" y="167">Gateway API</text>
+      <text x="910" y="213">cert-manager</text><text x="1060" y="213">observability</text>
+    </g>
+    <rect x="840" y="240" width="288" height="46" rx="6" fill="light-dark(#5b3fd8, #a78bfa)" fill-opacity="0.15"/>
+    <text x="984" y="260" text-anchor="middle" font-size="12" fill="light-dark(#5b3fd8, #a78bfa)" font-weight="700">81 CRDs · 4,526 Mi</text>
+    <text x="984" y="278" text-anchor="middle" font-size="10" fill="var(--diagram-muted, #9a9aa6)">running before your code does</text>
+    <text x="840" y="320" font-size="11" fill="var(--diagram-muted, #9a9aa6)">isolation generated per tenant</text>
+    <text x="840" y="340" font-size="11" fill="var(--diagram-muted, #6c6c68)">and checked in CI</text>
+
+    <path d="M 48 434 H 1152" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="2"/>
+    <path d="M 1140 428 L 1152 434 L 1140 440 z" fill="light-dark(#5b3fd8, #a78bfa)"/>
+    <text x="48" y="424" font-size="12" fill="light-dark(#5b3fd8, #a78bfa)">components acting on your behalf</text>
+
+    <path d="M 1152 486 H 48" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="2"/>
+    <path d="M 60 480 L 48 486 L 60 492 z" fill="light-dark(#0f766e, #5eead4)"/>
+    <text x="880" y="508" font-size="12" fill="light-dark(#0f766e, #5eead4)">things you must write yourself</text>
+
+    <path d="M 600 380 V 500" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <circle cx="600" cy="434" r="5" fill="light-dark(#b45309, #fbbf24)"/>
+    <circle cx="600" cy="486" r="5" fill="light-dark(#b45309, #fbbf24)"/>
+    <text x="612" y="546" font-size="12" fill="light-dark(#b45309, #fbbf24)" font-weight="700">Swarm sits where they cross</text>
+    <text x="612" y="566" font-size="11" fill="var(--diagram-muted, #6c6c68)">which is the argument for it, and the whole of it</text>
+  </g>
+</svg>
+</figure></p>
+<p>FreeBSD-enden er ikke bar. Jails er isolationsprimitivet, bhyve kører en
+fuld gæstekerne, når et workload har brug for det, og bastille eller cbsd styrer
+begge dele. Det, der mangler, er laget ovenover: intet scheduler på tværs af de
+tre maskiner, og intet reconciler dem tilbage mod en nedskrevet tilstand. Ét
+forbehold, hvis du planlægger omkring bhyve hos denne udbyder: det kræver
+hardware-virtualisering, og Hetzner Cloud eksponerer ingen, hvilket er grunden til, at
+<a href="/blog/freebsd-on-hetzner/">installation af FreeBSD der</a> kører under TCG-emulering.
+På disse maskiner får du jails, ikke virtuelle maskiner.</p>
+<p>Jeg kører også <a href="/blog/athletos-freebsd/">en produktionsapp på én
+FreeBSD-maskine</a> for cirka €7 om måneden, og jeg har lavet
+regnestykket for at gøre det samme med tre. Sæt maskinerne på den samme
+instanstype, og prisforskellen forsvinder: tre cpx32 er €133,08, mere end
+clusteret, fordi clusterets control plane er en mindre maskine. <strong>Besparelsen
+ligger ikke i operativsystemet. Den ligger i, at FreeBSD-maskinerne kan være i 4 GB, og
+det kan k3s-maskinerne ikke.</strong> Så prisargumentet mod Kubernetes er i virkeligheden et
+observability-argument i forklædning. Hvis du alligevel ville bygge metrics, logs og traces,
+har du allerede betalt.</p>
+<p>Docker Swarm passer ind i midten: ét team der kører sine egne apps, som taler
+frit med hinanden. Hvis én ting skal isoleres, lægger man den uden for swarmen. Hvis
+flere skal, er det der Kubernetes begynder at være det bedre valg, fordi
+isolationen genereres sammen med hvert namespace og tjekkes, når den apply'es,
+i stedet for at man skal huske den.</p>
+</section>

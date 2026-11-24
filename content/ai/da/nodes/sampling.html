@@ -1,0 +1,19 @@
+<p>Modellen forudsiger altid kun ét næste token. At generere et svar er en
+løkke uden om det:</p>
+<ol>
+<li>Kør modellen på den nuværende sekvens og få en fordeling over det næste
+token.</li>
+<li>Vælg ét token ud fra den.</li>
+<li>Tilføj det token til sekvensen og gå tilbage til trin 1.</li>
+</ol>
+<p>Løkken stopper når modellen udsender sit end-of-sequence-token, eller når en
+længdegrænse nås. Det er derfor svar streames ud token for token: hvert
+enkelt eksisterer rent faktisk først efter det trin der valgte det.</p>
+<p><strong>Greedy</strong> decoding vælger altid det mest sandsynlige token. <strong>Sampling</strong>
+trækker et tilfældigt token efter sandsynlighederne, som regel efter at have
+formet dem med <a href="#sampling-controls">temperature, top-k eller top-p</a>. <strong>Beam
+search</strong> holder flere delsekvenser i gang og udvider de bedste få; det er
+udbredt inden for oversættelse og bruges sjældent i chatmodeller.</p>
+<p>Dekodningsstrategien er en del af inferenssoftwaren, ikke af modellens
+vægte. Den samme model kan producere mærkbart forskellig tekst under
+forskellige indstillinger.</p>

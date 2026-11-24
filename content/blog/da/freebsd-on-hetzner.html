@@ -1,0 +1,219 @@
+<p>Hetzner har intet FreeBSD-image, og deres ISO-bibliotek stopper ved 15.0. Du kan stadig få <strong>enhver</strong> release ind på maskinen, uden manuel indgriben, på omkring en time.</p>
+<blockquote>
+<p>Maskinen kører AthletOS, en træningsapp jeg bygger. Foruddefinerede programmer, sessionslogning og tracking.</p>
+<p>— Jeg valgte FreeBSD for ZFS boot environments og jails, så en dårlig deploy er et rollback i stedet for en incident.</p>
+</blockquote>
+<p>Her er hele proceduren, i rækkefølge, inklusiv de ting der gik galt, og hvad der løste dem. Jeg brugte FreeBSD's egen ISO fremfor et færdigbygget image, så tjeksummen kan verificeres op mod projektets manifest.</p>
+<section id="1-Create-the-server">
+<h2>1. Opret serveren</h2>
+<p>En CX23 giver 2 vCPU og 4 GB, hvilket er rigeligt. Firewall først, så maskinen.</p>
+<div class="codeblock"><div class="filename">1-create-server.sh</div><pre class="hl-code"><code>hcloud firewall create --name athletos
+<span class="hljs-keyword">for</span> p <span class="hljs-keyword">in</span> 22 80 443; <span class="hljs-keyword">do</span>
+  hcloud firewall add-rule athletos --direction <span class="hljs-keyword">in</span> --protocol tcp \
+    --port <span class="hljs-variable">$p</span> --<span class="hljs-built_in">source</span>-ips 0.0.0.0/0 --<span class="hljs-built_in">source</span>-ips ::/0
+<span class="hljs-keyword">done</span>
+
+hcloud server create --name athletos --<span class="hljs-built_in">type</span> cx23 --location hel1 \
+  --image debian-12 --ssh-key my-key --firewall athletos
+</code></pre></div>
+<p>Imaget er til engangsbrug. Det findes kun for at få serveren til at boote overhovedet.</p>
+</section>
+
+<section id="2-Boot-into-rescue">
+<h2>2. Boot i rescue</h2>
+<div class="codeblock"><div class="filename">2-rescue.sh</div><pre class="hl-code"><code>hcloud server <span class="hljs-built_in">enable</span>-rescue athletos --ssh-key my-key
+hcloud server reset athletos
+
+ssh root@&lt;ip&gt;          <span class="hljs-comment"># linux rescue, ~1.9GB overlay in RAM</span>
+</code></pre></div>
+</section>
+
+<section id="3-Fetch-and-verify-the-ISO">
+<h2>3. Hent og verificér ISO'en</h2>
+<p>Tag <code>bootonly</code>, ikke <code>disc1</code>. Rescue-roden er et lille RAM-overlay, og en 1,3 GB ISO plus udpakning plus genopbygning kan ikke være der.</p>
+<div class="codeblock"><div class="filename">3-fetch-iso.sh</div><pre class="hl-code"><code>B=https://download.freebsd.org/releases/amd64/amd64/ISO-IMAGES/15.1
+I=FreeBSD-15.1-RELEASE-amd64-bootonly.iso
+
+curl -fsSL -o CHECKSUM <span class="hljs-variable">$B</span>/CHECKSUM.SHA256-FreeBSD-15.1-RELEASE-amd64
+curl -fsSL -o <span class="hljs-variable">$I</span> <span class="hljs-variable">$B</span>/<span class="hljs-variable">$I</span>
+
+E=$(grep -E <span class="hljs-string">"\(<span class="hljs-variable">$I</span>\)"</span> CHECKSUM | sed <span class="hljs-string">'s/.*= //'</span>)
+A=$(sha256sum <span class="hljs-variable">$I</span> | cut -d<span class="hljs-string">' '</span> -f1)
+[ <span class="hljs-string">"<span class="hljs-variable">$E</span>"</span> = <span class="hljs-string">"<span class="hljs-variable">$A</span>"</span> ] &amp;&amp; <span class="hljs-built_in">echo</span> <span class="hljs-string">"verified"</span> || <span class="hljs-built_in">echo</span> <span class="hljs-string">"STOP"</span>
+</code></pre></div>
+</section>
+
+<section id="4-Remaster-the-ISO">
+<h2>4. Tilpas ISO'en</h2>
+<p>Tre ændringer: en seriel konsol så vi kan følge med, prompten der ellers ville blokere for evigt, og netværket som en scriptet installation aldrig selv konfigurerer.</p>
+<div class="codeblock"><div class="filename">4-remaster.sh</div><pre class="hl-code"><code>apt-get install -y xorriso qemu-system-x86
+
+mkdir -p isowork isomnt
+mount -o loop,ro <span class="hljs-variable">$I</span> isomnt &amp;&amp; cp -a isomnt/. isowork/ &amp;&amp; umount isomnt
+chmod -R u+w isowork
+
+<span class="hljs-comment"># append, never replace: the original carries vfs.root.mountfrom</span>
+cat &gt;&gt; isowork/boot/loader.conf &lt;&lt;<span class="hljs-string">'EOF'</span>
+console=<span class="hljs-string">"comconsole"</span>
+comconsole_speed=<span class="hljs-string">"115200"</span>
+boot_serial=<span class="hljs-string">"YES"</span>
+vfs.root.mountfrom=<span class="hljs-string">"cd9660:/dev/iso9660/FREEBSD_INSTALL"</span>
+EOF
+
+<span class="hljs-comment"># the serial path asks for a terminal type with an unconditional read</span>
+sed -i <span class="hljs-string">'s/^\([[:space:]]*\)read TERM$/\1:/'</span> \
+    isowork/usr/libexec/bsdinstall/startbsdinstall
+
+<span class="hljs-comment"># a scripted install never configures the network</span>
+sed -i <span class="hljs-string">'s|^mkdir /tmp/bsdinstall_etc$|&amp;\nifconfig vtnet0 inet 10.0.2.15/24 up\nroute add default 10.0.2.2\necho "nameserver 10.0.2.3" &gt; /tmp/bsdinstall_etc/resolv.conf|'</span> \
+    isowork/etc/rc.local
+</code></pre></div>
+<div class="warning">
+<h2 id="What-went-wrong">Hvad der gik galt</h2>
+<p>Jeg overskrev <code>loader.conf</code> i stedet for at tilføje til den, hvilket smed <code>vfs.root.mountfrom</code> væk og efterlod maskinen ved en mountroot-prompt.</p>
+<p>Derefter hang den ved <code>Console type [vt100]:</code>, fordi den <code>read</code> kører, før scriptet overhovedet bliver fundet.</p>
+<p>Derefter døde distfetch på DNS, fordi den interaktive sti eksporterer <code>BSDINSTALL_CONFIGCURRENT</code>, mens den scriptede sti ikke gør.</p>
+</div>
+</section>
+
+<section id="5-Write-the-unattended-install-script">
+<h2>5. Skriv det automatiske installationsscript</h2>
+<div class="codeblock"><div class="filename">isowork/etc/installerconfig</div><pre class="hl-code"><code>PARTITIONS=DEFAULT
+DISTRIBUTIONS=<span class="hljs-string">"kernel.txz base.txz"</span>
+<span class="hljs-built_in">export</span> ZFSBOOT_VDEV_TYPE=stripe
+<span class="hljs-built_in">export</span> ZFSBOOT_DISKS=vtbd0
+<span class="hljs-built_in">export</span> ZFSBOOT_SWAP_SIZE=2g
+<span class="hljs-built_in">export</span> ZFSBOOT_CONFIRM_LAYOUT=0
+<span class="hljs-built_in">export</span> nonInteractive=YES
+<span class="hljs-built_in">export</span> BSDINSTALL_DISTSITE=http://10.0.2.2:8000
+
+<span class="hljs-meta">#!/bin/sh</span>
+sysrc hostname=<span class="hljs-string">"athletos"</span>
+sysrc ifconfig_vtnet0=<span class="hljs-string">"DHCP"</span>
+sysrc sshd_enable=<span class="hljs-string">"YES"</span>
+sysrc zfs_enable=<span class="hljs-string">"YES"</span>
+
+<span class="hljs-comment"># ARC takes half of RAM by default. On a 4GB box that is 2GB it does not</span>
+<span class="hljs-comment"># need, and it turns up later looking like a database problem.</span>
+<span class="hljs-built_in">echo</span> <span class="hljs-string">'vfs.zfs.arc_max="512M"'</span> &gt;&gt; /boot/loader.conf
+
+mkdir -p /root/.ssh &amp;&amp; chmod 700 /root/.ssh
+<span class="hljs-built_in">echo</span> <span class="hljs-string">'ssh-ed25519 AAAA... you@host'</span> &gt; /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+</code></pre></div>
+<p><code>10.0.2.2</code> er QEMU's host-adresse. At servere distributionssættene fra rescue springer DNS helt over og er hurtigere end at hente dem to gange.</p>
+<div class="codeblock"><div class="filename">5-serve-dist.sh</div><pre class="hl-code"><code>mkdir -p dist &amp;&amp; <span class="hljs-built_in">cd</span> dist
+B=https://download.freebsd.org/releases/amd64/15.1-RELEASE
+<span class="hljs-keyword">for</span> f <span class="hljs-keyword">in</span> MANIFEST base.txz kernel.txz; <span class="hljs-keyword">do</span> curl -fsSL -O <span class="hljs-variable">$B</span>/<span class="hljs-variable">$f</span>; <span class="hljs-keyword">done</span>
+
+<span class="hljs-keyword">while</span> <span class="hljs-built_in">read</span> -r name sha rest; <span class="hljs-keyword">do</span>
+  [ -f <span class="hljs-string">"<span class="hljs-variable">$name</span>"</span> ] || <span class="hljs-built_in">continue</span>
+  [ <span class="hljs-string">"<span class="hljs-variable">$(sha256sum "$name" | cut -d' ' -f1)</span>"</span> = <span class="hljs-string">"<span class="hljs-variable">$sha</span>"</span> ] &amp;&amp; <span class="hljs-built_in">echo</span> <span class="hljs-string">"OK <span class="hljs-variable">$name</span>"</span>
+<span class="hljs-keyword">done</span> &lt; MANIFEST
+
+setsid nohup python3 -m http.server 8000 &gt;/dev/null 2&gt;&amp;1 &amp;
+</code></pre></div>
+<p>Tip: lad den server køre. Installeren henter fra den i trin 7, ikke nu.</p>
+</section>
+
+<section id="6-Build-the-ISO-and-wipe-the-disk">
+<h2>6. Byg ISO'en og ryd disken</h2>
+<p>Slet kilde-ISO'en før du bygger, ellers løber du tør for plads i overlayet.</p>
+<div class="codeblock"><div class="filename">6-build-and-wipe.sh</div><pre class="hl-code"><code>rm -f <span class="hljs-variable">$I</span>
+xorriso -as mkisofs -r -V FREEBSD_INSTALL -b boot/cdboot -no-emul-boot \
+        -o athletos-install.iso isowork/
+rm -rf isowork
+
+<span class="hljs-comment"># zfs labels sit at both ends of the device, so wipefs alone is not enough</span>
+SECTORS=$(blockdev --getsz /dev/sda)
+MIB=$(( SECTORS / 2048 ))
+wipefs -a /dev/sda
+dd <span class="hljs-keyword">if</span>=/dev/zero of=/dev/sda bs=1M count=64 conv=fsync
+dd <span class="hljs-keyword">if</span>=/dev/zero of=/dev/sda bs=1M seek=$(( MIB - 64 )) count=64 conv=fsync
+</code></pre></div>
+<div class="warning">
+<h2 id="What-went-wrong-1">Hvad der gik galt</h2>
+<p>Et tidligere forsøg kom langt nok til at oprette en <code>zroot</code>-pool, før det fejlede.</p>
+<p>Næste kørsel fandt den og stoppede for at spørge om et andet pool-navn, hvilket er endnu en dialog, der ikke er nogen til at besvare. Ryd begge ender mellem forsøgene.</p>
+</div>
+</section>
+
+<section id="7-Run-the-installer-under-QEMU">
+<h2>7. Kør installeren under QEMU</h2>
+<p>Hetzner Cloud har ingen nested virtualisation, så der er ingen <code>/dev/kvm</code>, og det her kører under TCG-emulering. Det tager cirka en halv time. Der er ikke andet at gøre end at følge loggen.</p>
+<div class="codeblock"><div class="filename">7-install.sh</div><pre class="hl-code"><code>qemu-system-x86_64 -accel tcg,thread=multi -m 2048 -smp 2 \
+  -drive file=/dev/sda,format=raw,<span class="hljs-keyword">if</span>=virtio,cache=writeback \
+  -cdrom athletos-install.iso -boot d \
+  -netdev user,id=n0 -device virtio-net-pci,netdev=n0 \
+  -display none -monitor none -serial file:/root/install.log -daemonize
+
+grep -aoE <span class="hljs-string">"Running installation step: [a-z]+"</span> /root/install.log | uniq
+<span class="hljs-comment"># zfsboot mount distfetch checksum distextract bootconfig config</span>
+<span class="hljs-comment"># entropy umount script</span>
+</code></pre></div>
+<p>Dræb QEMU, så snart script-trinnet er færdigt, ellers genstarter den direkte tilbage i installeren.</p>
+</section>
+
+<section id="8-Boot-it-and-fix-fstab">
+<h2>8. Boot den og ret fstab</h2>
+<div class="codeblock"><div class="filename">8-boot.sh</div><pre class="hl-code"><code>hcloud server <span class="hljs-built_in">disable</span>-rescue athletos
+hcloud server reset athletos
+
+ssh root@&lt;ip&gt;
+
+<span class="hljs-comment"># the installer ran under qemu virtio (vtbd0), hetzner presents da0.</span>
+<span class="hljs-comment"># the pool is fine because zfs scans devices. swap is not.</span>
+<span class="hljs-built_in">printf</span> <span class="hljs-string">'/dev/gpt/swap0\tnone\tswap\tsw\t0\t0\n'</span> &gt; /etc/fstab
+swapon -a
+</code></pre></div>
+<div class="warning">
+<h2 id="What-went-wrong-2">Hvad der gik galt</h2>
+<p>Den genererede fstab pegede på <code>/dev/vtbd0p2</code>, som ikke findes på den rigtige maskine.</p>
+<p>Den bootede uden swap og sagde ingenting om det. Referér til den via GPT-label, så bliver enhedsnavnet ligegyldigt.</p>
+</div>
+</section>
+
+<section id="Result">
+<h2>Resultat</h2>
+<div class="codeblock"><div class="filename">athletos</div><pre class="hl-code"><code>FreeBSD athletos 15.1-RELEASE ... GENERIC amd64
+
+zroot            658M / 34.2G      all pools are healthy
+/dev/gpt/swap0   2.0G                     0% used
+vfs.zfs.arc_max  536870912                (512 MiB)
+
+1  gptboot0   512 KiB   A501  freebsd-boot
+2  swap0      2.0 GiB   A502  freebsd-swap
+3  zfs0      36.1 GiB   A504  freebsd-zfs
+</code></pre></div>
+<div class="note">
+<h2 id="Result-1">Resultat</h2>
+<p>15.1 på root-on-ZFS, en release ISO-biblioteket ikke har, fra et medie du kan verificere.</p>
+</div>
+</section>
+
+<section id="Under-load">
+<h2>Under belastning</h2>
+<p>Jeg målte dette fra en separat Hetzner VPS i det samme datacenter, hel1, mod en kontrolmaskine: en identisk CX23 med Ubuntu 24.04, den samme Caddy 2.11.4 der serverer byte-identiske filer, med et tilsvarende ECDSA P-256-certifikat. <code>vegeta</code>, en frisk TCP- og TLS-forbindelse pr. forespørgsel, hvilket er det en crawler gør og det en browser aldrig gør.</p>
+<div class="codeblock"><div class="filename">9-load.sh</div><pre class="hl-code"><code>vegeta attack -targets targets.txt -rate 500 -duration 10s \
+       -keepalive=<span class="hljs-literal">false</span> -timeout 20s | vegeta report
+
+<span class="hljs-comment"># freebsd   100/s  4.9ms   250/s  4.7ms   500/s  4.0ms   mean</span>
+<span class="hljs-comment"># ubuntu    100/s  5.7ms   250/s  5.0ms   500/s  5.2ms   mean</span>
+</code></pre></div>
+<p>Ved 100, 250 og 500 friske forbindelser i sekundet leverede begge maskiner den fulde belastning med 100% succes, og FreeBSD-maskinen var hurtigst ved hvert eneste trin.</p>
+<p>Kryptografien er heller ikke flaskehalsen.</p>
+<div class="codeblock"><div class="filename">openssl speed ecdsap256</div><pre class="hl-code"><code><span class="hljs-comment"># sign/s</span>
+<span class="hljs-comment">#  37920   this box (epyc, one core)</span>
+<span class="hljs-comment">#  32614   ubuntu control (xeon, one core)</span>
+</code></pre></div>
+<p>EPYC'en signerer 16% hurtigere end kontrolmaskinens Xeon, hvilket er værd at nævne, fordi det betyder, at hardwaren favoriserer FreeBSD-maskinen og ikke omvendt. Mod 500 forbindelser i sekundet giver 37.920 signaturer cirka 75x luft op til loftet. Hvad end loftet er, er det ikke asymmetrisk kryptografi.</p>
+<div class="warning">
+<h2 id="Two-things-I-did-not-establish">To ting jeg ikke fik fastslået</h2>
+<p>Over 500/s var målingerne ikke reproducerbare. En ren kørsel ved 1000/s havde FreeBSD på 497/s og Ubuntu-kontrollen på 999/s. En senere kørsel gav 179/s ved 1000/s og derefter 566/s ved 1500/s — højere belastning gav højere throughput, hvilket ikke er en egenskab en server kan have. Det er den enlige load-generator, der akkumulerer TIME_WAIT mellem kørslerne. Et reelt svar kræver flere generatorer.</p>
+<p>Et tidligere forsøg målte fra en Windows-bærbar over det offentlige internet og fik 50-100 forbindelser i sekundet. Det var fem til ti gange for lavt, og årsagen var udtømning af ephemeral ports på klienten. Den første måling var forkert, og den var forkert på en måde, der producerede en selvsikker og fuldstændig forkert forklaring.</p>
+</div>
+<p>Én hypotese døde undervejs. FreeBSD's <code>kern.ipc.soacceptqueue</code> er 128 og Ubuntus <code>net.core.somaxconn</code> er 4096, så listen-backloggen adskiller sig med 32x, hvilket lignede den oplagte årsag og holdt til regnestykket. Jeg satte kontrolmaskinen til 128, genstartede Caddy så listeneren tog den nye værdi, og den leverede stadig 999,9/s. Afkræftet.</p>
+<p>Det efterlader <code>pf</code>, som viderestiller 443 til Caddys høje port, som den utestede mistænkte. Utestet fordi den høje port ikke kan nås udefra, så der var ingen måde at omgå viderestillingen og sammenligne op imod den.</p>
+<p>De samme trin virker for enhver release. Skift versionen i trin 3, og resten følger med.</p>
+<p>Hver eneste kommando ovenfor er kørt mod en rigtig CX23 i hel1.</p>
+</section>

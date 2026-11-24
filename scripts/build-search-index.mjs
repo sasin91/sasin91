@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { JSDOM } from 'jsdom'
 import { StaticModel, words } from '../shared/retrieval.ts'
@@ -7,7 +7,6 @@ import { StaticModel, words } from '../shared/retrieval.ts'
 const ROOT = process.cwd()
 const MODEL_DIR = resolve(ROOT, 'models/potion-base-4M')
 const CONTENT_DIR = resolve(ROOT, 'content')
-const OUT_FILE = resolve(ROOT, 'public/search/index.json')
 const SNIPPET_CHARS = 160
 
 function collapse(text) {
@@ -99,7 +98,7 @@ function lexicalWords(list) {
   return [...new Set(words(list.map((p) => p.text).join(' ')))].sort()
 }
 
-function buildPostSections(model, post, body) {
+function buildPostSections(model, post, body, introTitle) {
   const groups = []
   for (const passage of body) {
     const last = groups.at(-1)
@@ -115,7 +114,7 @@ function buildPostSections(model, post, body) {
     const sum = snippet(firstText)
     const section = group.section
     const id = section ? section.id : 'top'
-    const title = section ? section.heading : 'Introduction'
+    const title = section ? section.heading : introTitle
     const url = section ? `${post.url}#${section.id}` : post.url
     const headPassages = section
       ? [embedPassage(model, `${title}. ${firstText}`, sum, section)].filter(Boolean)
@@ -140,6 +139,81 @@ function buildPostSections(model, post, body) {
   })
 }
 
+function buildLocaleIndex(model, modelInfo, locale) {
+  const isDa = locale === 'da'
+  const articleFile = resolve(CONTENT_DIR, isDa ? 'ai/article.da.json' : 'ai/article.json')
+  const postsFile = resolve(CONTENT_DIR, isDa ? 'blog/meta.da.json' : 'blog/meta.json')
+  if (!existsSync(articleFile) || !existsSync(postsFile)) return
+
+  const article = JSON.parse(readFileSync(articleFile, 'utf8'))
+  const posts = JSON.parse(readFileSync(postsFile, 'utf8'))
+  const documents = []
+
+  for (const node of article.nodes) {
+    const localizedPath = resolve(CONTENT_DIR, `ai/da/nodes/${node.id}.html`)
+    const htmlPath = isDa && existsSync(localizedPath)
+      ? localizedPath
+      : resolve(CONTENT_DIR, `ai/nodes/${node.id}.html`)
+    const html = readFileSync(htmlPath, 'utf8')
+    const body = extractPassages(html)
+    const headText = `${node.title}. ${node.summary} ${node.concepts.join(', ')}. ${node.searchTerms.join(', ')}.`
+    const passages = [
+      embedPassage(model, headText, node.summary, null),
+      ...body.map((p) => embedPassage(model, p.text, snippet(p.text), p.section)),
+    ].filter(Boolean)
+
+    documents.push({
+      kind: 'ai',
+      context: article.title,
+      id: node.id,
+      order: node.order,
+      url: `${article.url}#${node.id}`,
+      title: node.title,
+      summary: node.summary,
+      concepts: node.concepts,
+      search_terms: node.searchTerms,
+      words: lexicalWords(body),
+      passages,
+    })
+  }
+
+  const nodeCount = article.nodes.length
+  posts.forEach((post, index) => {
+    const localizedPath = resolve(CONTENT_DIR, `blog/da/${post.key}.html`)
+    const htmlPath = isDa && existsSync(localizedPath)
+      ? localizedPath
+      : resolve(CONTENT_DIR, `blog/${post.key}.html`)
+    const html = readFileSync(htmlPath, 'utf8')
+    const body = extractPassages(html)
+    const passages = [
+      embedPassage(model, `${post.title}. ${post.description}`, post.description, null),
+      ...body.map((p) => embedPassage(model, p.text, snippet(p.text), p.section)),
+    ].filter(Boolean)
+
+    const doc = {
+      kind: 'post',
+      context: isDa ? 'Artikler' : 'Writing',
+      id: post.path,
+      order: nodeCount + index + 1,
+      url: post.url,
+      title: post.title,
+      summary: post.description,
+      concepts: [],
+      search_terms: [],
+      words: lexicalWords(body),
+      passages,
+    }
+    const sections = buildPostSections(model, post, body, isDa ? 'Introduktion' : 'Introduction')
+    if (sections.length > 0) doc.sections = sections
+    documents.push(doc)
+  })
+
+  const outFile = resolve(ROOT, isDa ? 'public/search/index.da.json' : 'public/search/index.json')
+  const payload = JSON.stringify({ version: 2, model: modelInfo, nodes: documents })
+  writeFileSync(outFile, payload)
+  console.log(`Built ${locale} search index: ${documents.length} documents (${payload.length} bytes).`)
+}
+
 const vocabText = readFileSync(resolve(MODEL_DIR, 'vocab.txt'), 'utf8')
 const weightsBuf = readFileSync(resolve(MODEL_DIR, 'embeddings.q8.bin'))
 const arrayBuffer = weightsBuf.buffer.slice(
@@ -156,61 +230,5 @@ const modelInfo = {
   dim: model.dim,
 }
 
-const article = JSON.parse(readFileSync(resolve(CONTENT_DIR, 'ai/article.json'), 'utf8'))
-const posts = JSON.parse(readFileSync(resolve(CONTENT_DIR, 'blog/meta.json'), 'utf8'))
-const documents = []
-
-for (const node of article.nodes) {
-  const html = readFileSync(resolve(CONTENT_DIR, `ai/nodes/${node.id}.html`), 'utf8')
-  const body = extractPassages(html)
-  const headText = `${node.title}. ${node.summary} ${node.concepts.join(', ')}. ${node.searchTerms.join(', ')}.`
-  const passages = [
-    embedPassage(model, headText, node.summary, null),
-    ...body.map((p) => embedPassage(model, p.text, snippet(p.text), p.section)),
-  ].filter(Boolean)
-
-  documents.push({
-    kind: 'ai',
-    context: article.title,
-    id: node.id,
-    order: node.order,
-    url: `${article.url}#${node.id}`,
-    title: node.title,
-    summary: node.summary,
-    concepts: node.concepts,
-    search_terms: node.searchTerms,
-    words: lexicalWords(body),
-    passages,
-  })
-}
-
-const nodeCount = article.nodes.length
-posts.forEach((post, index) => {
-  const html = readFileSync(resolve(CONTENT_DIR, `blog/${post.key}.html`), 'utf8')
-  const body = extractPassages(html)
-  const passages = [
-    embedPassage(model, `${post.title}. ${post.description}`, post.description, null),
-    ...body.map((p) => embedPassage(model, p.text, snippet(p.text), p.section)),
-  ].filter(Boolean)
-
-  const doc = {
-    kind: 'post',
-    context: 'Writing',
-    id: post.path,
-    order: nodeCount + index + 1,
-    url: post.url,
-    title: post.title,
-    summary: post.description,
-    concepts: [],
-    search_terms: [],
-    words: lexicalWords(body),
-    passages,
-  }
-  const sections = buildPostSections(model, post, body)
-  if (sections.length > 0) doc.sections = sections
-  documents.push(doc)
-})
-
-const payload = JSON.stringify({ version: 2, model: modelInfo, nodes: documents })
-writeFileSync(OUT_FILE, payload)
-console.log(`Built search index: ${documents.length} documents (${payload.length} bytes).`)
+buildLocaleIndex(model, modelInfo, 'en')
+buildLocaleIndex(model, modelInfo, 'da')

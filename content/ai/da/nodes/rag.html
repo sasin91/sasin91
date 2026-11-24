@@ -1,0 +1,23 @@
+<p>En model ved kun, hvad den har optaget under træning, plus hvad der ligger i dens
+<a href="#context-window">kontekst</a>. Retrieval-augmented generation tilføjer et trin
+før genereringen, som afgør, hvad der ellers skal med i den kontekst:</p>
+<ol>
+<li>På forhånd opdeles en dokumentsamling i tekststykker (“chunks”) og
+indekseres, typisk ved at beregne en <a href="#embeddings">embedding</a> for hvert stykke og
+ofte også med et søgeordsindeks.</li>
+<li>Når et spørgsmål ankommer, embeddes det på samme måde, og man finder de tekststykker,
+hvis vektorer ligner mest — eventuelt med en efterfølgende re-scoring af de bedste få med en
+dyrere model.</li>
+<li>Indsæt disse tekststykker i prompten, og lad modellen generere med
+dem for øje.</li>
+</ol>
+<p>Det giver en model adgang til private, nye eller meget store samlinger
+uden at gentræne noget, og gør det muligt for den at henvise til sine kilder. Modellens
+vægte ændres overhovedet ikke.</p>
+<p>RAG fejler på genkendelige måder. Hvis søgningen misser det afgørende
+tekststykke, svarer modellen uden det — ofte helt flydende. Hvis den finder
+næsten-træffere, kan de distrahere eller vildlede. Størstedelen af arbejdet i et godt RAG-system
+ligger i selve søgningen, ikke i genereringen.</p>
+<p>Denne artikels <a href="/da/blog/ai/ask/">Spørg</a>-visning er søgehalvdelen af denne
+pipeline, uden den genererende halvdel: den beregner en embedding af dit spørgsmål i din
+browser og returnerer de nærmeste afsnit, som du derefter selv læser.</p>

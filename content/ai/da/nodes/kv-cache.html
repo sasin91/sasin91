@@ -1,0 +1,22 @@
+<p>En model genererer tekst ét token ad gangen, og hvert nyt token kigger på
+alle tokens før sig. Uden en cache ville hvert trin genberegne
+<a href="#qkv">keys og values</a> for hele præfikset igen og igen.</p>
+<p>Fordi et tokens keys og values aldrig ændrer sig når de først er beregnet,
+gemmer inferensmotoren dem: for hvert lag og for hver position der er
+behandlet indtil nu. Hvert nyt trin beregner query, key og value for det ene
+nye token, føjer dets key og value til cachen og laver attention over de
+gemte.</p>
+<p>Cachen vokser lineært med konteksten. Dens størrelse er cirka</p>
+<p><math display="block"><mn>2</mn><mo>×</mo><mtext>lag</mtext><mo>×</mo><mtext>KV-heads</mtext><mo>×</mo><mtext>head-størrelse</mtext><mo>×</mo><mtext>tokens</mtext><mo>×</mo><mtext>bytes pr. tal</mtext></math></p>
+<p>hvilket ved lange kontekster kan overstige størrelsen på selve
+modelvægtene. Grouped-query attention, kvantiserede caches og paged
+hukommelsesstyring findes alle for at holde den i skak.</p>
+<p>Det cachen rummer er helt præcist: attention-tilstanden for den eksakte
+sekvens der faktisk blev behandlet, altså prompten plus de tokens der faktisk
+blev valgt. Kandidat-tokens der ikke blev samplet blev aldrig sendt tilbage i
+modellen, så der findes ingen keys eller values for dem. Cachen er ikke et
+lager af <a href="#discarded-candidates">alternativer</a>.</p>
+<p>Den er heller ikke læring. Cachen lever for én forespørgsel, eller gemmes
+kortvarigt for at genbruge et fælles præfiks såsom en lang systemprompt på
+tværs af forespørgsler, hvilket er det “prompt caching” typisk refererer til.
+Modellens vægte forbliver helt urørte undervejs.</p>

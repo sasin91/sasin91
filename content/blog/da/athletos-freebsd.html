@@ -1,0 +1,224 @@
+<p>Essensen er enkel og effektiv. Det er præcis derfor, jeg valgte
+<a href="/blog/freebsd-on-hetzner/">FreeBSD</a> som fundament og
+<a href="https://github.com/sasin91/athletos.app/tree/main/backend">Rust</a> som base.</p>
+<blockquote>
+<p>AthletOS vælger et program, fastsætter vægtene og registrerer, hvad du
+faktisk løftede, ved siden af det, den bad om.</p>
+<p>Afstanden mellem de to tal er hele produktet. Jeg har ikke brug for en
+motivationsgraf, jeg har brug for at få at vide 100 kg og ikke snakke mig selv op på 120.</p>
+</blockquote>
+<p>Én Hetzner CX23, cirka €7 om måneden. FreeBSD 15.1, root-on-ZFS, to jails, Caddy,
+Postgres.</p>
+<section id="Why-not-Docker">
+<h2>Hvorfor ikke Docker</h2>
+<p>Selvom Docker er godt, velunderstøttet og bekvemt, er det også ekstra
+kompleksitet og overhead, jeg ikke har brug for. Med
+<a href="/blog/freebsd-on-hetzner/">FreeBSD</a> har jeg alt, hvad jeg skal bruge for at sikre
+gnidningsfri udrulninger og stabil performance med <em>minimalt</em> overhead og færre værktøjer.</p>
+</section>
+
+<section id="Rollouts">
+<h2>Udrulninger</h2>
+<p>To jails, blue og green, der begge kører hele tiden og begge er registreret i
+Caddy. En deploy tager den ene ud, skifter et symlink, venter på at den svarer, og
+rører først derefter den anden.</p>
+<p><figure class="diagram" role="img" aria-label="Tidslinje for rullende deploy: fem sekunder, altid mindst én rask backend"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 330" width="1200" height="330" role="img" aria-label="Timeline of a rolling deploy: green is stopped and restarted in the first two seconds while blue keeps serving, then blue is rolled while green serves. Five seconds total, never zero healthy backends.">
+  <defs>
+    <!-- Standalone only, see architecture.svg for why svg:root, not
+         :root, and why it must stay scoped this way. -->
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="d-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
+      <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+    <!-- See architecture.svg for why some data stops carry a light-dark()
+         pair and others (already >= 3:1 against the light panel) don't. -->
+    <linearGradient id="d-blue" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="light-dark(#0e7490, #22d3ee)"/>
+    </linearGradient>
+    <linearGradient id="d-green" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="light-dark(#047857, #10b981)"/><stop offset="100%" stop-color="light-dark(#4d7c0f, #84cc16)"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="330" rx="24" fill="url(#d-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="329" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="48" font-size="16" fill="var(--diagram-text, #e5e7eb)">athletos-deploy v0.1.2 — rolling update</text>
+    <text x="1152" y="48" text-anchor="end" font-size="16" fill="light-dark(#15803d, #4ade80)" font-weight="700">5s total</text>
+
+    <!-- axis -->
+    <line x1="180" y1="248" x2="1120" y2="248" stroke="var(--diagram-rule, #374151)" stroke-width="1"/>
+    <g font-size="12" fill="var(--diagram-muted, #4b5563)">
+      <text x="180" y="272" text-anchor="middle">0s</text>
+      <text x="368" y="272" text-anchor="middle">1s</text>
+      <text x="556" y="272" text-anchor="middle">2s</text>
+      <text x="744" y="272" text-anchor="middle">3s</text>
+      <text x="932" y="272" text-anchor="middle">4s</text>
+      <text x="1120" y="272" text-anchor="middle">5s</text>
+    </g>
+    <g stroke="var(--diagram-rule, #1f2937)" stroke-width="1">
+      <line x1="368" y1="96" x2="368" y2="248"/>
+      <line x1="556" y1="96" x2="556" y2="248"/>
+      <line x1="744" y1="96" x2="744" y2="248"/>
+      <line x1="932" y1="96" x2="932" y2="248"/>
+    </g>
+
+    <!-- green row -->
+    <text x="160" y="132" text-anchor="end" font-size="14" fill="light-dark(#4d7c0f, #84cc16)" font-weight="700">green</text>
+    <rect x="180" y="112" width="376" height="30" rx="6" fill="var(--diagram-panel, #1f2937)"/>
+    <text x="368" y="132" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9ca3af)">stop · repoint · start · health</text>
+    <rect x="556" y="112" width="564" height="30" rx="6" fill="url(#d-green)" fill-opacity="0.85"/>
+    <!-- This text sits on the bar above, not the panel: the bar itself
+         darkens in light mode (see d-green's stops), so the text that reads
+         against it has to flip light too, or the two would collide. -->
+    <text x="838" y="132" text-anchor="middle" font-size="12" fill="light-dark(#ffffff, #052e16)" font-weight="700">serving v0.1.2</text>
+
+    <!-- blue row -->
+    <text x="160" y="192" text-anchor="end" font-size="14" fill="light-dark(#0e7490, #22d3ee)" font-weight="700">blue</text>
+    <rect x="180" y="172" width="376" height="30" rx="6" fill="url(#d-blue)" fill-opacity="0.85"/>
+    <text x="368" y="192" text-anchor="middle" font-size="12" fill="light-dark(#ffffff, #082f49)" font-weight="700">serving previous release</text>
+    <rect x="556" y="172" width="376" height="30" rx="6" fill="var(--diagram-panel, #1f2937)"/>
+    <text x="744" y="192" text-anchor="middle" font-size="12" fill="var(--diagram-muted, #9ca3af)">stop · repoint · start · health</text>
+    <rect x="932" y="172" width="188" height="30" rx="6" fill="url(#d-blue)" fill-opacity="0.85"/>
+    <text x="1026" y="192" text-anchor="middle" font-size="12" fill="light-dark(#ffffff, #082f49)" font-weight="700">v0.1.2</text>
+
+    <!-- healthy-backends band -->
+    <text x="160" y="228" text-anchor="end" font-size="12" fill="var(--diagram-muted, #6b7280)">healthy</text>
+    <rect x="180" y="216" width="940" height="16" rx="4" fill="#052e16" stroke="#166534"/>
+    <text x="650" y="228" text-anchor="middle" font-size="11" fill="#4ade80">at least one, the entire time</text>
+
+    <text x="48" y="306" font-size="13" fill="var(--diagram-muted, #6b7280)">The health gate allows 120s and used 2. Caddy checks every 5s, so it never observed a gap at all.</text>
+  </g>
+</svg>
+</figure></p>
+<p>Fem sekunder, og ikke et eneste øjeblik uden en rask backend. Det samme maskineri
+dækker et crash kl. 03 om natten: Caddy markerer jail'en som nede, og den anden serverer,
+indtil jeg kigger på det.</p>
+<div class="note">
+<h2 id="Migrations">Migrationer</h2>
+<p>To releases kører kortvarigt live mod den samme database, så en migration skal være
+bagudkompatibel med den foregående.</p>
+</div>
+</section>
+
+<section id="Certificates">
+<h2>Certifikater</h2>
+<p>Certifikaters levetid er på vej ned på <strong>47 dage</strong>, hvilket gør fornyelse til otte
+chancer om året for, at et hook fejler i stilhed. Caddy klarer det bare selv. Ingen certbot,
+ingen timer, intet at glemme.</p>
+<div class="codeblock"><div class="filename">Caddyfile</div><pre class="hl-code"><code>{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy 10.0.0.2:3000 10.0.0.3:3000 {
+		lb_policy       least_conn
+		health_uri      /login
+		health_interval 5s
+	}
+}
+</code></pre></div>
+</section>
+
+<section id="Efficiency">
+<h2>Effektivitet</h2>
+<p><figure class="diagram" role="img" aria-label="Hukommelsesforbrug: 2,19 GB ledig ud af 3,86 GB med det hele kørende"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400" role="img" aria-label="Memory use on a 3.86 GB box with everything running: about 1.67 GB in use across ARC, Postgres, two SvelteKit processes, Caddy and two API processes, leaving 2.19 GB free.">
+  <defs>
+    <!-- Standalone only, see architecture.svg for why svg:root, not
+         :root, and why it must stay scoped this way. -->
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="f-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/><stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="400" rx="24" fill="url(#f-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="399" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="48" font-size="16" fill="var(--diagram-text, #e5e7eb)">memory, everything serving</text>
+    <text x="1152" y="48" text-anchor="end" font-size="16" fill="light-dark(#15803d, #4ade80)" font-weight="700">2.19 GB free of 3.86</text>
+
+    <!-- bars: 1 MB = 0.26 px, max width 1000 -->
+    <g font-size="13">
+      <text x="200" y="104" text-anchor="end" fill="light-dark(#92400e, #fbbf24)">ZFS ARC</text>
+      <rect x="216" y="90" width="360" height="22" rx="5" fill="light-dark(#b45309, #f59e0b)"/>
+      <text x="592" y="106" font-size="12" fill="var(--diagram-muted, #6b7280)">526 MB · capped at 512, holds there</text>
+
+      <text x="200" y="144" text-anchor="end" fill="light-dark(#075985, #38bdf8)">PostgreSQL</text>
+      <rect x="216" y="130" width="327" height="22" rx="5" fill="light-dark(#0369a1, #0ea5e9)"/>
+      <text x="559" y="146" font-size="12" fill="var(--diagram-muted, #6b7280)">477 MB · shared buffers counted per backend</text>
+
+      <text x="200" y="184" text-anchor="end" fill="light-dark(#6d28d9, #a78bfa)">SvelteKit ×2</text>
+      <rect x="216" y="170" width="163" height="22" rx="5" fill="#8b5cf6"/>
+      <text x="395" y="186" font-size="12" fill="var(--diagram-muted, #6b7280)">238 MB · 119 each, one per jail</text>
+
+      <text x="200" y="224" text-anchor="end" fill="light-dark(#be185d, #f472b6)">Caddy</text>
+      <rect x="216" y="210" width="42" height="22" rx="5" fill="light-dark(#be185d, #ec4899)"/>
+      <text x="274" y="226" font-size="12" fill="var(--diagram-muted, #6b7280)">61 MB</text>
+
+      <text x="200" y="264" text-anchor="end" fill="light-dark(#15803d, #4ade80)">AthletOS API ×2</text>
+      <rect x="216" y="250" width="35" height="22" rx="5" fill="light-dark(#15803d, #22c55e)"/>
+      <text x="267" y="266" font-size="12" fill="var(--diagram-muted, #6b7280)">51 MB · the whole application</text>
+    </g>
+
+    <line x1="216" y1="296" x2="1120" y2="296" stroke="var(--diagram-rule, #1f2937)"/>
+
+    <text x="200" y="330" text-anchor="end" font-size="13" fill="var(--diagram-muted, #9ca3af)">free</text>
+    <rect x="216" y="316" width="569" height="22" rx="5" fill="var(--diagram-panel, #1f2937)" stroke="var(--diagram-rule, #374151)"/>
+    <text x="801" y="332" font-size="12" fill="var(--diagram-muted, #6b7280)">2189 MB</text>
+
+    <text x="48" y="374" font-size="13" fill="var(--diagram-muted, #9ca3af)">The Rust API is the smallest thing on the box. It grew 0.3 MB across 200 requests that each build a full session.</text>
+  </g>
+</svg>
+</figure></p>
+<p>Effektiviteten taler for sig selv. Rigeligt med plads — formentlig mere, end jeg nogensinde
+får brug for til den her app.</p>
+<p>API'et svarer på under et millisekund. Alt andet i tallene nedenfor er
+afstanden til Helsinki og et friskt handshake pr. måling.</p>
+<div class="codeblock"><div class="filename">latency, from my desk in Denmark</div><pre class="hl-code"><code>api, loopback inside the box      p50  0.0 ms   p95  0.6 ms
+https://api.athletos.app/health   p50  136 ms   p95  143 ms
+https://athletos.app/login        p50  136 ms   p95  247 ms
+</code></pre></div>
+</section>
+
+<section id="Backups">
+<h2>Backups</h2>
+<p>Backup-løsningen er forfriskende stabil og effektiv, med
+<a href="https://github.com/jimsalterjrs/sanoid">sanoid</a> til at tage snapshots på en timer og
+syncoid til at udnytte ZFS til at flytte dem offsite. Jails sikrer et reproducerbart
+og pålideligt kørselsmiljø. Der er ikke meget mere at ønske sig i denne
+skala.</p>
+<div class="codeblock"><div class="filename">zfs list -t snapshot</div><pre class="hl-code"><code>zroot/data/pgdata@autosnap_2026-07-26_17:24:00_hourly
+zroot/data/pgdata@autosnap_2026-07-26_17:24:00_daily
+zroot/data/pgdata@autosnap_2026-07-26_17:24:00_monthly
+</code></pre></div>
+</section>
+
+<section id="Was-it-worth-it">
+<h2>Var det det værd</h2>
+<p>Absolut. Stabilt, pålideligt og forudsigeligt. Jeg kan stole på, at det bliver ved med at køre.</p>
+<div class="warning">
+<h2 id="What-broke-on-first-contact">Hvad der gik i stykker ved første kontakt</h2>
+<p>Fem ting gik i stykker på en rigtig maskine. Fire var helt almindelige. Den femte er værd
+at huske: <code>${name}_user</code> er en reserveret <code>rc.subr</code>-variabel, og <code>rc.subr</code>
+pakker din kommando ind i <code>su -m</code>, før den køres. Mit rc-script navngav en variabel
+<code>athletos_api_user</code> i den tro, at den var min egen, så <code>daemon(8)</code> kørte allerede som
+den bruger, da den forsøgte at droppe privilegier til den bruger. To privilege drops
+der modarbejdede hinanden, og <code>-r</code> prøvede igen i det uendelige. Fejlen den udskriver er “failed to set
+user environment”, som lyder som <code>login.conf</code>, men ikke er det.</p>
+</div>
+<div class="note">
+<h2 id="Building-on-the-target">Byg på målsystemet</h2>
+<p>CI bygger inde i en FreeBSD-VM og kører testsuiten der, før den producerer en
+binær fil. Rust er en Tier 2-platform på FreeBSD — projektet bygger den, men
+tester den ikke — så ved at bygge og teste på den release, man faktisk deployer til,
+gør man det arbejde, ingen upstream gør for én.</p>
+</div>
+<div class="warning">
+<h2 id="ARC-eats-your-RAM">ARC æder din RAM</h2>
+<p>ARC tager halvdelen af din RAM, medmindre den får andet at vide. På en 4 GB-maskine er det 2 GB, den
+ikke har brug for, og det dukker senere op som noget, der ligner et databaseproblem. Sæt
+<code>vfs.zfs.arc_max=&quot;512M&quot;</code> i <code>loader.conf</code> fra dag ét.</p>
+</div>
+<p class="colophon">Hvert eneste tal ovenfor er målt på selve maskinen, ikke estimeret.</p>
+</section>

@@ -1,0 +1,17 @@
+<p><a href="#attention">Self-attention</a> sammenligner tokens med hinanden, men intet i den
+sammenligning afhænger af hvor de står. Uden ekstra information ville “hund
+bider mand” og “mand bider hund” give modellen de samme tokens i forskellig
+rækkefølge, og den ville ikke have nogen måde at skelne dem fra hinanden på.</p>
+<p>Tidlige transformere løste det ved at <strong>lægge</strong> en positionsvektor til hvert
+tokens embedding: faste sinusmønstre i den oprindelige Transformer, og en
+tillært tabel af positioner i BERT og GPT-2.</p>
+<p>De fleste nyere store modeller bruger i stedet <strong>rotary position embeddings</strong>
+(RoPE). Der lægges intet til embeddingen. Inde i hvert attention-lag roteres
+query- og key-vektorer med en vinkel der afhænger af deres position, så
+scoren mellem to tokens ender med at afhænge af hvor langt de står fra
+hinanden. Andre metoder, såsom ALiBi, lægger i stedet en afstandsbaseret
+straf direkte på attention-scorerne.</p>
+<p>Valget har betydning for <a href="#context-window">kontekstlængden</a>: en model håndterer
+primært positioner godt inden for det interval den blev trænet på, og mange
+teknikker til lang kontekst virker ved at justere hvordan RoPE opfører sig
+ud over det interval.</p>

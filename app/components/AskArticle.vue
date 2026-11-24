@@ -39,6 +39,7 @@ const props = withDefaults(
 
 const i18n = typeof useI18n === 'function' ? useI18n() : null
 const localePath = typeof useLocalePath === 'function' ? useLocalePath() : (p: string) => p
+const currentLocale = computed<'en' | 'da'>(() => (i18n?.locale.value === 'da' ? 'da' : 'en'))
 
 function tr(key: string, fallback: string, params?: Record<string, string | number>): string {
   if (i18n) {
@@ -88,11 +89,12 @@ const modelName = computed(() => scopedPrepared.value?.model.name ?? 'potion-bas
 
 async function ensureLoaded(): Promise<{ index: PreparedSearchIndex | null; model: StaticModel | null }> {
   if (loadPromise) return loadPromise
+  const loc = currentLocale.value
   loadPromise = (async () => {
     let raw
     try {
       statusText.value = 'Loading the search index…'
-      raw = await loadRawIndex()
+      raw = await loadRawIndex(loc)
       scopedPrepared.value = prepareIndex(scopedIndex(raw, props.scope))
     } catch (error) {
       console.error('Failed to load search index:', error)
@@ -104,7 +106,7 @@ async function ensureLoaded(): Promise<{ index: PreparedSearchIndex | null; mode
     try {
       const mb = (raw.model.bytes / 1e6).toFixed(1)
       statusText.value = `Loading the embedding model (${mb} MB, downloaded once)…`
-      const model = await loadEmbeddingModel(raw)
+      const model = await loadEmbeddingModel(raw, loc)
       loadedModel.value = model
       statusText.value = 'Ready. Searching happens on this device.'
       return { index: scopedPrepared.value, model }
@@ -118,7 +120,7 @@ async function ensureLoaded(): Promise<{ index: PreparedSearchIndex | null; mode
 }
 
 watch(
-  () => props.scope,
+  [() => props.scope, currentLocale],
   () => {
     loadPromise = null
     scopedPrepared.value = null
@@ -343,14 +345,14 @@ const pipelineWordsText = computed(() => {
     <section v-if="mode === 'page'" class="ask-how" aria-labelledby="ask-how-title">
       <h2 id="ask-how-title">{{ tr('ask.howTitle', 'How this works') }}</h2>
       <p>
-        This page is a small retrieval system of the kind described in
-        <NuxtLink :to="localizedUrl(`${articleUrl}#rag`)">Retrieval-augmented generation</NuxtLink>.
-        Every step happens in your browser; your question is never sent anywhere.
+        {{ tr('ask.howIntroPrefix', 'This page is a small retrieval system of the kind described in') }}
+        <NuxtLink :to="localizedUrl(`${articleUrl}#rag`)">{{ tr('ai.codaRagLink', 'Retrieval-augmented generation') }}</NuxtLink>{{ tr('ask.howIntroSuffix', '. Every step happens in your browser; your question is never sent anywhere.') }}
       </p>
       <ol class="pipeline">
         <li>
-          <strong>Tokenize.</strong> Your question is split into the WordPiece tokens of the model's
-          vocabulary (<NuxtLink :to="localizedUrl(`${articleUrl}#tokenization`)">tokenization</NuxtLink>).
+          <strong>{{ tr('ask.step1Title', 'Tokenize.') }}</strong>
+          {{ tr('ask.step1Body', "Your question is split into the WordPiece tokens of the model's vocabulary") }}
+          (<NuxtLink :to="localizedUrl(`${articleUrl}#tokenization`)">{{ tr('ask.step1Link', 'tokenization') }}</NuxtLink>).
           <output v-if="hasSearched" class="pipeline-output">
             <template v-if="lastEncoded">
               {{ lastEncoded.tokens.length }} tokens{{
@@ -370,9 +372,9 @@ const pipelineWordsText = computed(() => {
           </output>
         </li>
         <li>
-          <strong>Embed.</strong> Each token selects one row of a static embedding table, and the rows
-          are averaged into a single vector of {{ modelDim }} numbers
-          (<NuxtLink :to="localizedUrl(`${articleUrl}#embeddings`)">embeddings</NuxtLink>).
+          <strong>{{ tr('ask.step2Title', 'Embed.') }}</strong>
+          {{ tr('ask.step2Body', 'Each token selects one row of a static embedding table, and the rows are averaged into a single vector of {dim} numbers', { dim: modelDim }) }}
+          (<NuxtLink :to="localizedUrl(`${articleUrl}#embeddings`)">{{ tr('ask.step2Link', 'embeddings') }}</NuxtLink>).
           <output v-if="hasSearched" class="pipeline-output">
             <template v-if="vectorPreview">
               <span class="pipeline-bars" aria-hidden="true">
@@ -391,25 +393,28 @@ const pipelineWordsText = computed(() => {
           </output>
         </li>
         <li>
-          <strong>Compare.</strong> That vector is compared with vectors computed for every passage of
-          the article ahead of time, by cosine similarity.
+          <strong>{{ tr('ask.step3Title', 'Compare.') }}</strong>
+          {{ tr('ask.step3Body', 'That vector is compared with vectors computed for every passage of the article ahead of time, by cosine similarity.') }}
           <output v-if="pipelineCompareText" class="pipeline-output">{{ pipelineCompareText }}</output>
         </li>
         <li>
-          <strong>Match words.</strong> Exact words and phrases from your question are matched against
-          each section's title, concepts and text, so a precise term like <q>KV cache</q> is never
-          outranked by something only vaguely similar.
+          <strong>{{ tr('ask.step4Title', 'Match words.') }}</strong>
+          {{ tr('ask.step4Body', 'Exact words and phrases from your question are matched against each section\'s title, concepts and text, so a precise term like “KV cache” is never outranked by something only vaguely similar.') }}
           <output v-if="pipelineWordsText" class="pipeline-output">{{ pipelineWordsText }}</output>
         </li>
         <li>
-          <strong>Rank.</strong> The two signals are combined, and the best sections are listed above,
-          each linking to its place in the article.
+          <strong>{{ tr('ask.step5Title', 'Rank.') }}</strong>
+          {{ tr('ask.step5Body', 'The two signals are combined, and the best sections are listed above, each linking to its place in the article.') }}
         </li>
       </ol>
       <p class="ask-credit">
-        Model: {{ modelName }} by Minish Lab (MIT licence), a static embedding table of {{ modelDim }}
-        dimensions, quantised to 8 bits. It is served from this site and downloaded once, when you first
-        use the form.
+        {{
+          tr(
+            'ask.modelCredit',
+            'Model: {name} by Minish Lab (MIT licence), a static embedding table of {dim} dimensions, quantised to 8 bits. It is served from this site and downloaded once, when you first use the form.',
+            { name: modelName, dim: modelDim },
+          )
+        }}
       </p>
     </section>
   </div>

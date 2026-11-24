@@ -1,0 +1,29 @@
+<p>En model svarer ved at generere de tokens, der sandsynligvis følger efter
+konteksten, ét ad gangen. <a href="#training">Træning</a> gjorde tekst, der ligner dens
+træningsdata, sandsynlig, og sande udsagn er almindelige i de data, så den
+sandsynlige fortsættelse er ofte den sande. Men intet i genereringen kontrollerer
+det. Når modellen ikke har optaget kendsgerningen, er den sandsynlige fortsættelse
+stadig noget, der <em>ligner</em> et svar: et plausibelt navn, en
+rimeligt lydende dato, en kildehenvisning i det rigtige format til en artikel, der ikke
+findes.</p>
+<p>Der er intet opslag, der kan slå fejl. Det, en model ved, er spredt ud over dens vægte,
+ikke gemt som poster i en database, så der er ingen række, der kommer tom tilbage, og intet “ikke
+fundet” at melde. At sige “det ved jeg ikke” er i sig selv bare endnu en fortsættelse,
+og den vælges kun, når træningen har gjort den til den sandsynlige i den slags
+kontekst.</p>
+<p>Det er heller ikke løgn. Modeller bærer et vist internt signal om, hvor usikre de
+er, og træning kan lære dem at handle på det, men signalet er ufuldkomment,
+og et flydende forkert svar frembringes af præcis den samme proces som et flydende rigtigt
+svar. Fejl er hyppigst for ting, der optrådte sjældent under træningen:
+obskure personer, præcise tal, citater, nylige begivenheder.</p>
+<p>Løsningerne virker alle ved at lægge en kontrol uden for modellens hukommelse:</p>
+<ul>
+<li><strong>Grounding</strong>: <a href="#rag">find</a> den relevante tekst frem og svar ud fra den,
+hvilket hjælper præcis så meget, som søgningen rammer det rigtige tekststykke;</li>
+<li><strong>Værktøjer</strong>: <a href="#tool-use">slå det op, beregn det eller kør det</a> frem for at
+huske det;</li>
+<li><strong>Verifikation</strong>: <a href="#search-and-verification">tjek</a> svaret — med tests,
+med kildehenvisninger der kan åbnes, eller ved at trække flere svar og
+mistro svar, der er uenige;</li>
+<li><strong>Træning</strong>, der belønner at afstå fra at svare frem for at gætte.</li>
+</ul>

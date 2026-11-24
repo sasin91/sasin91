@@ -1,0 +1,20 @@
+<p>Begge mekanismer sammenligner vektorer og foretrækker de mest ens, hvilket gør
+dem lette at forveksle. De løser forskellige opgaver.</p>
+<p><strong>Attention</strong> kører inde i modellen, i hvert lag, for hvert token. Dens
+queries og keys er modellens egne interne tilstande, beregnet med vægte,
+der er lært under træning. Dens rækkevidde er præcis det aktuelle kontekstvindue:
+hverken mere eller mindre.</p>
+<p><strong>Retrieval</strong> kører som regel uden for modellen, før eller mellem
+genereringstrin. Det er et separat system: et søgeindeks, en embedding-model og et
+dokumentlager. Dets rækkevidde er hele den samling, det indekserer, som kan
+være langt større end noget kontekstvindue. Outputtet er tekst, der placeres
+i konteksten, hvor attention derefter kan bruge den.</p>
+<p>Derfor er <a href="#sparse-attention">sparse attention</a> ikke retrieval: den indsnævrer, hvad et
+token må se på blandt tokens, der allerede er til stede. Og et større kontekstvindue
+erstatter ikke retrieval: det hæver loftet for, hvor meget der kan placeres
+i konteksten, men noget skal stadig vælge, hvad der kommer ind — og ved en
+stor samling kan det ikke være det hele.</p>
+<p>Enkelte forskningsarkitekturer bygger retrieval ind i selve modellen, så den
+kan slå naboer op i et stort eksternt lager under sit forward pass.
+Selv der er opslaget i lageret et separat trin fra almindelig
+attention over konteksten.</p>

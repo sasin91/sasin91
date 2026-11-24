@@ -1,0 +1,21 @@
+<p>Hvis ét udtræk kan være forkert, så generér flere. Den enkle idé har mange
+former:</p>
+<ul>
+<li><strong>Best-of-n</strong>: udtræk <math><mi>n</mi></math> komplette svar og vælg ét med en scoringsmodel
+eller et tjek.</li>
+<li><strong>Selvkonsistens</strong>: udtræk flere ræsonnementsveje og vælg det svar, de fleste
+af dem er enige om.</li>
+<li><strong>Søgning</strong>: behandl delløsninger som knuder i et træ, byg videre på de lovende
+og opgiv resten.</li>
+<li><strong>Verifikation</strong>: kør enhedstestene, tjek beviset, udfør forespørgslen, og
+behold det, der består.</li>
+</ul>
+<p>Hver kandidat er en separat generering med sin egen kontekst og sin egen
+KV-cache, selvom et fælles prompt-præfiks kan caches én gang.
+Alternativerne findes, fordi inferenssystemet bad om dem, ikke fordi
+modellen gemte sine <a href="#discarded-candidates">kasserede kandidater</a>. At bruge
+mere regnekraft på denne måde, ved svartid frem for under træning, kaldes
+ofte <strong>test-time compute</strong>.</p>
+<p>Intet af dette ændrer modellen. Kandidater, der består en verifikation, kan senere
+indsamles og bruges til at træne en bedre model, men det sker bagefter i en
+separat proces: se <a href="#synthetic-data">syntetiske data</a>.</p>

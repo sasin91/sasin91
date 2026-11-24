@@ -1,0 +1,12 @@
+<p>Efter det sidste lag ganges vektoren på den sidste position med én matrice
+mere, <strong>unembedding</strong>-matricen eller sprogmodel-headet, som har én kolonne
+pr. indgang i ordforrådet. Resultatet er en liste på titusindvis af tal, ét
+pr. muligt næste token. Det er logits.</p>
+<p>Logits er rå scorer. De kan være negative, de summer ikke til noget
+bestemt, og kun forskellene mellem dem betyder noget: lægger man den samme
+konstant til dem alle, ændrer det intet ved hvilket token der foretrækkes.</p>
+<p>Under træningen producerer modellen logits på alle positioner på én gang,
+og hver enkelt sammenlignes med det token der rent faktisk kom bagefter.
+Under generering er det kun logits fra den sidste position der skal bruges,
+fordi der kun skal vælges ét næste token. At omsætte disse scorer til
+sandsynligheder er opgaven for <a href="#softmax">softmax</a>.</p>

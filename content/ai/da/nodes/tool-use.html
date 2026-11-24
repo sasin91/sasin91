@@ -1,0 +1,15 @@
+<p>Når en applikation beskriver nogle værktøjer i prompten — såsom navn,
+formål og hvilke argumenter hvert værktøj tager — kan en model trænet til det svare
+med et struktureret kald i stedet for prosa: reelt “kald <code>search</code> med
+disse argumenter”.</p>
+<p>Modellen afvikler ingenting. Applikationen omkring den parser forespørgslen,
+afgør om den er tilladt, kører den og tilføjer resultatet til
+konteksten som flere tokens. Derefter fortsætter genereringen, nu med resultatet for
+øje. Rettigheder, sandboxing og logning ligger alt sammen i den applikation,
+aldrig i modellen.</p>
+<p>En <strong>agent</strong> er denne løkke gentaget: generér, kald et værktøj, læs resultatet,
+generér igen, indtil opgaven er løst. <a href="#rag">Retrieval</a> er ofte bare ét
+af værktøjerne, side om side med at køre kode, læse filer eller kalde et API.</p>
+<p>Hvordan værktøjer beskrives for modellen og kobles til applikationen varierer
+mellem udbydere. <a href="#mcp">MCP</a> er et forsøg på at standardisere
+forbindelsessiden.</p>

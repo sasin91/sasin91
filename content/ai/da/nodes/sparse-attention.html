@@ -1,0 +1,15 @@
+<p>Sparse attention ændrer reglen fra <a href="#dense-attention">dense attention</a> om at
+hvert token må kigge på alle tidligere tokens. I <strong>sliding-window</strong>-attention
+kigger hvert token kun på de seneste par tusind positioner. Andre designs
+kombinerer et lokalt vindue med nogle få globale tokens, bruger faste
+spring- eller blokmønstre, eller udvælger positioner dynamisk.</p>
+<p>Et token uden for vinduet er ikke tabt. Hvert lag sender information op til
+ét vindue frem, så ved at stable lag kan information rejse langt videre
+indirekte. Flere åbne modeller veksler mellem lag med lokalt vindue og lag
+med fuld attention for at få det meste af besparelsen og samtidig bevare en
+vis direkte langtrækkende rækkevidde.</p>
+<p>Sparse attention foregår helt internt i transformeren. Det afgør hvilke
+positioner <strong>der allerede er i konteksten</strong> hvert token må kigge på, og det er
+fastlagt af arkitekturen. Det søger ikke i en dokumentsamling, og det henter
+intet nyt ind i konteksten. Det er det
+<a href="#retrieval-vs-attention">retrieval</a> gør, uden for modellen.</p>

@@ -1,0 +1,252 @@
+<p>WoW-emulering har altid interesseret mig. Her er, hvad der faktisk betyder noget,
+hvis du vil hoste en, begyndende med CPU’en, for det er her, de sædvanlige råd
+rammer ved siden af.</p>
+<p>Disse projekter findes for at studere spilserverarkitektur og design af
+netværksprotokoller, og det er den eneste anvendelse, jeg taler om her. Hvis du
+kører noget selv, er lovligheden dit eget ansvar.</p>
+<section id="Start-with-the-CPU">
+<h2>Start med CPU’en</h2>
+<p>World-daemonens tick kører på en enkelt thread. Der er parallelisme mellem maps
+og instanser, men aldrig inde i én, og <code>MapManager</code> sætter en barriere på hvert
+tick, så et tick koster det samme som det langsomste individuelle map, uanset hvor
+mange threads der står ledige bagved. TrinityCore leveres med <code>MapUpdate.Threads = 1</code>;
+CMaNGOS med 3.</p>
+<p>Derfor betyder antallet af kerner næsten ingenting, mens clockfrekvensen betyder
+rigtig meget. Det er også derfor, en tætpakket hovedstad låser én kerne, mens
+resten af maskinen står stille.</p>
+<p>Det her stammer fra kildekoden og de medfølgende konfigurationsfiler, ikke fra
+profilering af en befolket server. Betragt det som arkitekturen snarere end en
+måling.</p>
+</section>
+
+<section id="What-to-buy">
+<h2>Hvad skal man købe</h2>
+<p>Single-thread-scoren er det tal, der tæller. PassMark, aflæst 5. august 2026, og
+tallene rykker sig løbende.</p>
+<table>
+<thead>
+<tr>
+<th>Kategori</th>
+<th>CPU</th>
+<th>Single-thread</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Budget</td>
+<td>Ryzen 5 5600</td>
+<td>3.254</td>
+</tr>
+<tr>
+<td>Budget</td>
+<td>Core i5-12400</td>
+<td>3.463</td>
+</tr>
+<tr>
+<td>Mellemklasse</td>
+<td>Core i5-13600K</td>
+<td>4.112</td>
+</tr>
+<tr>
+<td>Mellemklasse</td>
+<td>Ryzen 5 7600</td>
+<td>4.130</td>
+</tr>
+<tr>
+<td>Mellemklasse</td>
+<td>Ryzen 5 9600X</td>
+<td>4.571</td>
+</tr>
+<tr>
+<td>High-end</td>
+<td>Core i9-14900K</td>
+<td>4.690</td>
+</tr>
+<tr>
+<td>High-end</td>
+<td>Ryzen 9 9950X</td>
+<td>4.727</td>
+</tr>
+<tr>
+<td>High-end</td>
+<td>Core Ultra 9 285K</td>
+<td>5.087</td>
+</tr>
+<tr>
+<td>Server</td>
+<td>EPYC 9965, 192 kerner</td>
+<td>3.176</td>
+</tr>
+</tbody>
+</table>
+<p>Her slår en sekskernet desktop-CPU en server-CPU med 192 kerner. EPYC er bygget
+til throughput på tværs af mange tenants, og det er ikke det problem, du har.</p>
+<p>Gaming-chippen er heller ikke det rette valg. X3D-modeller bytter clockfrekvens
+for cache, så Ryzen 7 7800X3D scorer 3.759 mod den almindelige 7600’s 4.130, og
+5800X3D scorer 3.233 mod 5600’s 3.254. Om map-update-loopet henter det ind igen
+via den ekstra L3-cache, har jeg ikke målt, og jeg har ikke fundet nogen, der
+har. Ud fra de tal, man faktisk kan slå op, ligger den billigere non-X3D-model
+foran.</p>
+<p>En mellemklasse-CPU fra den nuværende generation er det bedste kompromis. En
+Ryzen 5 9600X på 4.571 ligger inden for ca. 10% af toppen i tabellen.</p>
+<p>Hvis du hellere vil leje, passer Hetzners dedikerede AX-serie godt. AX42 er en
+Ryzen 7 PRO 8700GE (3.864) med 64 GB DDR5 ECC, og AX102 er en Ryzen 9 7950X3D
+(4.144) med 128 GB. AX162 er en 48-kernet EPYC 9454P, hvilket giver mere maskine
+og ringere tick.</p>
+</section>
+
+<section id="The-rest-of-the-list">
+<h2>Resten af listen</h2>
+<ul>
+<li>16 GB RAM som minimum. AzerothCores dokumentation om hukommelsesforbrug siger,
+at maps caches, efterhånden som spillere udforsker dem, og aldrig frigives før en
+genstart, hvilket ender over 11 GB, og anbefaler at starte på 16 GB.</li>
+<li>Lokal NVMe frem for et netværksdrev. Characters-databasen skriver ved hvert
+gemmeinterval og straffer ekstern lagring.</li>
+<li>Lav latency frem for båndbredde. Små pakker, sendt ofte, så afstand og jitter
+afgør, hvordan spillet føles.</li>
+<li>Ikke en billig delt VPS. Jeg kørte servere på den slags for år tilbage, og
+symptomet stemte præcis overens med koden ovenfor: fint det meste af tiden, og så
+pludselig ikke, med ledige kerner stående, som intet kunne udnytte.</li>
+</ul>
+</section>
+
+<section id="The-routing-gotcha">
+<h2>Fælden ved routing</h2>
+<p>Auth-daemonen og world-daemonen hænger sammen via en databasetabel frem for et
+API. TrinityCores auth-database har en <code>realmlist</code>-række pr. realm med
+<code>address</code> og <code>port</code>
+(<a href="https://github.com/TrinityCore/tc-wiki/blob/main/database/335/auth/realmlist.md">realmlist</a>),
+dokumenteret som world-serverens offentlige adresse. Klienten logger ind, får den
+adresse og åbner en rå TCP-forbindelse direkte til world-daemonen.</p>
+<p>Der er altså ingen hoveddør, der står for routingen. Adressen kan godt være et
+hostname i stedet for en IP, men klienten slår det op og åbner en rå socket, og
+der er intet HTTP-lag, som en ingress kan route på. Proxy det på lag 4 – eller
+slet ikke.</p>
+</section>
+
+<section id="Installing-it">
+<h2>Installation</h2>
+<p>CMaNGOS’ <a href="https://github.com/cmangos/issues/wiki/Installation-Instructions">installationsvejledning</a>
+dækker Debian og Ubuntu fra ende til anden: pakkelisten, CMake-bygget, de tre
+databaser og scriptet, der fylder dem op, udtræk af maps og DBC-filer fra en
+spilklient samt realm-konfigurationen, der binder det hele sammen. Der er ingen
+grund til, at jeg skriver den om.</p>
+<p>Sæt det meste af tiden af til data frem for selve bygget. De servere, jeg har
+kørt, knækkede langt oftere på data end på kode: en world-database, der kun var
+halvt migreret af den, der udviklede op imod den, DBC-filer, der gik i stykker
+under udtrækning, eller et manglende MPQ-arkiv, der fik maps til at blive
+forkerte.</p>
+</section>
+
+<section id="If-you-already-run-a-cluster">
+<h2>Hvis du allerede kører et cluster</h2>
+<p><figure class="diagram" role="img" aria-label="Opdelingen af systemet: bag én load balancer ligger et cluster med replikerede auth-daemons og web-frontenden over en delt database med konti, karakterer og guilds; uden for clusteret kører hver world-daemon på sin egen maskine med sin egen overvejende læste world-database og forbinder tilbage til den delte database for karakterer og guilds."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" width="1200" height="660" role="img" aria-label="The same system split. Behind one load balancer: a cluster holding replicated auth daemons and the web front end, both talking to a shared database of accounts, characters and guilds. Outside the cluster, each world daemon sits on its own machine with its own read-mostly world database, and reaches back into the cluster's shared database for character and guild data.">
+  <defs>
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="g2-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/>
+      <stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+    <marker id="g2-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#0f766e, #5eead4)"/>
+    </marker>
+    <marker id="g2-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#b45309, #fbbf24)"/>
+    </marker>
+    <marker id="g2-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="light-dark(#5b3fd8, #a78bfa)"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="660" rx="24" fill="url(#g2-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="659" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="44" font-size="16" fill="var(--diagram-muted, #9a9aa6)">split by what can move · everything stateless in the cluster, the world on its own box</text>
+
+    <rect x="48" y="76" width="150" height="56" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="123" y="100" text-anchor="middle" font-size="14" fill="var(--diagram-text, #e8e8e4)">players</text>
+    <text x="123" y="118" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">and the website</text>
+
+    <rect x="250" y="76" width="180" height="56" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5"/>
+    <text x="340" y="100" text-anchor="middle" font-size="14" fill="light-dark(#0f766e, #5eead4)" font-weight="700">load balancer</text>
+    <text x="340" y="118" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">one address</text>
+    <path d="M 202 104 H 244" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5" marker-end="url(#g2-a)"/>
+
+    <rect x="48" y="176" width="560" height="404" rx="16" fill="none" stroke="var(--diagram-rule, #2b2b36)" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="72" y="204" font-size="13" fill="var(--diagram-muted, #9a9aa6)">the cluster · everything that can be rescheduled</text>
+
+    <rect x="76" y="224" width="230" height="72" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5"/>
+    <text x="191" y="252" text-anchor="middle" font-size="14" fill="light-dark(#0f766e, #5eead4)" font-weight="700">authserver ×3</text>
+    <text x="191" y="272" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">stateless · replace at will</text>
+
+    <rect x="76" y="320" width="230" height="72" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="191" y="348" text-anchor="middle" font-size="14" fill="var(--diagram-text, #e8e8e4)">web · armory · shop</text>
+    <text x="191" y="368" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">ordinary HTTP</text>
+
+    <rect x="356" y="252" width="228" height="140" rx="10" fill="var(--diagram-panel, #12121b)" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5"/>
+    <text x="470" y="284" text-anchor="middle" font-size="14" fill="light-dark(#5b3fd8, #a78bfa)" font-weight="700">shared database</text>
+    <text x="470" y="310" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">accounts</text>
+    <text x="470" y="330" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">characters</text>
+    <text x="470" y="350" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">guilds · mail · auction</text>
+    <text x="470" y="374" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #6c6c68)">one truth for all realms</text>
+
+    <path d="M 310 260 H 350" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#g2-c)"/>
+    <path d="M 310 356 C 330 356 330 330 350 330" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#g2-c)"/>
+    <path d="M 300 132 C 300 160 200 190 191 218" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5" marker-end="url(#g2-a)"/>
+
+    <rect x="648" y="176" width="504" height="404" rx="16" fill="none" stroke="var(--diagram-rule, #2b2b36)" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <text x="672" y="204" font-size="13" fill="var(--diagram-muted, #9a9aa6)">outside the cluster · one box per realm, never rescheduled</text>
+
+    <rect x="672" y="224" width="200" height="88" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5"/>
+    <text x="772" y="254" text-anchor="middle" font-size="14" fill="light-dark(#b45309, #fbbf24)" font-weight="700">worldserver</text>
+    <text x="772" y="274" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">realm 1 · high clock</text>
+    <text x="772" y="294" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">map resident in RAM</text>
+
+    <rect x="912" y="224" width="216" height="88" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="1020" y="258" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">world DB</text>
+    <text x="1020" y="278" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">static content, local</text>
+    <text x="1020" y="296" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">read mostly</text>
+    <path d="M 876 268 H 906" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#g2-b)"/>
+
+    <rect x="672" y="360" width="200" height="88" rx="10" fill="var(--diagram-panel, #1b1b26)" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5"/>
+    <text x="772" y="390" text-anchor="middle" font-size="14" fill="light-dark(#b45309, #fbbf24)" font-weight="700">worldserver</text>
+    <text x="772" y="410" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">realm 2</text>
+    <text x="772" y="430" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">its own box</text>
+
+    <rect x="912" y="360" width="216" height="88" rx="10" fill="none" stroke="var(--diagram-rule, #4b5563)" stroke-width="1.5"/>
+    <text x="1020" y="394" text-anchor="middle" font-size="13" fill="var(--diagram-text, #e8e8e4)">world DB</text>
+    <text x="1020" y="414" text-anchor="middle" font-size="11" fill="var(--diagram-muted, #9a9aa6)">static content, local</text>
+    <path d="M 876 404 H 906" fill="none" stroke="light-dark(#b45309, #fbbf24)" stroke-width="1.5" marker-end="url(#g2-b)"/>
+
+    <path d="M 430 104 C 620 104 700 160 740 218" fill="none" stroke="light-dark(#0f766e, #5eead4)" stroke-width="1.5" marker-end="url(#g2-a)"/>
+    <text x="452" y="148" font-size="11" fill="light-dark(#0f766e, #5eead4)">players reach the realm directly</text>
+    <text x="452" y="164" font-size="11" fill="var(--diagram-muted, #6c6c68)">the realm list hands out its address</text>
+
+    <path d="M 666 300 C 620 300 600 316 590 322" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#g2-c)"/>
+    <path d="M 666 400 C 620 400 600 350 590 340" fill="none" stroke="light-dark(#5b3fd8, #a78bfa)" stroke-width="1.5" marker-end="url(#g2-c)"/>
+    <text x="360" y="436" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">every realm reads and writes the same</text>
+    <text x="360" y="452" font-size="11" fill="light-dark(#5b3fd8, #a78bfa)">characters and guilds</text>
+
+    <text x="48" y="616" font-size="12" fill="var(--diagram-muted, #6c6c68)">the split is not by tier · it is by what survives being moved. Everything on the left can be killed mid-request. Nothing on the right can.</text>
+  </g>
+</svg>
+</figure></p>
+<p>Alt undtagen world-daemonen er helt almindelig stateless infrastruktur:
+auth-daemonen, hjemmesiden og registrerings-API’et, item shops og armory-sider,
+Discord-bots, backups og import af indholdsdatabaser samt observability på det
+hele. Det er en normal lille platform, og det er den form,
+<a href="/blog/k3s-platform-kit/">et k3s-kit</a> genererer.</p>
+<p>World-daemonen bliver udenfor. Dens tilstand ligger i RAM og vokser indtil
+genstart, så en genstart af en pod genstarter serveren for alle, der er logget
+ind. En server, der er færdig med at loade, er ikke udskiftelig med den, den
+erstattede, så en rolling update har intet at rulle over til. Og forbindelsen er
+en langvarig rå TCP-session snarere end en request.</p>
+<p>Intet af det kræver en cloud. k3s er en enkelt binær fil og kører på hardware, du
+selv ejer, og et homelab passer usædvanligt godt til denne opdeling:
+world-maskinen vil have en hurtig desktop-kerne og en lokal NVMe, hvilket er det,
+et homelab har, og det cloud-instanser er dårligst til. Når de står samme sted,
+når clusteret world-daemonen over din egen switch, og lag 4-passthrough er blot
+en port forward i stedet for en lejet load balancer.</p>
+</section>

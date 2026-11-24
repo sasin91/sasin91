@@ -1,7 +1,7 @@
 import { cv } from '#shared/data/cv'
 
 export default defineEventHandler(async (event) => {
-  const [posts, article] = await Promise.all([getPostsMeta(), getAiArticleOutline()])
+  const [posts, article] = await Promise.all([getPostsMeta('en'), getAiArticleOutline('en')])
 
   const urls: { loc: string; lastmod?: string }[] = [
     { loc: `${cv.siteUrl}/` },
@@ -13,12 +13,15 @@ export default defineEventHandler(async (event) => {
     { loc: `${cv.siteUrl}/cv/` },
     { loc: `${cv.siteUrl}/da/cv/` },
     { loc: `${cv.siteUrl}${article.url}`, lastmod: article.updatedIso },
+    { loc: `${cv.siteUrl}/da${article.url}`, lastmod: article.updatedIso },
     { loc: `${cv.siteUrl}${article.url}timeline/`, lastmod: article.updatedIso },
+    { loc: `${cv.siteUrl}/da${article.url}timeline/`, lastmod: article.updatedIso },
     { loc: `${cv.siteUrl}${article.url}ask/`, lastmod: article.updatedIso },
-    ...posts.map((post) => ({
-      loc: `${cv.siteUrl}${post.url}`,
-      lastmod: post.dateIso,
-    })),
+    { loc: `${cv.siteUrl}/da${article.url}ask/`, lastmod: article.updatedIso },
+    ...posts.flatMap((post) => [
+      { loc: `${cv.siteUrl}${post.url}`, lastmod: post.dateIso },
+      { loc: `${cv.siteUrl}/da${post.url}`, lastmod: post.dateIso },
+    ]),
   ]
 
   const body = urls

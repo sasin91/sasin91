@@ -1,0 +1,20 @@
+<p>En kodebase kan sjældent være i et kontekstvindue, og det meste af den er irrelevant
+for en given opgave. Så en kodeagent gør, hvad en udvikler, der er ny i koden,
+ville gøre: den søger, læser og søger igen. De sædvanlige redskaber:</p>
+<ul>
+<li><strong>Tekstsøgning</strong>, grep og dets efterkommere: præcis og hurtig, ideel til en kendt
+identifikator eller fejlbesked.</li>
+<li><strong>Fillister</strong>: projektets opbygning ud fra mappestrukturen.</li>
+<li><strong>Symbolindekser</strong> og language servers: hvor noget er defineret, og
+alt, hvad der refererer til det.</li>
+<li><strong>Embedding-søgning</strong> over bidder af kode og dokumentation, til spørgsmål
+formuleret i begreber frem for navne.</li>
+<li><strong>Kode-vidensgrafer</strong>: forudberegnede relationer såsom kald, imports og
+ejerskab, forespurgt som et værktøj og ofte udstillet over <a href="#mcp">MCP</a>.</li>
+</ul>
+<p>Agenten vælger, hvilke der skal bruges, læser resultaterne ind i konteksten og lader
+attention stå for ræsonnementet derfra. Hvert værktøj er en forskellig form for
+<a href="#rag">retrieval</a>, og de supplerer hinanden: en præcis identifikator som
+et funktionsnavn findes pålideligt med tekstsøgning og udviskes let ved
+semantisk lighed. Denne artikels <a href="/da/blog/ai/ask/">Spørg</a>-visning bygger på samme
+idé og lader eksakte søgeordstræf rangere højere end vage semantiske.</p>

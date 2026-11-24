@@ -1,0 +1,20 @@
+<p>Disse indstillinger virker på den endelige fordeling, lige før et token trækkes:</p>
+<ul>
+<li><strong>Temperatur</strong> dividerer hver logit med et tal <math><mi>T</mi></math> før
+<a href="#softmax">softmax</a>. Under 1 bliver fordelingen skarpere, og de sandsynlige
+tokens dominerer; når <math><mi>T</mi></math> nærmer sig 0, nærmer den sig greedy decoding. Over
+1 flader den ud, og usandsynlige tokens vælges oftere.</li>
+<li><strong>Top-k</strong> beholder kun de <math><mi>k</mi></math> mest sandsynlige tokens og renormaliserer.</li>
+<li><strong>Top-p</strong>, eller nucleus sampling, beholder den mindste mængde tokens, hvis
+sandsynligheder summer op til mindst <math><mi>p</mi></math>, så afskæringen tilpasser sig, hvor spredt
+fordelingen er.</li>
+<li><strong>Min-p</strong> beholder tokens, hvis sandsynlighed er mindst en vis brøkdel af
+top-tokenets.</li>
+</ul>
+<p>Ingen af disse ændrer, hvad modellen har beregnet. De ændrer, hvilke af dens
+kandidater der kan komme i betragtning, og hvor ofte hver enkelt vælges. “Mere kreativt” output
+ved høj temperatur er den samme model, der oftere trækker fra halen af
+den samme fordeling.</p>
+<p>Selv ved temperatur 0 er outputtet i praksis ikke altid helt reproducerbart,
+på grund af hvordan floating-point-beregninger batches og paralleliseres på
+acceleratorer.</p>

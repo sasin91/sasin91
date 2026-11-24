@@ -34,8 +34,7 @@
   "blog": {
     "title": "Writing",
     "lede": "Notes on things I built and what broke on the way.",
-    "articleLabel": "Long read, with a timeline and Ask",
-    "englishOnlyNote": "This article is written in English."
+    "articleLabel": "Long read, with a timeline and Ask"
   },
   "ai": {
     "viewsLabel": "Views of this article",
@@ -115,7 +114,22 @@
     "numbers": "Numbers",
     "inlineCredit": "Retrieval over this article, run on your device: it finds sections, it does not write answers.",
     "howItWorks": "How it works",
-    "howTitle": "How this works"
+    "howTitle": "How this works",
+    "howIntroPrefix": "This page is a small retrieval system of the kind described in",
+    "howIntroSuffix": ". Every step happens in your browser; your question is never sent anywhere.",
+    "step1Title": "Tokenize.",
+    "step1Body": "Your question is split into the WordPiece tokens of the model's vocabulary",
+    "step1Link": "tokenization",
+    "step2Title": "Embed.",
+    "step2Body": "Each token selects one row of a static embedding table, and the rows are averaged into a single vector of {dim} numbers",
+    "step2Link": "embeddings",
+    "step3Title": "Compare.",
+    "step3Body": "That vector is compared with vectors computed for every passage of the article ahead of time, by cosine similarity.",
+    "step4Title": "Match words.",
+    "step4Body": "Exact words and phrases from your question are matched against each section's title, concepts and text, so a precise term like “KV cache” is never outranked by something only vaguely similar.",
+    "step5Title": "Rank.",
+    "step5Body": "The two signals are combined, and the best sections are listed above, each linking to its place in the article.",
+    "modelCredit": "Model: {name} by Minish Lab (MIT licence), a static embedding table of {dim} dimensions, quantised to 8 bits. It is served from this site and downloaded once, when you first use the form."
   },
   "error": {
     "notFoundTitle": "Page not found",

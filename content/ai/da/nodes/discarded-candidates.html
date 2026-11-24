@@ -1,0 +1,21 @@
+<p>Ved hvert trin producerer modellen en sandsynlighed for hvert token i sit
+ordforråd, og dekodningsløkken vælger ét. Hvad der sker med resten, er
+enkelt: ingenting. De sendes ikke tilbage i modellen, så der beregnes aldrig
+skjulte tilstande eller poster i <a href="#kv-cache">KV-cachen</a> for dem. Sekvensen
+fortsætter udelukkende ad det valgte spor.</p>
+<p>Et API kan returnere de øverste par sandsynligheder ved hvert trin, ofte kaldet
+logprobs, men det er en rapport om én fordeling, ikke et sæt af
+alternative fortsættelser.</p>
+<p>Så “modellen overvejede flere svar og afviste dem” er misvisende for
+almindelig generering. Ved hvert trin var der en fordeling; efter det er der
+ét token og én sekvens. En model kan kun afveje alternativer på en måde,
+der varer ved, hvis den skriver dem ud som tekst — hvilket er, hvad ræsonnerende modeller
+gør, når de prøver en fremgangsmåde, tjekker den og bakker tilbage, alt sammen i én genereret
+sekvens.</p>
+<p><strong>Spekulativ dekodning</strong> ligner en undtagelse, men er det ikke. En lille udkastmodel
+foreslår flere tokens, og den store model verificerer dem i ét
+gennemløb og beholder dem, den er enig i. Afviste udkast smides væk, og
+resultatet følger den store models fordeling. Det er et hastighedstrick, ikke en
+søgning over svar.</p>
+<p>Det er muligt at udforske alternativer bevidst, men det gøres af systemet
+omkring modellen: <a href="#search-and-verification">flere udtræk og verifikation</a>.</p>

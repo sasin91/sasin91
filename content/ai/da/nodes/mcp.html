@@ -1,0 +1,19 @@
+<p>Model Context Protocol, introduceret af Anthropic i slutningen af 2024 og nu
+implementeret af mange applikationer, er en standardiseret måde at koble AI-applikationer
+til eksterne muligheder på. En <strong>host</strong>-applikation, såsom en chat-app
+eller en editor, kører MCP-<strong>klienter</strong>, der taler med MCP-<strong>servere</strong>. En server kan
+tilbyde:</p>
+<ul>
+<li><strong>værktøjer</strong>: funktioner, modellen kan bede om at kalde;</li>
+<li><strong>ressourcer</strong>: data, applikationen kan læse og placere i konteksten;</li>
+<li><strong>prompts</strong>: genanvendelige skabeloner.</li>
+</ul>
+<p>Beskederne er JSON-RPC, sendt over standard input og output for lokale
+servere eller over HTTP for eksterne. Fordelen er genbrug: en integration,
+der skrives én gang som en MCP-server, virker i enhver host, der taler protokollen.</p>
+<p>MCP er rørføring. Det er ikke en model, ikke en hukommelse og ikke RAG. En server <strong>kan</strong>
+udstille et søgeværktøj, og så foregår et retrieval-trin gennem MCP; men
+protokollen transporterer kun forespørgslen og resultatet. Rangering, indeksering og
+relevans hører alt sammen til det, serveren gør, og modellen ser stadig kun
+det, der ender i dens kontekst. Alt, hvad der gælder for
+<a href="#tool-use">værktøjsbrug</a>, gælder stadig: det er hosten, der bestemmer, hvad der kører.</p>

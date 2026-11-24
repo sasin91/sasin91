@@ -1,4 +1,4 @@
-import { cv } from '#shared/data/cv'
+import { cv, normalizeLocale, type LocaleCode } from '#shared/data/cv'
 import type {
   AiArticleFull,
   AiArticleOutline,
@@ -7,27 +7,27 @@ import type {
   WritingEntry,
 } from '#shared/types/content'
 
-const ARTICLE_LABEL = 'Long read, with a timeline and Ask'
+const ARTICLE_LABEL: Record<LocaleCode, string> = {
+  en: 'Long read, with a timeline and Ask',
+  da: 'Lang artikel med tidslinje og Spørg',
+}
 
-let cachedPosts: PostMeta[] | null = null
-let cachedArticleOutline: AiArticleOutline | null = null
+const cachedPosts: Partial<Record<LocaleCode, PostMeta[]>> = {}
+const cachedArticleOutline: Partial<Record<LocaleCode, AiArticleOutline>> = {}
+const utf8Decoder = new TextDecoder()
 
 function contentStorage() {
   return useStorage('assets:content')
 }
 
-async function readJson<T>(key: string): Promise<T> {
+async function readJson<T>(key: string): Promise<T | null> {
   const value = await contentStorage().getItem(key)
-  if (value === null || value === undefined) {
-    throw new Error(`Missing content asset: ${key}`)
-  }
+  if (value === null || value === undefined) return null
   if (typeof value === 'string') {
     return JSON.parse(value) as T
   }
   return value as T
 }
-
-const utf8Decoder = new TextDecoder()
 
 async function readText(key: string): Promise<string | null> {
   const raw = await contentStorage().getItemRaw(key)
@@ -53,21 +53,38 @@ function resolveOgImage(post: PostMeta): { ogImage: string | null; ogImageAlt: s
   return { ogImage: null, ogImageAlt: null }
 }
 
-export async function getPostsMeta(): Promise<PostMeta[]> {
-  if (!cachedPosts) {
-    cachedPosts = await readJson<PostMeta[]>('blog:meta.json')
-  }
-  return cachedPosts
+function escapeAttr(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;')
 }
 
-export async function getPostByPath(rawPath: string): Promise<PostDetail | null> {
+export async function getPostsMeta(locale: LocaleCode = 'en'): Promise<PostMeta[]> {
+  const loc = normalizeLocale(locale)
+  if (!cachedPosts[loc]) {
+    const localized = loc === 'da' ? await readJson<PostMeta[]>('blog:meta.da.json') : null
+    const data = localized ?? (await readJson<PostMeta[]>('blog:meta.json'))
+    if (!data) throw new Error('Missing content asset: blog:meta.json')
+    cachedPosts[loc] = data
+  }
+  return cachedPosts[loc]!
+}
+
+export async function getPostByPath(
+  rawPath: string,
+  locale: LocaleCode = 'en',
+): Promise<PostDetail | null> {
+  const loc = normalizeLocale(locale)
   const normalized = rawPath.replace(/^\/+|\/+$/g, '')
-  const posts = await getPostsMeta()
+  const posts = await getPostsMeta(loc)
   const meta = posts.find((post) => post.path === normalized)
   if (!meta) return null
 
-  const body = (await readText(`blog:${meta.key}.html`)) ?? ''
-  const heroHtml = meta.heroIsSvg ? await readText(`blog:${meta.key}.hero.html`) : null
+  const localizedBody = loc === 'da' ? await readText(`blog:da:${meta.key}.html`) : null
+  const body = localizedBody ?? (await readText(`blog:${meta.key}.html`)) ?? ''
+
+  let heroHtml = meta.heroIsSvg ? await readText(`blog:${meta.key}.hero.html`) : null
+  if (heroHtml && loc === 'da' && meta.heroAlt) {
+    heroHtml = heroHtml.replace(/aria-label="[^"]*"/, `aria-label="${escapeAttr(meta.heroAlt)}"`)
+  }
   const { ogImage, ogImageAlt } = resolveOgImage(meta)
 
   return {
@@ -79,26 +96,33 @@ export async function getPostByPath(rawPath: string): Promise<PostDetail | null>
   }
 }
 
-export async function getAiArticleOutline(): Promise<AiArticleOutline> {
-  if (!cachedArticleOutline) {
-    cachedArticleOutline = await readJson<AiArticleOutline>('ai:article.json')
+export async function getAiArticleOutline(locale: LocaleCode = 'en'): Promise<AiArticleOutline> {
+  const loc = normalizeLocale(locale)
+  if (!cachedArticleOutline[loc]) {
+    const localized = loc === 'da' ? await readJson<AiArticleOutline>('ai:article.da.json') : null
+    const data = localized ?? (await readJson<AiArticleOutline>('ai:article.json'))
+    if (!data) throw new Error('Missing content asset: ai:article.json')
+    cachedArticleOutline[loc] = data
   }
-  return cachedArticleOutline
+  return cachedArticleOutline[loc]!
 }
 
-export async function getAiArticleFull(): Promise<AiArticleFull> {
-  const outline = await getAiArticleOutline()
+export async function getAiArticleFull(locale: LocaleCode = 'en'): Promise<AiArticleFull> {
+  const loc = normalizeLocale(locale)
+  const outline = await getAiArticleOutline(loc)
   const nodes = await Promise.all(
-    outline.nodes.map(async (node) => ({
-      ...node,
-      body: (await readText(`ai:nodes:${node.id}.html`)) ?? '',
-    })),
+    outline.nodes.map(async (node) => {
+      const localized = loc === 'da' ? await readText(`ai:da:nodes:${node.id}.html`) : null
+      const body = localized ?? (await readText(`ai:nodes:${node.id}.html`)) ?? ''
+      return { ...node, body }
+    }),
   )
   return { ...outline, nodes }
 }
 
-export async function getWritingListing(): Promise<WritingEntry[]> {
-  const [posts, article] = await Promise.all([getPostsMeta(), getAiArticleOutline()])
+export async function getWritingListing(locale: LocaleCode = 'en'): Promise<WritingEntry[]> {
+  const loc = normalizeLocale(locale)
+  const [posts, article] = await Promise.all([getPostsMeta(loc), getAiArticleOutline(loc)])
   const entries: WritingEntry[] = []
   let placed = false
 
@@ -110,7 +134,7 @@ export async function getWritingListing(): Promise<WritingEntry[]> {
         dateIso: article.publishedIso,
         dateLong: article.publishedLong,
         description: article.description,
-        label: ARTICLE_LABEL,
+        label: ARTICLE_LABEL[loc],
       })
       placed = true
     }
@@ -131,7 +155,7 @@ export async function getWritingListing(): Promise<WritingEntry[]> {
       dateIso: article.publishedIso,
       dateLong: article.publishedLong,
       description: article.description,
-      label: ARTICLE_LABEL,
+      label: ARTICLE_LABEL[loc],
     })
   }
 

@@ -1,0 +1,14 @@
+<p>I standarddesignet kan hver position kigge på samtlige positioner før sig.
+For en sekvens på <math><mi>n</mi></math> tokens er det cirka <math><msup><mi>n</mi><mn>2</mn></msup><mo>/</mo><mn>2</mn></math> query-key-scorer pr.
+head, pr. lag. Fordobler man længden af inputtet, firdobles
+attention-arbejdet cirka, mens resten af netværkets arbejde kun fordobles.</p>
+<p>Ved korte prompts betyder det næsten intet. Ved hundredtusindvis af tokens
+dominerer det helt, og det er en af grundene til at
+<a href="#context-window">kontekstvinduer</a> overhovedet har grænser.</p>
+<p>Meget ingeniørarbejde går ud på at gøre dense attention billigere <strong>uden at
+ændre resultatet</strong>. FlashAttention beregner for eksempel nøjagtig det samme
+output, men i blokke (tiles) der bliver i GPU’ens hurtige on-chip-hukommelse
+i stedet for at skrive hele scorematricen ud og læse den ind igen. Det er en
+implementeringsdetalje, ikke en approksimation.</p>
+<p>At ændre hvilke positioner der må kigge på hvilke, så der udføres mindre
+arbejde fra starten, er en anden idé: <a href="#sparse-attention">sparse attention</a>.</p>

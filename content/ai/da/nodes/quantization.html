@@ -1,0 +1,24 @@
+<p>En models vægte er tal — milliarder af dem — og hvert tal gemmes normalt
+i 16 bits. <strong>Kvantisering</strong> gemmer i stedet hvert tal i færre bits: 8, 4,
+undertiden færre. Den hukommelse, vægtene kræver, ligger tæt på</p>
+<p><math display="block"><mtext>parametre</mtext><mo>×</mo><mfrac><mtext>bits pr. vægt</mtext><mn>8</mn></mfrac><mtext>&nbsp;bytes</mtext></math></p>
+<p>så en model med 8 milliarder parametre fylder omkring 16 GB ved 16 bits, 8 GB ved 8 bits
+og lidt over 4 GB ved 4 bits.</p>
+<p>Færre bits betyder færre mulige værdier, så hver vægt afrundes til den
+nærmeste, der kan repræsenteres. For at holde afrundingsfejlen lille
+grupperes vægtene, pr. række eller i blokke på nogle dusin, og hver gruppe gemmer sin
+egen <strong>skala</strong>: gruppens største værdi mappes til toppen af det lille
+heltalsområde, og alt andet afrundes i forhold til den. En stor vægt
+i én gruppe kan dermed ikke knuse præcisionen i alle de andre grupper.</p>
+<p>Det er den samme model, blot afrundet. Der sker ingen træning, og intet nyt
+læres: en kvantiseret model er en approksimation af de oprindelige vægte, ikke en
+mindre model trænet til at efterligne den. Den anden tilgang findes også og
+kaldes destillation. Ved 8 bits er forskellen som regel svær at måle; ved
+4 bits er den lille for de fleste opgaver; under omkring 3 bits falder kvaliteten
+mærkbart, og mindre modeller rammes hurtigere end store.</p>
+<p>Vægte er ikke det eneste, der kan kvantiseres.
+<a href="#kv-cache">KV-cachen</a> kan også gemmes i færre bits, hvilket har betydning ved
+lange kontekster. Embedding-modellen bag denne artikels
+<a href="/da/blog/ai/ask/">Spørg</a>-visning er gemt som 8-bit heltal med én skala pr.
+række; sammenlignet med de oprindelige 32-bit-tal er den gennemsnitlige lighed mellem hver
+række og dens afrundede kopi 0,99997.</p>

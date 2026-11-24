@@ -1,0 +1,11 @@
+<p>Når teksten er opdelt, slås hvert token op i ordforrådet og erstattes af sit
+indeks. Rækken af disse heltal er det modellen faktisk modtager.</p>
+<p>Tallene er mærkater, ikke størrelser. Token 2.000 ligner ikke token 2.001
+mere end det ligner token 9. Intet i modellen regner nogensinde på selve
+ID’erne; deres eneste formål er at udvælge en række i
+<a href="#embeddings">embedding-tabellen</a>.</p>
+<p>Ordforråd indeholder også <strong>specialtokens</strong> der aldrig optræder som almindelig
+tekst: markører for starten og slutningen af en sekvens, separatorer og i
+chatmodeller de markører der adskiller system-, bruger- og assistentture. En
+model stopper med at generere når den udsender sit end-of-sequence-token,
+fordi den er trænet til at udsende det dér hvor tekst slutter.</p>

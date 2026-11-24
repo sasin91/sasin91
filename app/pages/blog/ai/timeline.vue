@@ -5,9 +5,13 @@ import type { AiArticleOutline, AiNodeMeta } from '#shared/types/content'
 
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
-const cv = computed(() => getCv(normalizeLocale(locale.value)))
+const currentLocale = computed(() => normalizeLocale(locale.value))
+const cv = computed(() => getCv(currentLocale.value))
 
-const { data: article } = await useFetch<AiArticleOutline>('/api/ai-article?outline=1')
+const { data: article } = await useFetch<AiArticleOutline>('/api/ai-article', {
+  key: () => `ai-article-outline-${currentLocale.value}`,
+  query: { outline: '1', lang: currentLocale },
+})
 
 if (!article.value) {
   throw createError({ statusCode: 500, statusMessage: 'Could not load AI article', fatal: true })

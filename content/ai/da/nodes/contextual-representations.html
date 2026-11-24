@@ -1,0 +1,16 @@
+<p>Den vektor et token starter med er den samme i enhver sætning. Den vektor
+det har efter første lag er det ikke. Hvert lag blander information fra andre
+positioner ind og transformerer resultatet, så midtvejs i netværket er
+vektoren på pladsen for <code>bank</code> forskellig i “bank på døren” og “lån i en
+bank”. Disse mellemvektorer kaldes hidden states (skjulte tilstande), og
+sammen udgør de det man ofte kalder <strong>residualstrømmen</strong>.</p>
+<p>Det er her alt der minder om betydning i kontekst bor. Forskning der
+undersøger disse vektorer viser at de indkoder ting som grammatisk rolle,
+hvilken entitet et stedord henviser til, og fakta knyttet til et navn. Intet
+af det blev slået op; det blev beregnet ud fra inputtet af faste vægte.</p>
+<p>Kontekstuelle repræsentationer gemmes ikke permanent nogen steder. De
+beregnes på ny for hvert input og kasseres når forespørgslen er slut. Den
+eneste del af dem der bevares under en enkelt generering er
+attention-tilstanden i <a href="#kv-cache">KV-cachen</a>.</p>
+<p>Øverst i netværket er repræsentationen på den sidste position det modellen
+bruger til at score mulige næste tokens: <a href="#logits">logits</a>.</p>

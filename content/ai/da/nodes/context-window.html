@@ -1,0 +1,20 @@
+<p>Kontekstvinduet er en grænse for sekvenslængden: det største antal tokens
+modellen kan behandle i én gennemgang. Det er ikke et hukommelsesområde inde
+i modellen og ikke et udsnit af dens embeddings. Det er ganske enkelt
+inputtet, målt i tokens.</p>
+<p>Alt hvad modellen skal kunne tage højde for, skal ligge i det:
+systemprompten, samtalen indtil videre, eventuelle dokumenter eller
+værktøjsresultater der er sat ind, og hvert eneste token modellen har
+genereret i dette svar. Når en samtale vokser ud over grænsen, må noget
+smides væk eller opsummeres.</p>
+<p>Grænsen stammer fra flere steder på én gang: de længder modellen blev
+trænet på, hvordan dens <a href="#position">positionskodning</a> skalerer, den
+<a href="#dense-attention">kvadratiske omkostning</a> ved attention og den hukommelse
+<a href="#kv-cache">KV-cachen</a> kræver.</p>
+<p>Vinduerne er vokset fra nogle få tusind tokens til hundredtusindvis og
+mere. Det hjælper, men det gør ikke retrieval overflødigt. Modeller bruger
+målbart information mindre pålideligt når den ligger begravet midt i et meget
+langt input. Hvert token i vinduet koster tid og penge ved hver forespørgsel.
+Og vigtigst af alt rummer et vindue kun det nogen har lagt ind i det: en
+dokumentsamling på millioner af sider skal stadig gennemsøges, og at vælge
+hvad der skal med i konteksten er netop det <a href="#rag">RAG</a> er til for.</p>

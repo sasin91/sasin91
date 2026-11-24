@@ -1,0 +1,20 @@
+<p>Genereret tekst kan bruges som træningsdata. Nogle almindelige mønstre:</p>
+<ul>
+<li>Generér mange løsninger på problemer med kontrollerbare svar, behold dem,
+der består, og finjustér på dem.</li>
+<li><strong>Destillation</strong>: træn en mindre model på outputtet fra en større.</li>
+<li>Lad en model kritisere eller rangere svar, og brug rangeringerne som
+præferencedata.</li>
+</ul>
+<p>Alle disse udgør en ydre løkke med en klar rækkefølge: generér ved hjælp af
+inferens; evaluér med tests, verifikatorer eller andre modeller; udvælg; og træn
+derefter — hvilket er det eneste trin, hvor vægte ændres, og der opstår en ny model.
+Inferenstrinnets <a href="#search-and-verification">søgning over flere kandidater</a>
+og træningstrinnets læring er adskilte faser, som ofte køres på
+forskellige tidspunkter og på forskellige maskiner.</p>
+<p>Løkken er kun så god som sit filter. Hvis verifikationen er svag, bliver fejl
+trænet ind og forstærket. Gentagen træning på ufiltreret genereret tekst
+har vist sig at indsnævre en models output og miste de sjældnere dele af de
+oprindelige data — undertiden kaldet <strong>modelkollaps</strong>. Hvor svar kan
+kontrolleres mekanisk, som i matematik og kode, fungerer løkken langt bedre
+end dér, hvor de ikke kan.</p>

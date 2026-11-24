@@ -1,0 +1,144 @@
+<div class="note">
+<p>Recruiter er stadig under udvikling på skrivetidspunktet, 9. oktober 2026.</p>
+</div>
+<p>Tilføj dit CV og et jobopslag, og <a href="https://recruiter.trongate.dev">Recruiter</a>
+fortæller dig, hvor godt du passer – krav for krav, og hvorfor. Derefter
+skriver den ansøgningen.</p>
+<section id="The-problem">
+<h2>Problemet</h2>
+<p>Et dansk jobopslag efterspørger seks eller otte ting, skrevet som sætninger: “uddannet
+pædagog eller pædagogisk assistent”, “flydende dansk”, “gerne erfaring med
+Kubernetes”. Nogle er krav, nogle er en fordel, og nogle er
+alternativer. En kandidat læser opslaget, derefter sit eget CV, og gætter.</p>
+<p>Søgeordsmatching, den sædvanlige løsning, rammer forkert i begge retninger. Den
+tæller “Kubernets” med en tastefejl som manglende, og den kan ikke se, at et CV, der nævner
+en nært beslægtet kompetence, er delvist i mål. Jeg brugte flere år
+på en platform til job- og kandidatmatching hos JUICE, og den ranking-motor, jeg
+byggede der, havde den samme blinde vinkel: et krav var enten inde eller ude.</p>
+</section>
+
+<section id="What-cv_match-does">
+<h2>Hvad cv_match gør</h2>
+<p><code>cv_match</code> er kernen i Recruiter. Du uploader eller indsætter et CV, og indsætter derefter et
+jobopslag, uploader et eller giver den et link. Du kan tilføje op til ti opslag og
+sammenligne dem mod det samme CV.</p>
+<p>For hvert opslag viser den:</p>
+<ul>
+<li>hvert krav, markeret som <strong>opfyldt</strong>, <strong>delvist opfyldt</strong> eller <strong>mangler</strong>;</li>
+<li>formuleringen fra dit CV, der afgjorde det, og en begrundelse på én linje (“Kræver 3,
+CV’et viser 5.”, “Nævnt i CV’et.”);</li>
+<li>de bløde kompetencer som tags, uden score, fordi intet CV kan bevise “engageret”;</li>
+<li>én samlet match-score, hvor opslagene er rangeret efter den.</li>
+</ul>
+<p>Ud fra et match skriver den en jobansøgning og et målrettet CV til opslaget,
+begge baseret på dit eget CV, med plads til noter om, hvad der skal fremhæves. Matches bliver
+gemt, så du kan vende tilbage til dem.</p>
+</section>
+
+<section id="How-it-decides">
+<h2>Hvordan den vurderer</h2>
+<p>Hvert krav går gennem det billigste trin, der kan afgøre det, og kun
+det, der er tilbage, sendes til en sprogmodel:</p>
+<ol>
+<li><strong>Regler.</strong> Års erfaring er ren regning: et opslag, der kræver 3 år,
+er opfyldt mod et CV med 5 år og delvist opfyldt mod 2.</li>
+<li><strong>Taksonomien.</strong> Et dansk og engelsk ordforråd på 9.926 kompetencer, 401 roller
+og 620 jobtitler, med 23.533 betegnelser og synonymer. Et krav, som CV’et
+nævner – stavet ens eller med en tastefejl eller to – er opfyldt. Et krav, der nævner en
+bredere, snævrere eller nært beslægtet kompetence, er delvist opfyldt.</li>
+<li><strong>Modellen.</strong> Krav skrevet som sætninger, niveauer (“flydende dansk”,
+en kandidatgrad) og ansvarsområder sendes til modellen, som svarer med
+en vurdering, belægget og en begrundelse.</li>
+</ol>
+<p>Alternativer (“pædagog eller pædagogisk assistent”) tæller som ét krav,
+vurderet ud fra det bedste match blandt dem. Scoren vægter formelle krav med 150,
+ønsker med 50 samt jobtitel og ansvarsområder med 30 hver; et
+delvist match tæller halvt.</p>
+<p>Indsatte links læses forsigtigt: kun offentlige websider, hver redirect
+tjekkes, og opslagets egne strukturerede data bruges, når jobportalen har dem. Antallet af
+sidehentninger er begrænset pr. session, så en liste med links ikke kan gøre den til en
+crawler.</p>
+</section>
+
+<section id="Free-or-with-your-own-key">
+<h2>Gratis – eller med din egen nøgle</h2>
+<p>Uden en konto får du gratis søgeordsmatch: taksonomien og reglerne,
+ingen model, intet der koster noget pr. request. Den er ærlig omkring, hvad den
+ikke kan. Den finder krav, som opslaget nævner som en kompetence, et værktøj eller en titel, og
+tæller alt, som dit CV ikke nævner ordret, som manglende.</p>
+<p>Log ind og tilføj din egen OpenAI- eller Anthropic-API-nøgle, så får du AI-matchet:
+den læser hele opslaget, vurderer beslægtet erfaring, henter opslag fra
+et link, gemmer dine matches og skriver ansøgningen. Modelkaldene kører på
+din nøgle, så Recruiter aldrig behøver at tage betaling for dem.</p>
+</section>
+
+<section id="How-accurate-it-is">
+<h2>Hvor præcis den er</h2>
+<p>Før jeg byggede selve matchingen, målte jeg det trin, der omdanner et jobopslag til en
+liste af krav. 200 rigtige danske jobopslag, hvor de forventede felter blev opmærket
+ét opslag ad gangen og stikprøvekontrolleret i hånden:</p>
+<table>
+<thead>
+<tr>
+<th>Udtrækker</th>
+<th>Svære felter</th>
+<th>Mediantid pr. opslag</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gpt-5.4-mini</td>
+<td>78%</td>
+<td>3,5 s</td>
+</tr>
+<tr>
+<td>Claude Haiku 4.5</td>
+<td>77%</td>
+<td>ikke målt</td>
+</tr>
+<tr>
+<td>gpt-4.1-mini</td>
+<td>72%</td>
+<td>1,9 s</td>
+</tr>
+<tr>
+<td>Gemini Nano, i browseren</td>
+<td>49%</td>
+<td>7,3 s</td>
+</tr>
+<tr>
+<td>Kun regler, ingen model</td>
+<td>33%</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p>“Svære felter” er dem, en standardværdi ikke kan ramme: titel, uddannelsesniveau,
+års erfaring, kompetencer og certificeringer. De WebLLM-modeller, jeg testede i browseren,
+scorede mellem 17% og 57% og krævede et download på 1,5 til 3 GB, så udtrækningen
+kører på serveren.
+Postnummer og fuldtid eller deltid kommer fra simple regler, som ramte
+mærkningen 98% og 82% af gangene.</p>
+<p>For en second opinion kan et match også sendes til
+Laya, en lille beslutningsmodel. Fik den jobopslag
+og CV råt på dansk, var den tæt på rent gætteri. Fik den derimod kodens egne
+vurderinger som én engelsk sætning (“meets 3 of 5; missing: …”), adskilte den
+kandidater, der opfylder alle krav, fra dem, der ikke gør, med en AUC på
+0,98. Det er på 20 håndskrevne par, så tærskelværdierne skal stadig
+kalibreres mod rigtige rekrutteringsbeslutninger.</p>
+</section>
+
+<section id="Built-on-trongatecloud">
+<h2>Bygget på trongate.cloud</h2>
+<p>Recruiter er en <a href="/blog/trongate/">Trongate</a>-app, og den kører på
+<a href="/blog/trongate/benchmarks/">trongate.cloud</a>, på samme måde som en kundes app
+gør: push til GitHub, og den bliver bygget og deployet til <code>recruiter.trongate.dev</code>
+med sin egen database. Det er hele pointen. En hostingplatform beviser først sit værd ved
+at køre noget rigtigt på den, og Recruiter er en app, jeg ville have bygget
+alligevel.</p>
+</section>
+
+<section id="Try-it">
+<h2>Prøv det</h2>
+<p>Match dit CV på <a href="https://recruiter.trongate.dev">recruiter.trongate.dev</a>.</p>
+</section>

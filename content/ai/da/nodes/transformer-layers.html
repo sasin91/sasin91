@@ -1,0 +1,23 @@
+<p>En stor sprogmodel er en stak af snesevis af transformer-blokke, ofte et
+sted mellem 30 og 100 eller flere. Hver blok læser fra residualstrømmen,
+beregner noget og lægger resultatet tilbage, så information ophobes frem for
+at blive erstattet.</p>
+<p>Hver blok består af to dele:</p>
+<ul>
+<li><strong>Attention</strong> flytter information mellem positioner. Det er det eneste sted
+hvor ét tokens repræsentation kan påvirkes af et andets. Se
+<a href="#attention">self-attention</a>.</li>
+<li>Et <strong>feed-forward-netværk</strong> (MLP) transformerer derefter hver position for
+sig, med de samme vægte på alle positioner. Meget af det en model har
+opsamlet om verden ser ud til at ligge gemt i disse vægte.</li>
+</ul>
+<p>Normaliseringstrin holder tallene i et stabilt område mellem de to.</p>
+<p>Vægtene i hver blok ligger fast efter træningen og deles på tværs af
+positioner, hvilket er grunden til at én model kan behandle en prompt på fem
+tokens såvel som fem tusind: den samme beregning udføres på hver position.
+Chatmodeller er <strong>decoder-only</strong>-transformere med en kausal maske, hvilket
+betyder at hver position kun kan se på positioner før sig selv.</p>
+<p>Mange nyere store modeller erstatter den enkelte MLP med en <strong>mixture of
+experts</strong>: flere MLP’er, hvor en lille router vælger nogle få til hvert token.
+Modellen har flere parametre i alt, men hvert token bruger kun en brøkdel af
+dem.</p>

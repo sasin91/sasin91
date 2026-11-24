@@ -8,19 +8,10 @@ const localePath = useLocalePath()
 const currentLocale = computed(() => normalizeLocale(locale.value))
 const cv = computed(() => getCv(currentLocale.value))
 
-const { data } = await useFetch<{ posts: PostMeta[]; writing: WritingEntry[] }>('/api/posts')
-
-function formatDate(iso: string, fallback: string): string {
-  if (currentLocale.value === 'en') return fallback
-  const [year, month, day] = iso.split('-').map(Number)
-  if (!year || !month || !day) return fallback
-  return new Intl.DateTimeFormat('da-DK', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(Date.UTC(year, month - 1, day)))
-}
+const { data } = await useFetch<{ posts: PostMeta[]; writing: WritingEntry[] }>('/api/posts', {
+  key: () => `posts-listing-${currentLocale.value}`,
+  query: { lang: currentLocale },
+})
 
 useSiteSeo({
   title: `${cv.value.site.name} — ${cv.value.site.title}`,
@@ -55,8 +46,8 @@ useSiteSeo({
   <ul class="post-list">
     <li v-for="entry in data?.writing ?? []" :key="entry.url">
       <div class="meta">
-        <time :datetime="entry.dateIso">{{ formatDate(entry.dateIso, entry.dateLong) }}</time>
-        <template v-if="entry.label"> · {{ t('blog.articleLabel') }}</template>
+        <time :datetime="entry.dateIso">{{ entry.dateLong }}</time>
+        <template v-if="entry.label"> · {{ entry.label }}</template>
       </div>
       <h3>
         <NuxtLink :to="localePath(entry.url)">{{ entry.title }}</NuxtLink>

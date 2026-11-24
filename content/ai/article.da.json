@@ -1,0 +1,1672 @@
+{
+    "path": "blog/ai",
+    "url": "/blog/ai/",
+    "title": "Sådan fungerer moderne sprogmodeller",
+    "description": "Fra tekst til tokens, attention, sampling, retrieval og værktøjer: hvordan en stor sprogmodel forvandler en prompt til et svar, og hvad den ikke gør undervejs.",
+    "published": "2026-10-02",
+    "publishedIso": "2026-10-02",
+    "publishedLong": "2. oktober 2026",
+    "updated": "2026-10-02",
+    "updatedIso": "2026-10-02",
+    "updatedLong": "2. oktober 2026",
+    "wasUpdated": false,
+    "parts": [
+        {
+            "id": "part-1",
+            "title": "Fra tekst til vektorer",
+            "nodeIds": [
+                "text",
+                "tokenization",
+                "token-ids",
+                "embeddings",
+                "position"
+            ]
+        },
+        {
+            "id": "part-2",
+            "title": "Inde i transformeren",
+            "nodeIds": [
+                "contextual-representations",
+                "transformer-layers",
+                "attention",
+                "qkv",
+                "dense-attention",
+                "sparse-attention",
+                "context-window",
+                "kv-cache"
+            ]
+        },
+        {
+            "id": "part-3",
+            "title": "Valg af næste token",
+            "nodeIds": [
+                "logits",
+                "softmax",
+                "sampling",
+                "sampling-controls",
+                "discarded-candidates",
+                "search-and-verification"
+            ]
+        },
+        {
+            "id": "part-4",
+            "title": "At køre en model selv",
+            "nodeIds": [
+                "quantization",
+                "local-inference"
+            ]
+        },
+        {
+            "id": "part-5",
+            "title": "At hente information udefra",
+            "nodeIds": [
+                "rag",
+                "retrieval-vs-attention",
+                "external-memory",
+                "tool-use",
+                "mcp",
+                "code-retrieval"
+            ]
+        },
+        {
+            "id": "part-6",
+            "title": "Læring, og hvad ordene betyder",
+            "nodeIds": [
+                "training",
+                "hallucination",
+                "synthetic-data",
+                "self-improvement",
+                "agi"
+            ]
+        }
+    ],
+    "nodes": [
+        {
+            "id": "text",
+            "order": 1,
+            "partId": null,
+            "title": "Tekst",
+            "summary": "En sprogmodel læser aldrig bogstaver direkte: før den kan gøre noget som helst, skal tekst blive til en sekvens af heltal.",
+            "concepts": [
+                "text",
+                "input",
+                "unicode",
+                "bytes",
+                "preprocessing"
+            ],
+            "searchTerms": [
+                "characters",
+                "letters",
+                "utf-8",
+                "how does an llm read text",
+                "input text"
+            ],
+            "learningObjectives": [
+                "Forklare hvorfor et neuralt netværk ikke kan behandle tekst, som den er skrevet",
+                "Nævne trinene mellem en tekststreng og modellens første beregning"
+            ],
+            "misconceptions": [
+                "En sprogmodel læser bogstaverne i en prompt på samme måde som et menneske."
+            ],
+            "buildsOn": [],
+            "seeAlso": [
+                {
+                    "id": "tokenization",
+                    "title": "Tokenisering"
+                }
+            ]
+        },
+        {
+            "id": "tokenization",
+            "order": 2,
+            "partId": null,
+            "title": "Tokenisering",
+            "summary": "Tekst opdeles i enheder fra et fast ordforråd: hele ord, dele af ord eller rå bytes.",
+            "concepts": [
+                "tokenization",
+                "token",
+                "vocabulary",
+                "subword",
+                "byte pair encoding",
+                "wordpiece"
+            ],
+            "searchTerms": [
+                "tokenizer",
+                "tokens",
+                "bpe",
+                "sentencepiece",
+                "subwords",
+                "word pieces",
+                "how many tokens"
+            ],
+            "learningObjectives": [
+                "Beskrive hvordan en subword-tokenizer opdeler almindelige og sjældne ord",
+                "Forklare hvorfor antallet af tokens varierer mellem modeller"
+            ],
+            "misconceptions": [
+                "Ét token er ét ord."
+            ],
+            "buildsOn": [
+                {
+                    "id": "text",
+                    "title": "Tekst"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "token-ids",
+                    "title": "Token-ID'er"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Kontekstvinduer"
+                }
+            ]
+        },
+        {
+            "id": "token-ids",
+            "order": 3,
+            "partId": null,
+            "title": "Token-ID'er",
+            "summary": "Hvert token erstattes af sin position i ordforrådet. Tallet er et indeks og bærer ingen betydning i sig selv.",
+            "concepts": [
+                "token id",
+                "vocabulary index",
+                "special tokens",
+                "integer"
+            ],
+            "searchTerms": [
+                "token ids",
+                "input ids",
+                "vocab index",
+                "bos",
+                "eos",
+                "end of sequence token"
+            ],
+            "learningObjectives": [
+                "Forklare hvorfor token-ID'er er indekser frem for størrelser"
+            ],
+            "misconceptions": [
+                "Tokens med nærliggende ID'er har lignende betydning."
+            ],
+            "buildsOn": [
+                {
+                    "id": "tokenization",
+                    "title": "Tokenisering"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "embeddings",
+                    "title": "Embeddings"
+                }
+            ]
+        },
+        {
+            "id": "embeddings",
+            "order": 4,
+            "partId": null,
+            "title": "Embeddings",
+            "summary": "Token-ID'er udvælger rækker fra en indlært tabel af vektorer: modellens udgangspunkt for hvert token, ikke dens endelige bud på betydningen.",
+            "concepts": [
+                "embedding",
+                "embedding table",
+                "vector",
+                "static embedding",
+                "embedding model"
+            ],
+            "searchTerms": [
+                "word vectors",
+                "vector representation",
+                "semantic vectors",
+                "embedding matrix",
+                "meaning of words"
+            ],
+            "learningObjectives": [
+                "Beskrive hvad en embedding-tabel er, og hvordan den bruges",
+                "Skelne mellem et tokens input-embedding og dets kontekstuelle repræsentation"
+            ],
+            "misconceptions": [
+                "En embedding er en fast definition af, hvad et ord betyder."
+            ],
+            "buildsOn": [
+                {
+                    "id": "token-ids",
+                    "title": "Token-ID'er"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "contextual-representations",
+                    "title": "Kontekstafhængige repræsentationer"
+                },
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval kontra attention"
+                }
+            ]
+        },
+        {
+            "id": "position",
+            "order": 5,
+            "partId": null,
+            "title": "Positionsinformation",
+            "summary": "Attention alene ignorerer ordstilling, så position må tilføres. De fleste nutidige modeller gør det ved at rotere queries og keys (RoPE).",
+            "concepts": [
+                "positional encoding",
+                "position",
+                "word order",
+                "rotary position embedding",
+                "rope"
+            ],
+            "searchTerms": [
+                "positional embeddings",
+                "sinusoidal",
+                "alibi",
+                "relative position",
+                "token order",
+                "rotary embeddings"
+            ],
+            "learningObjectives": [
+                "Forklare hvorfor en transformer har brug for positionsinformation",
+                "Sammenligne absolutte positions-embeddings med roterende embeddings"
+            ],
+            "misconceptions": [
+                "Alle modeller lægger en positionsvektor til hver token-embedding."
+            ],
+            "buildsOn": [
+                {
+                    "id": "embeddings",
+                    "title": "Embeddings"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                },
+                {
+                    "id": "qkv",
+                    "title": "Queries, keys og values"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Kontekstvinduer"
+                }
+            ]
+        },
+        {
+            "id": "contextual-representations",
+            "order": 6,
+            "partId": null,
+            "title": "Kontekstafhængige repræsentationer",
+            "summary": "Mens vektorer bevæger sig gennem netværket, omskrives hvert tokens repræsentation ved hjælp af de omkringliggende tokens.",
+            "concepts": [
+                "contextual representation",
+                "hidden state",
+                "residual stream",
+                "contextual embedding"
+            ],
+            "searchTerms": [
+                "hidden states",
+                "activations",
+                "word sense",
+                "polysemy",
+                "meaning in context"
+            ],
+            "learningObjectives": [
+                "Forklare hvordan det samme token ender med forskellige vektorer i forskellige sætninger",
+                "Beskrive hvor kontekstuelle repræsentationer findes, og hvor længe de varer"
+            ],
+            "misconceptions": [
+                "Et ords betydning i kontekst slås op i en gemt tabel."
+            ],
+            "buildsOn": [
+                {
+                    "id": "embeddings",
+                    "title": "Embeddings"
+                },
+                {
+                    "id": "position",
+                    "title": "Positionsinformation"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer-lag"
+                },
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                }
+            ]
+        },
+        {
+            "id": "transformer-layers",
+            "order": 7,
+            "partId": null,
+            "title": "Transformer-lag",
+            "summary": "En transformer er en stak af blokke. Hver blok lader tokens udveksle information (attention) og transformerer derefter hvert token for sig (en MLP).",
+            "concepts": [
+                "transformer",
+                "layer",
+                "transformer block",
+                "feed-forward network",
+                "mlp",
+                "residual connection",
+                "mixture of experts"
+            ],
+            "searchTerms": [
+                "decoder only",
+                "architecture",
+                "ffn",
+                "layer norm",
+                "moe",
+                "how many layers",
+                "parameters"
+            ],
+            "learningObjectives": [
+                "Nævne de to dellag i en transformer-blok og hvad hvert af dem gør",
+                "Forklare hvorfor de samme vægte kan behandle input af vilkårlig længde"
+            ],
+            "misconceptions": [
+                "Hvert lag i modellen håndterer et forskelligt ord i inputtet."
+            ],
+            "buildsOn": [
+                {
+                    "id": "contextual-representations",
+                    "title": "Kontekstafhængige repræsentationer"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                },
+                {
+                    "id": "training",
+                    "title": "Inferens kontra træning"
+                }
+            ]
+        },
+        {
+            "id": "attention",
+            "order": 8,
+            "partId": null,
+            "title": "Self-attention",
+            "summary": "Hvert tokens repræsentation samler information fra andre positioner i konteksten, vægtet efter hvor relevante modellen beregner dem til at være.",
+            "concepts": [
+                "self-attention",
+                "attention",
+                "attention head",
+                "attention weights",
+                "causal mask"
+            ],
+            "searchTerms": [
+                "attention mechanism",
+                "multi-head attention",
+                "attention is all you need",
+                "how does attention work"
+            ],
+            "learningObjectives": [
+                "Forklare hvad attention beregner for én position",
+                "Angive rækkevidden af hvad attention kan nå"
+            ],
+            "misconceptions": [
+                "Attention lader modellen slå ting op ud over det, der er i dens kontekst."
+            ],
+            "buildsOn": [
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer-lag"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "qkv",
+                    "title": "Queries, keys og values"
+                },
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval kontra attention"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Kontekstvinduer"
+                }
+            ]
+        },
+        {
+            "id": "qkv",
+            "order": 9,
+            "partId": null,
+            "title": "Queries, keys og values",
+            "summary": "Hvert token projiceres til en query (hvad det leder efter), en key (hvad det kan matches på) og en value (hvad det giver videre).",
+            "concepts": [
+                "query",
+                "key",
+                "value",
+                "qkv",
+                "dot product",
+                "scaled dot-product attention",
+                "grouped-query attention"
+            ],
+            "searchTerms": [
+                "q k v",
+                "query key value",
+                "attention formula",
+                "gqa",
+                "multi-query attention",
+                "attention scores"
+            ],
+            "learningObjectives": [
+                "Opskrive scaled dot-product attention og forklare hvert led",
+                "Forklare hvorfor det er keys og values, der bliver cachet"
+            ],
+            "misconceptions": [
+                "Attention udvælger ét matchende token, som et databaseopslag."
+            ],
+            "buildsOn": [
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "kv-cache",
+                    "title": "KV-cache"
+                },
+                {
+                    "id": "position",
+                    "title": "Positionsinformation"
+                },
+                {
+                    "id": "softmax",
+                    "title": "Sandsynligheder og softmax"
+                }
+            ]
+        },
+        {
+            "id": "dense-attention",
+            "order": 10,
+            "partId": null,
+            "title": "Dense attention",
+            "summary": "I fuld (dense) attention kan hvert token rette opmærksomhed mod ethvert tidligere token, så regnearbejdet vokser med kvadratet på sekvenslængden.",
+            "concepts": [
+                "dense attention",
+                "full attention",
+                "quadratic cost",
+                "flashattention"
+            ],
+            "searchTerms": [
+                "quadratic complexity",
+                "n squared",
+                "attention cost",
+                "flash attention",
+                "global attention",
+                "why is attention expensive",
+                "long documents"
+            ],
+            "learningObjectives": [
+                "Forklare hvorfor omkostningen ved attention vokser kvadratisk med længden",
+                "Skelne mellem eksakte optimeringer som FlashAttention og approksimationer"
+            ],
+            "misconceptions": [
+                "FlashAttention er en approksimation af attention."
+            ],
+            "buildsOn": [
+                {
+                    "id": "qkv",
+                    "title": "Queries, keys og values"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "sparse-attention",
+                    "title": "Sparse og sliding-window attention"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Kontekstvinduer"
+                }
+            ]
+        },
+        {
+            "id": "sparse-attention",
+            "order": 11,
+            "partId": null,
+            "title": "Sparse og sliding-window attention",
+            "summary": "Nogle attention-lag begrænser hvert token til et vindue eller et mønster af positioner og bytter direkte rækkevidde for lavere omkostning. Det foregår alt sammen inde i modellen.",
+            "concepts": [
+                "sparse attention",
+                "sliding-window attention",
+                "local attention",
+                "attention pattern",
+                "receptive field"
+            ],
+            "searchTerms": [
+                "sliding window",
+                "local attention",
+                "longformer",
+                "bigbird",
+                "block sparse",
+                "windowed attention"
+            ],
+            "learningObjectives": [
+                "Beskrive sliding-window attention og hvordan information alligevel bevæger sig ud over vinduet",
+                "Forklare hvorfor sparse attention ikke er en form for retrieval"
+            ],
+            "misconceptions": [
+                "Sparse attention henter de relevante dele af et langt dokument, ligesom søgning."
+            ],
+            "buildsOn": [
+                {
+                    "id": "dense-attention",
+                    "title": "Dense attention"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval kontra attention"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Kontekstvinduer"
+                }
+            ]
+        },
+        {
+            "id": "context-window",
+            "order": 12,
+            "partId": null,
+            "title": "Kontekstvinduer",
+            "summary": "Kontekstvinduet er det maksimale antal tokens, en model kan behandle på én gang: prompt, dokumenter, værktøjsresultater og dens eget output tilsammen.",
+            "concepts": [
+                "context window",
+                "context length",
+                "context",
+                "long context",
+                "prompt"
+            ],
+            "searchTerms": [
+                "context size",
+                "token limit",
+                "max tokens",
+                "128k",
+                "1 million tokens",
+                "lost in the middle",
+                "larger context window"
+            ],
+            "learningObjectives": [
+                "Definere kontekstvinduet præcist",
+                "Forklare hvorfor et større kontekstvindue ikke fjerner behovet for retrieval"
+            ],
+            "misconceptions": [
+                "Kontekstvinduet er et udsnit af modellens embeddings.",
+                "Alt inden for kontekstvinduet udnyttes lige godt.",
+                "Et stort nok kontekstvindue gør retrieval overflødigt."
+            ],
+            "buildsOn": [
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                },
+                {
+                    "id": "tokenization",
+                    "title": "Tokenisering"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "kv-cache",
+                    "title": "KV-cache"
+                },
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval kontra attention"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "Ekstern hukommelse"
+                }
+            ]
+        },
+        {
+            "id": "kv-cache",
+            "order": 13,
+            "partId": null,
+            "title": "KV-cache",
+            "summary": "Under generering gemmes og genbruges keys og values, der allerede er beregnet for tidligere tokens, så hvert nyt token kun beregner sine egne.",
+            "concepts": [
+                "kv cache",
+                "key-value cache",
+                "prefix caching",
+                "inference memory"
+            ],
+            "searchTerms": [
+                "kv-cache",
+                "key value cache",
+                "prompt caching",
+                "paged attention",
+                "why is generation slow",
+                "cache"
+            ],
+            "learningObjectives": [
+                "Forklare hvad KV-cachen gemmer, og hvorfor den gør generering hurtigere",
+                "Estimere hvordan KV-cachens hukommelsesforbrug vokser med kontekstlængden",
+                "Angive hvad KV-cachen ikke indeholder"
+            ],
+            "misconceptions": [
+                "KV-cachen gemmer alternative fortsættelser, som modellen overvejede.",
+                "KV-cachen er en form for langtidshukommelse eller læring."
+            ],
+            "buildsOn": [
+                {
+                    "id": "qkv",
+                    "title": "Queries, keys og values"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Kontekstvinduer"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "discarded-candidates",
+                    "title": "Hvad sker der med de fravalgte tokens"
+                },
+                {
+                    "id": "sampling",
+                    "title": "Dekodning og sampling"
+                },
+                {
+                    "id": "training",
+                    "title": "Inferens kontra træning"
+                }
+            ]
+        },
+        {
+            "id": "logits",
+            "order": 14,
+            "partId": null,
+            "title": "Logits",
+            "summary": "Den endelige repræsentation på den sidste position omdannes til én score pr. indgang i ordforrådet: logits.",
+            "concepts": [
+                "logits",
+                "unembedding",
+                "language modeling head",
+                "next-token prediction",
+                "score"
+            ],
+            "searchTerms": [
+                "lm head",
+                "output layer",
+                "next token scores",
+                "logit",
+                "next token prediction"
+            ],
+            "learningObjectives": [
+                "Beskrive hvordan en skjult tilstand bliver til en score for hvert token i ordforrådet"
+            ],
+            "misconceptions": [
+                "Logits er sandsynligheder."
+            ],
+            "buildsOn": [
+                {
+                    "id": "contextual-representations",
+                    "title": "Kontekstafhængige repræsentationer"
+                },
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer-lag"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "softmax",
+                    "title": "Sandsynligheder og softmax"
+                },
+                {
+                    "id": "sampling",
+                    "title": "Dekodning og sampling"
+                }
+            ]
+        },
+        {
+            "id": "softmax",
+            "order": 15,
+            "partId": null,
+            "title": "Sandsynligheder og softmax",
+            "summary": "Softmax omdanner logits til en sandsynlighedsfordeling over hele ordforrådet.",
+            "concepts": [
+                "softmax",
+                "probability distribution",
+                "probability",
+                "normalization",
+                "calibration"
+            ],
+            "searchTerms": [
+                "probabilities",
+                "next token probability",
+                "exponential",
+                "logprobs",
+                "confidence"
+            ],
+            "learningObjectives": [
+                "Beregne softmax for en lille liste af logits",
+                "Forklare hvorfor en høj sandsynlighed ikke er det samme som et korrekt svar"
+            ],
+            "misconceptions": [
+                "Et token med høj sandsynlighed er sandsynligvis faktuelt korrekt."
+            ],
+            "buildsOn": [
+                {
+                    "id": "logits",
+                    "title": "Logits"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "sampling-controls",
+                    "title": "Temperatur, top-k og top-p"
+                },
+                {
+                    "id": "qkv",
+                    "title": "Queries, keys og values"
+                }
+            ]
+        },
+        {
+            "id": "sampling",
+            "order": 16,
+            "partId": null,
+            "title": "Dekodning og sampling",
+            "summary": "Generering er en løkke: vælg ét token fra fordelingen, føj det til inputtet, og kør modellen igen.",
+            "concepts": [
+                "decoding",
+                "sampling",
+                "autoregressive generation",
+                "greedy decoding",
+                "beam search"
+            ],
+            "searchTerms": [
+                "generation loop",
+                "argmax",
+                "next token",
+                "how does an llm generate text",
+                "autoregressive",
+                "streaming",
+                "random",
+                "randomly",
+                "pick words"
+            ],
+            "learningObjectives": [
+                "Beskrive den autoregressive genereringsløkke",
+                "Forklare hvorfor dekodningsindstillinger hører til inferenssoftwaren frem for modellen"
+            ],
+            "misconceptions": [
+                "Modellen skriver et helt svar på én gang og viser det derefter ord for ord."
+            ],
+            "buildsOn": [
+                {
+                    "id": "softmax",
+                    "title": "Sandsynligheder og softmax"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "sampling-controls",
+                    "title": "Temperatur, top-k og top-p"
+                },
+                {
+                    "id": "discarded-candidates",
+                    "title": "Hvad sker der med de fravalgte tokens"
+                },
+                {
+                    "id": "kv-cache",
+                    "title": "KV-cache"
+                }
+            ]
+        },
+        {
+            "id": "sampling-controls",
+            "order": 17,
+            "partId": null,
+            "title": "Temperatur, top-k og top-p",
+            "summary": "Temperatur omformer fordelingen; top-k og top-p klipper dens usandsynlige hale af, før et token trækkes.",
+            "concepts": [
+                "temperature",
+                "top-k",
+                "top-p",
+                "nucleus sampling",
+                "min-p"
+            ],
+            "searchTerms": [
+                "top p",
+                "top k",
+                "nucleus",
+                "creativity",
+                "randomness",
+                "deterministic output",
+                "temperature 0"
+            ],
+            "learningObjectives": [
+                "Beskrive effekten af temperatur, top-k og top-p på fordelingen over næste token"
+            ],
+            "misconceptions": [
+                "At skrue op for temperaturen får modellen til at tænke mere kreativt."
+            ],
+            "buildsOn": [
+                {
+                    "id": "sampling",
+                    "title": "Dekodning og sampling"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "softmax",
+                    "title": "Sandsynligheder og softmax"
+                }
+            ]
+        },
+        {
+            "id": "discarded-candidates",
+            "order": 18,
+            "partId": null,
+            "title": "Hvad sker der med de fravalgte tokens",
+            "summary": "Kandidater til næste token, som ikke blev valgt, kasseres normalt. Modellen gemmer dem ikke som alternative tankebaner.",
+            "concepts": [
+                "rejected candidates",
+                "alternative completions",
+                "single sequence",
+                "logprobs",
+                "speculative decoding"
+            ],
+            "searchTerms": [
+                "does the model consider alternatives",
+                "branches",
+                "other answers",
+                "parallel reasoning",
+                "unchosen tokens",
+                "tokens not chosen",
+                "not picked",
+                "rejected tokens"
+            ],
+            "learningObjectives": [
+                "Forklare hvorfor almindelig dekodning producerer præcis én sekvens",
+                "Skelne mellem implicitte alternativer i en fordeling og eksplicit genererede alternativer"
+            ],
+            "misconceptions": [
+                "Under generering udforsker modellen flere svar parallelt og beholder det bedste."
+            ],
+            "buildsOn": [
+                {
+                    "id": "sampling",
+                    "title": "Dekodning og sampling"
+                },
+                {
+                    "id": "kv-cache",
+                    "title": "KV-cache"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "search-and-verification",
+                    "title": "Flere udtræk, søgning og verifikation"
+                }
+            ]
+        },
+        {
+            "id": "search-and-verification",
+            "order": 19,
+            "partId": null,
+            "title": "Flere udtræk, søgning og verifikation",
+            "summary": "Systemer kan bevidst udforske alternativer: generere flere kandidater, søge i delløsninger og kontrollere resultaterne. Det er en ydre løkke omkring genereringen.",
+            "concepts": [
+                "best-of-n",
+                "self-consistency",
+                "verification",
+                "tree search",
+                "test-time compute",
+                "reward model"
+            ],
+            "searchTerms": [
+                "multiple samples",
+                "majority vote",
+                "verifier",
+                "reasoning models",
+                "thinking",
+                "test time compute",
+                "generate and test"
+            ],
+            "learningObjectives": [
+                "Beskrive best-of-n-sampling og self-consistency",
+                "Forklare hvorfor søgning over flere kandidater er en ydre løkke frem for en del af selve tokengenereringen"
+            ],
+            "misconceptions": [
+                "At køre flere kandidater ved inferens træner modellen."
+            ],
+            "buildsOn": [
+                {
+                    "id": "discarded-candidates",
+                    "title": "Hvad sker der med de fravalgte tokens"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "synthetic-data",
+                    "title": "Selvtræning og syntetiske data"
+                },
+                {
+                    "id": "tool-use",
+                    "title": "Brug af værktøjer"
+                }
+            ]
+        },
+        {
+            "id": "quantization",
+            "order": 20,
+            "partId": null,
+            "title": "Kvantisering",
+            "summary": "Kvantisering gemmer en models vægte med færre bit, såsom 8 eller 4 i stedet for 16, og bytter en smule præcision for en model, der er mindre og hurtigere at læse.",
+            "concepts": [
+                "quantization",
+                "quantisation",
+                "int8",
+                "4-bit",
+                "precision",
+                "model compression"
+            ],
+            "searchTerms": [
+                "gguf",
+                "q4",
+                "q8",
+                "fp16",
+                "bf16",
+                "awq",
+                "gptq",
+                "smaller model",
+                "compress a model",
+                "bits per weight"
+            ],
+            "learningObjectives": [
+                "Estimere hvor meget hukommelse en models vægte kræver ved en given præcision",
+                "Forklare hvad skalering pr. blok gør, og hvorfor kvaliteten som regel overlever 8 og 4 bit"
+            ],
+            "misconceptions": [
+                "En kvantiseret model er en mindre model, der er trænet separat fra originalen."
+            ],
+            "buildsOn": [
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer-lag"
+                },
+                {
+                    "id": "kv-cache",
+                    "title": "KV-cache"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "embeddings",
+                    "title": "Embeddings"
+                },
+                {
+                    "id": "training",
+                    "title": "Inferens kontra træning"
+                }
+            ]
+        },
+        {
+            "id": "local-inference",
+            "order": 21,
+            "partId": null,
+            "title": "At køre en model på din egen hardware",
+            "summary": "Om en model kan køre lokalt handler mest om hukommelse: den skal kunne rumme vægtene og KV-cachen, og genereringshastigheden afgøres af, hvor hurtigt disse vægte kan læses.",
+            "concepts": [
+                "local inference",
+                "self-hosted model",
+                "memory bandwidth",
+                "vram",
+                "tokens per second",
+                "prefill and decode"
+            ],
+            "searchTerms": [
+                "run llm locally",
+                "llama.cpp",
+                "ollama",
+                "gpu memory",
+                "how much ram do i need",
+                "why is my local model slow",
+                "apple silicon",
+                "cpu inference",
+                "self-hosting"
+            ],
+            "learningObjectives": [
+                "Estimere om en model kan være i en maskines hukommelse",
+                "Forklare hvorfor genereringshastighed følger hukommelsesbåndbredden frem for processorhastigheden"
+            ],
+            "misconceptions": [
+                "Hurtigere processorkerner er det, der får en lokal model til at generere hurtigere."
+            ],
+            "buildsOn": [
+                {
+                    "id": "quantization",
+                    "title": "Kvantisering"
+                },
+                {
+                    "id": "kv-cache",
+                    "title": "KV-cache"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer-lag"
+                },
+                {
+                    "id": "training",
+                    "title": "Inferens kontra træning"
+                }
+            ]
+        },
+        {
+            "id": "rag",
+            "order": 22,
+            "partId": null,
+            "title": "Retrieval-augmented generation",
+            "summary": "RAG søger i en ekstern samling ved forespørgselstidspunktet og placerer de mest relevante passager i konteksten, før modellen svarer.",
+            "concepts": [
+                "retrieval-augmented generation",
+                "rag",
+                "retrieval",
+                "vector search",
+                "chunking",
+                "reranking"
+            ],
+            "searchTerms": [
+                "retrieval augmented generation",
+                "vector database",
+                "semantic search",
+                "knowledge base",
+                "grounding",
+                "citations",
+                "document search"
+            ],
+            "learningObjectives": [
+                "Gennemgå trinene i en RAG-pipeline",
+                "Nævne de vigtigste måder et RAG-system kan fejle på"
+            ],
+            "misconceptions": [
+                "RAG lærer modellen nye fakta ved at opdatere den."
+            ],
+            "buildsOn": [
+                {
+                    "id": "context-window",
+                    "title": "Kontekstvinduer"
+                },
+                {
+                    "id": "embeddings",
+                    "title": "Embeddings"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval kontra attention"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "Ekstern hukommelse"
+                },
+                {
+                    "id": "code-retrieval",
+                    "title": "Kodebase-bevidst retrieval"
+                }
+            ]
+        },
+        {
+            "id": "retrieval-vs-attention",
+            "order": 23,
+            "partId": null,
+            "title": "Retrieval kontra attention",
+            "summary": "Attention blander information mellem tokens, der allerede er i konteksten. Retrieval afgør, hvilken ekstern information der overhovedet kommer ind i konteksten.",
+            "concepts": [
+                "retrieval",
+                "attention",
+                "similarity search",
+                "context selection"
+            ],
+            "searchTerms": [
+                "difference between attention and retrieval",
+                "is attention retrieval",
+                "does a bigger context window replace rag",
+                "long context vs rag",
+                "retrieval vs long context"
+            ],
+            "learningObjectives": [
+                "Sammenligne attention og retrieval ud fra, hvor de kører, og hvad de arbejder på",
+                "Forklare hvorfor sparse attention og lange kontekster ikke erstatter retrieval"
+            ],
+            "misconceptions": [
+                "Attention og retrieval er det samme i forskellige skalaer.",
+                "Et langt nok kontekstvindue gør retrieval overflødigt."
+            ],
+            "buildsOn": [
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                },
+                {
+                    "id": "sparse-attention",
+                    "title": "Sparse og sliding-window attention"
+                },
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "context-window",
+                    "title": "Kontekstvinduer"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "Ekstern hukommelse"
+                }
+            ]
+        },
+        {
+            "id": "external-memory",
+            "order": 24,
+            "partId": null,
+            "title": "Ekstern hukommelse",
+            "summary": "Alt, som et system skal huske ud over ét kontekstvindue, må gemmes uden for modellen og læses ind igen som tokens.",
+            "concepts": [
+                "memory",
+                "external memory",
+                "long-term memory",
+                "persistence",
+                "agent memory"
+            ],
+            "searchTerms": [
+                "does the model remember",
+                "chat memory",
+                "remember previous conversations",
+                "notes",
+                "scratchpad",
+                "vector store"
+            ],
+            "learningObjectives": [
+                "Forklare hvorfor en model ikke af sig selv har hukommelse på tværs af forespørgsler",
+                "Beskrive hvordan hukommelsesfunktioner bygges med lagring og retrieval"
+            ],
+            "misconceptions": [
+                "En chatassistent husker dig, fordi modellen lærte af dine tidligere samtaler."
+            ],
+            "buildsOn": [
+                {
+                    "id": "context-window",
+                    "title": "Kontekstvinduer"
+                },
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "kv-cache",
+                    "title": "KV-cache"
+                },
+                {
+                    "id": "training",
+                    "title": "Inferens kontra træning"
+                },
+                {
+                    "id": "tool-use",
+                    "title": "Brug af værktøjer"
+                }
+            ]
+        },
+        {
+            "id": "tool-use",
+            "order": 25,
+            "partId": null,
+            "title": "Brug af værktøjer",
+            "summary": "En model kan udskrive en struktureret anmodning om at kalde et værktøj. Software uden for modellen udfører kaldet og sender resultatet tilbage i konteksten.",
+            "concepts": [
+                "tool use",
+                "function calling",
+                "tool call",
+                "agent",
+                "agent loop"
+            ],
+            "searchTerms": [
+                "function calling",
+                "tools",
+                "agents",
+                "agentic",
+                "api calls",
+                "run code",
+                "plugins"
+            ],
+            "learningObjectives": [
+                "Beskrive løkken mellem en model og den applikation, der udfører dens værktøjskald",
+                "Forklare hvor udførelse af værktøjer og tilladelser faktisk hører hjemme"
+            ],
+            "misconceptions": [
+                "Modellen udfører selv den kode eller de API-kald, den anmoder om."
+            ],
+            "buildsOn": [
+                {
+                    "id": "sampling",
+                    "title": "Dekodning og sampling"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Kontekstvinduer"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "mcp",
+                    "title": "Model Context Protocol (MCP)"
+                },
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "code-retrieval",
+                    "title": "Kodebase-bevidst retrieval"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "Ekstern hukommelse"
+                }
+            ]
+        },
+        {
+            "id": "mcp",
+            "order": 26,
+            "partId": null,
+            "title": "Model Context Protocol (MCP)",
+            "summary": "MCP er en åben protokol til at udstille værktøjer, data og prompts til AI-applikationer. Den standardiserer forbindelsen, ikke retrieval-delen.",
+            "concepts": [
+                "model context protocol",
+                "mcp",
+                "protocol",
+                "mcp server",
+                "mcp client",
+                "json-rpc"
+            ],
+            "searchTerms": [
+                "mcp server",
+                "what is mcp",
+                "is mcp rag",
+                "connectors",
+                "integrations",
+                "anthropic mcp"
+            ],
+            "learningObjectives": [
+                "Beskrive delene i en MCP-forbindelse og hvad en server kan udstille",
+                "Forklare hvorfor MCP ikke i sig selv er retrieval eller hukommelse"
+            ],
+            "misconceptions": [
+                "MCP er en form for RAG.",
+                "MCP giver modellen direkte adgang til systemer."
+            ],
+            "buildsOn": [
+                {
+                    "id": "tool-use",
+                    "title": "Brug af værktøjer"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "code-retrieval",
+                    "title": "Kodebase-bevidst retrieval"
+                }
+            ]
+        },
+        {
+            "id": "code-retrieval",
+            "order": 27,
+            "partId": null,
+            "title": "Kodebase-bevidst retrieval",
+            "summary": "Kodeagenter finder de relevante dele af et repository med søgeværktøjer som tekstsøgning, symbolindekser, embeddings eller kodegrafer og læser dem ind i konteksten.",
+            "concepts": [
+                "code search",
+                "codebase retrieval",
+                "code knowledge graph",
+                "symbol index",
+                "language server",
+                "grep"
+            ],
+            "searchTerms": [
+                "coding agent",
+                "repository",
+                "repo",
+                "ripgrep",
+                "code graph",
+                "how do coding agents understand a codebase",
+                "lsp"
+            ],
+            "learningObjectives": [
+                "Opliste de vigtigste måder en agent søger i en kodebase, og hvornår hver metode fungerer bedst",
+                "Forklare hvorfor eksakte identifikatorer taler for leksikalsk søgning"
+            ],
+            "misconceptions": [
+                "En kodeagent læser og forstår hele repositoriet på én gang."
+            ],
+            "buildsOn": [
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "tool-use",
+                    "title": "Brug af værktøjer"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "mcp",
+                    "title": "Model Context Protocol (MCP)"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "Ekstern hukommelse"
+                },
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval kontra attention"
+                }
+            ]
+        },
+        {
+            "id": "training",
+            "order": 28,
+            "partId": null,
+            "title": "Inferens kontra træning",
+            "summary": "Træning ændrer en models vægte. Inferens, altså almindelig brug, kører faste vægte og ændrer intet i modellen.",
+            "concepts": [
+                "training",
+                "inference",
+                "pretraining",
+                "fine-tuning",
+                "weights",
+                "in-context learning",
+                "gradient descent"
+            ],
+            "searchTerms": [
+                "does chatgpt learn from my conversations",
+                "does the model learn while chatting",
+                "rlhf",
+                "backpropagation",
+                "post-training",
+                "weights update"
+            ],
+            "learningObjectives": [
+                "Skelne mellem hvad der ændrer sig under træning, og hvad der ændrer sig under inferens",
+                "Forklare in-context learning uden opdatering af vægte"
+            ],
+            "misconceptions": [
+                "En model lærer af hver samtale, mens den foregår.",
+                "In-context learning opdaterer modellens vægte."
+            ],
+            "buildsOn": [
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer-lag"
+                },
+                {
+                    "id": "sampling",
+                    "title": "Dekodning og sampling"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "synthetic-data",
+                    "title": "Selvtræning og syntetiske data"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "Ekstern hukommelse"
+                },
+                {
+                    "id": "kv-cache",
+                    "title": "KV-cache"
+                }
+            ]
+        },
+        {
+            "id": "hallucination",
+            "order": 29,
+            "partId": null,
+            "title": "Hallucination",
+            "summary": "En model kan fremsætte noget falsk lige så flydende som noget sandt, fordi den genererer sandsynlig tekst og ikke har noget faktalager at kontrollere imod.",
+            "concepts": [
+                "hallucination",
+                "confabulation",
+                "factual errors",
+                "calibration",
+                "grounding"
+            ],
+            "searchTerms": [
+                "why does ai make things up",
+                "made up citations",
+                "fake references",
+                "is the model lying",
+                "wrong answers",
+                "how to reduce hallucinations",
+                "confidently wrong"
+            ],
+            "learningObjectives": [
+                "Forklare hvorfor flydende output ikke er bevis på, at det er korrekt",
+                "Nævne de vigtigste måder systemer reducerer hallucination på, og hvad hver af dem afhænger af"
+            ],
+            "misconceptions": [
+                "En model slår fakta op i en intern database, og en hallucination er, at den forkerte række returneres.",
+                "Når en model hallucinerer, ved den, at svaret er forkert, og siger det alligevel."
+            ],
+            "buildsOn": [
+                {
+                    "id": "training",
+                    "title": "Inferens kontra træning"
+                },
+                {
+                    "id": "sampling",
+                    "title": "Dekodning og sampling"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "search-and-verification",
+                    "title": "Flere udtræk, søgning og verifikation"
+                },
+                {
+                    "id": "tool-use",
+                    "title": "Brug af værktøjer"
+                }
+            ]
+        },
+        {
+            "id": "synthetic-data",
+            "order": 30,
+            "partId": null,
+            "title": "Selvtræning og syntetiske data",
+            "summary": "Modeloutput, der er blevet filtreret, kontrolleret eller rangeret, kan blive træningsdata for en senere model: en læringsløkke uden for genereringen.",
+            "concepts": [
+                "synthetic data",
+                "self-training",
+                "distillation",
+                "rejection sampling",
+                "model collapse"
+            ],
+            "searchTerms": [
+                "training on model outputs",
+                "ai generated training data",
+                "self improvement loop",
+                "bootstrapping",
+                "data flywheel"
+            ],
+            "learningObjectives": [
+                "Beskrive en generér-, verificér- og træn-løkke",
+                "Forklare hvorfor kvaliteten af verifikationen sætter grænsen for selvtræning"
+            ],
+            "misconceptions": [
+                "En model forbedrer sig selv hver gang den genererer og kontrollerer et svar."
+            ],
+            "buildsOn": [
+                {
+                    "id": "training",
+                    "title": "Inferens kontra træning"
+                },
+                {
+                    "id": "search-and-verification",
+                    "title": "Flere udtræk, søgning og verifikation"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "self-improvement",
+                    "title": "Rekursiv selvforbedring"
+                }
+            ]
+        },
+        {
+            "id": "self-improvement",
+            "order": 31,
+            "partId": null,
+            "title": "Rekursiv selvforbedring",
+            "summary": "Idéen om, at et AI-system kan forbedre sine egne evner, herunder sin evne til at forbedre sig selv. Et forskningskoncept, ikke en nuværende mekanisme.",
+            "concepts": [
+                "recursive self-improvement",
+                "intelligence explosion",
+                "automated ai research",
+                "feedback loop"
+            ],
+            "searchTerms": [
+                "singularity",
+                "self improving ai",
+                "ai improving ai",
+                "takeoff",
+                "seed ai"
+            ],
+            "learningObjectives": [
+                "Formulere hypotesen om rekursiv selvforbedring",
+                "Identificere hvilke dele af nutidens træningsløkker der minder om den, og hvilke der ikke gør"
+            ],
+            "misconceptions": [
+                "Nuværende modeller omskriver deres egne vægte for at blive klogere, mens de kører."
+            ],
+            "buildsOn": [
+                {
+                    "id": "synthetic-data",
+                    "title": "Selvtræning og syntetiske data"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "agi",
+                    "title": "AGI, og hvorfor definitionerne varierer"
+                },
+                {
+                    "id": "training",
+                    "title": "Inferens kontra træning"
+                }
+            ]
+        },
+        {
+            "id": "agi",
+            "order": 32,
+            "partId": null,
+            "title": "AGI, og hvorfor definitionerne varierer",
+            "summary": "Kunstig generel intelligens har ingen enkelt vedtaget definition, så enhver påstand om det afhænger af, hvilken definition der bruges.",
+            "concepts": [
+                "artificial general intelligence",
+                "agi",
+                "definition",
+                "generality",
+                "benchmarks"
+            ],
+            "searchTerms": [
+                "what is agi",
+                "when will agi arrive",
+                "human level ai",
+                "superintelligence",
+                "general intelligence",
+                "asi"
+            ],
+            "learningObjectives": [
+                "Sammenligne flere definitioner af AGI",
+                "Vurdere en påstand om AGI ved at identificere definitionen og målingen bag den"
+            ],
+            "misconceptions": [
+                "AGI er en veldefineret grænse, som en model enten krydser eller ikke krydser."
+            ],
+            "buildsOn": [
+                {
+                    "id": "self-improvement",
+                    "title": "Rekursiv selvforbedring"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "training",
+                    "title": "Inferens kontra træning"
+                }
+            ]
+        }
+    ],
+    "learningPaths": [
+        {
+            "id": "llm-generation",
+            "title": "Hvordan en LLM genererer tekst",
+            "nodes": [
+                "tokenization",
+                "embeddings",
+                "position",
+                "attention",
+                "kv-cache",
+                "logits",
+                "sampling"
+            ]
+        },
+        {
+            "id": "coding-agents",
+            "title": "Hvordan AI-kodeagenter forstår et repository",
+            "nodes": [
+                "context-window",
+                "retrieval-vs-attention",
+                "rag",
+                "external-memory",
+                "tool-use",
+                "mcp",
+                "code-retrieval"
+            ]
+        }
+    ]
+}

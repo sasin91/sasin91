@@ -1,0 +1,19 @@
+<p><strong>Træning</strong> er der, hvor en models vægte kommer fra. Under fortræningen
+forudsiger modellen det næste token på tværs af en enorm tekstmængde; hver forudsigelse
+sammenlignes med det faktiske næste token, og gradient descent skubber hver vægt
+en smule i den retning, der ville have gjort det rigtige token mere sandsynligt.
+<strong>Eftertræning</strong> former derefter adfærden: superviseret finjustering på
+eksempelsamtaler, læring fra menneskelige eller AI-baserede præferencevurderinger samt
+reinforcement learning på opgaver, hvis svar kan kontrolleres.</p>
+<p><strong>Inferens</strong> er alt det, der sker, når modellen bruges. Den kører kun
+netværket fremad. Der måles ingen fejl, der beregnes ingen gradienter, og
+vægtene læses, men skrives aldrig. Inde i en samtale er det kun
+konteksten og <a href="#kv-cache">KV-cachen</a>, der ændrer sig, og begge kasseres
+bagefter.</p>
+<p>Modeller kan stadig tilpasse sig en prompt: vis en model et par eksempler på et format, og
+den følger formatet. Denne <strong>in-context learning</strong> er beregning over
+konteksten med faste vægte, ikke træning. Fjerner man eksemplerne, forsvinder
+adfærden med dem.</p>
+<p>Om en udbyder senere bruger samtaler som træningsdata, er et spørgsmål om
+politik, og hvis det sker, foregår det i en separat træningskørsel, der
+frembringer en ny model — ikke inde i samtalen.</p>

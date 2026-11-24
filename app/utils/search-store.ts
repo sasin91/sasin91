@@ -1,3 +1,4 @@
+import type { LocaleCode } from '#shared/data/cv'
 import {
   fetchIndex,
   fetchModel,
@@ -7,35 +8,40 @@ import {
   type StaticModel,
 } from '#shared/retrieval'
 
-export const SEARCH_INDEX_URL = '/search/index.json'
+export function searchIndexUrl(locale: LocaleCode = 'en'): string {
+  return locale === 'da' ? '/search/index.da.json' : '/search/index.json'
+}
 
-let rawIndexPromise: Promise<RawSearchIndex> | null = null
-let preparedSiteIndex: PreparedSearchIndex | null = null
+const rawIndexPromises: Partial<Record<LocaleCode, Promise<RawSearchIndex>>> = {}
+const preparedSiteIndexes: Partial<Record<LocaleCode, PreparedSearchIndex>> = {}
 let modelPromise: Promise<StaticModel> | null = null
 let loadedModel: StaticModel | null = null
 
-export function loadRawIndex(): Promise<RawSearchIndex> {
-  if (!rawIndexPromise) {
-    rawIndexPromise = fetchIndex(SEARCH_INDEX_URL).catch((error) => {
-      rawIndexPromise = null
+export function loadRawIndex(locale: LocaleCode = 'en'): Promise<RawSearchIndex> {
+  if (!rawIndexPromises[locale]) {
+    rawIndexPromises[locale] = fetchIndex(searchIndexUrl(locale)).catch((error) => {
+      delete rawIndexPromises[locale]
       throw error
     })
   }
-  return rawIndexPromise
+  return rawIndexPromises[locale]!
 }
 
-export async function loadSiteIndex(): Promise<PreparedSearchIndex> {
-  if (preparedSiteIndex) return preparedSiteIndex
-  const raw = await loadRawIndex()
-  preparedSiteIndex = prepareIndex(raw)
-  return preparedSiteIndex
+export async function loadSiteIndex(locale: LocaleCode = 'en'): Promise<PreparedSearchIndex> {
+  if (preparedSiteIndexes[locale]) return preparedSiteIndexes[locale]!
+  const raw = await loadRawIndex(locale)
+  preparedSiteIndexes[locale] = prepareIndex(raw)
+  return preparedSiteIndexes[locale]!
 }
 
-export async function loadEmbeddingModel(raw?: RawSearchIndex): Promise<StaticModel> {
+export async function loadEmbeddingModel(
+  raw?: RawSearchIndex,
+  locale: LocaleCode = 'en',
+): Promise<StaticModel> {
   if (loadedModel) return loadedModel
   if (!modelPromise) {
     modelPromise = (async () => {
-      const index = raw ?? (await loadRawIndex())
+      const index = raw ?? (await loadRawIndex(locale))
       const model = await fetchModel(index.model)
       loadedModel = model
       return model
@@ -52,8 +58,10 @@ export function getLoadedModel(): StaticModel | null {
 }
 
 export function resetSearchCache() {
-  rawIndexPromise = null
-  preparedSiteIndex = null
+  delete rawIndexPromises.en
+  delete rawIndexPromises.da
+  delete preparedSiteIndexes.en
+  delete preparedSiteIndexes.da
   modelPromise = null
   loadedModel = null
 }

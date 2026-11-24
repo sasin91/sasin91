@@ -1,0 +1,25 @@
+<p>For at køre en model skal en maskine have plads til tre ting: vægtene,
+<a href="#kv-cache">KV-cachen</a> til den aktuelle kontekst samt noget arbejdshukommelse til
+kørselsmiljøet. Vægtene ligger fast ud fra modellen og dens
+<a href="#quantization">kvantisering</a>; cachen vokser med konteksten. En 4-bit
+model med 8 milliarder parametre kan nemt være i 8 GB; den samme model med en
+lang kontekst kan måske ikke.</p>
+<p>Inferens har to faser med forskellige flaskehalse. <strong>Prefill</strong> læser
+prompten, og alle dens tokens kan behandles på én gang, så den begrænses af,
+hvor meget regnekraft hardwaren har. <strong>Decode</strong> genererer derefter ét token
+ad gangen, og hvert token kræver et gennemløb af alle vægtene. For en
+enkelt bruger går det gennemløb mest med at vente på hukommelsen, ikke med at regne, så et
+groft loft er</p>
+<p><math display="block"><mtext>tokens pr. sekund</mtext><mo>≈</mo><mfrac><mtext>hukommelsesbåndbredde</mtext><mtext>bytes af vægte læst pr. token</mtext></mfrac></math></p>
+<p>En maskine, der læser 100 GB/s og kører en model på 5 GB, topper omkring 20 tokens
+i sekundet, uanset hvor hurtige dens kerner er. Det er grunden til, at GPU’er — med flere gange
+hukommelsesbåndbredden fra en almindelig CPU — genererer hurtigere, at kvantisering gør
+genereringen hurtigere ud over at krympe filstørrelsen, og at maskiner med hurtig
+hukommelse delt mellem CPU og GPU kører store modeller godt.</p>
+<p>En <a href="#transformer-layers">mixture-of-experts</a>-model bøjer reglen: alle
+dens eksperter skal ligge i hukommelsen, men hvert token læser kun de få, routeren
+vælger, så den genererer hurtigere, end dens samlede størrelse antyder.</p>
+<p>At køre lokalt holder enhver prompt på maskinen og koster intet pr.
+token. Det, man giver afkald på, er størrelse: de største modeller kræver langt mere hukommelse, end
+én maskine normalt har, og en udbyder kan batche mange brugeres forespørgsler gennem
+hver indlæsning af vægtene, hvilket en enkelt person ikke kan.</p>

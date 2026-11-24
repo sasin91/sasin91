@@ -14,24 +14,14 @@ const slugPath = computed(() => {
   return segments.filter(Boolean).join('/')
 })
 
-const { data: post, error } = await useFetch<PostDetail>(() => `/api/posts/${slugPath.value}`)
+const { data: post, error } = await useFetch<PostDetail>(() => `/api/posts/${slugPath.value}`, {
+  key: () => `post-${currentLocale.value}-${slugPath.value}`,
+  query: { lang: currentLocale },
+})
 
 if (error.value || !post.value) {
   throw createError({ statusCode: 404, statusMessage: 'Post not found', fatal: true })
 }
-
-const formattedDate = computed(() => {
-  if (!post.value) return ''
-  if (currentLocale.value === 'en') return post.value.dateLong
-  const [year, month, day] = post.value.dateIso.split('-').map(Number)
-  if (!year || !month || !day) return post.value.dateLong
-  return new Intl.DateTimeFormat('da-DK', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(Date.UTC(year, month - 1, day)))
-})
 
 useSiteSeo({
   title: `${post.value.title} — ${cv.value.site.name}`,
@@ -50,11 +40,8 @@ useSiteSeo({
 
     <h1>{{ post.title }}</h1>
     <div class="meta">
-      <time :datetime="post.dateIso">{{ formattedDate }}</time>
+      <time :datetime="post.dateIso">{{ post.dateLong }}</time>
     </div>
-    <p v-if="currentLocale === 'da'" class="article-lang-note">
-      {{ t('blog.englishOnlyNote') }}
-    </p>
 
     <AskArticle
       mode="inline"
@@ -65,6 +52,6 @@ useSiteSeo({
 
     <div class="prose-body" v-html="post.body" />
 
-    <DiagramLightbox v-if="post.hasDiagrams" :content-key="post.path" />
+    <DiagramLightbox v-if="post.hasDiagrams" :content-key="`${currentLocale}-${post.path}`" />
   </article>
 </template>

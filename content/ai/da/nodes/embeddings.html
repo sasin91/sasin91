@@ -1,0 +1,23 @@
+<p>Modellens første lag er en tabel med én række pr. indgang i ordforrådet. Hver
+række er en vektor på fra nogle hundrede til flere tusind tal, og et token-ID
+udvælger simpelthen sin række. Værdierne i tabellen læres under træningen,
+sammen med alt andet.</p>
+<p>Træningen har en tendens til at placere tokens der bruges på lignende måder
+tæt på hinanden, og derfor beskrives embeddings ofte som noget der koder
+betydning. For denne tabel går den beskrivelse for vidt. Input-embeddingen for
+<code>bank</code> er den samme række uanset om sætningen handler om en pengeinstitution
+eller et bank på døren: den er et kontekstfrit udgangspunkt. Hvad et token
+betyder i en bestemt sætning afklares først i takt med at dets vektor
+transformeres af lagene ovenover ved hjælp af de omkringliggende tokens. Det
+er emnet for
+<a href="#contextual-representations">kontekstuelle repræsentationer</a>.</p>
+<p>Ordet <strong>embedding</strong> bruges også om noget beslægtet, men separat: en
+embedding-<strong>model</strong> der gør et helt tekststykke til én vektor, så tekststykker
+kan sammenlignes efter lighed. Det er sådan <a href="#rag">retrieval</a> normalt finder
+relevant tekst.</p>
+<p><a href="/blog/ai/ask/">Spørg</a>-visningen i denne artikel bruger den simpleste slags: en statisk
+embedding-tabel, hvor et tekststykkes vektor er gennemsnittet af dets tokens’
+rækker. Ingen kontekst og ingen lag, så det kører i en browser uden en
+machine learning-runtime. Det er også grunden til at Spørg kombinerer det med
+almindelig nøgleordssøgning: en statisk tabel kan ikke afgøre hvilken
+betydning af et ord du mente.</p>

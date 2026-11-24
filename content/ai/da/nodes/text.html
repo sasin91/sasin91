@@ -1,0 +1,14 @@
+<p>En computer gemmer tekst som bytes: Unicode-tegn, som regel kodet som
+UTF-8. Et neuralt netværk regner ikke med bytes eller bogstaver. Det regner
+med tal ordnet i vektorer og matricer, og det eneste det kan gøre med et
+input er at gange og lægge til.</p>
+<p>Mellem den prompt du skriver og den første beregning inde i modellen ligger
+der derfor en fast, mekanisk pipeline. Teksten bliver normaliseret, opdelt i
+<a href="#tokenization">tokens</a>, og hvert token erstattes af et
+<a href="#token-ids">heltals-ID</a>. Disse heltal er hele modellens udsyn til din tekst.</p>
+<p>Intet i den pipeline læres mens du bruger modellen, og intet i den forstår
+noget. Det minder mere om et opslag i en ordbog end om at læse.</p>
+<p>Det har konsekvenser der overrasker folk. En model der modtager <code>straw</code>
+og <code>berry</code> som to ID’er har intet direkte indblik i bogstaverne indeni, så
+“hvor mange r’er er der i strawberry” spørger om noget modellen kun ved
+indirekte, fra mønstre den opsamlede under træningen.</p>

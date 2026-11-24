@@ -1,0 +1,17 @@
+<p>Attention er måden en transformer flytter information mellem positioner på.
+For hver position beregner den en vægt for hver position den må kigge på, og
+tager derefter et vægtet gennemsnit af informationen fra disse positioner. I
+en decoder-only-model er de tilladte positioner den nuværende og alt før den.</p>
+<p>Vægtene beregnes på ny for hvert input. Det er den afgørende forskel fra
+resten af netværket: MLP-vægtene er faste tal, men hvor meget “den” trækker
+fra “katten” kontra “måtten” afgøres under kørslen ud fra selve indholdet.
+Hvordan de vægte beregnes er emnet for
+<a href="#qkv">queries, keys og values</a>.</p>
+<p>Hvert lag kører flere attention-<strong>heads</strong> parallelt, hvert med sine egne
+tillærte projektioner, så forskellige heads kan følge forskellige relationer:
+det forrige token, sætningens grundled, en matchende parentes.</p>
+<p>Attention arbejder udelukkende på det der ligger i
+<a href="#context-window">kontekstvinduet</a>. Det har ingen adgang til dokumenter,
+databaser eller tidligere samtaler medmindre noget har lagt dem ind som
+tokens. Det er en opgave for <a href="#retrieval-vs-attention">retrieval</a>, som er en
+anden mekanisme.</p>

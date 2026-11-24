@@ -1,0 +1,20 @@
+<p>En tokenizer opdeler tekst i enheder fra et fast ordforråd, typisk på
+titusindvis til et par hundrede tusind indgange. Moderne tokenizere arbejder
+med <strong>delord</strong>: almindelige ord får ét enkelt token, mens sjældne ord bygges
+af flere stumper. Byte pair encoding (BPE), WordPiece og Unigram er de mest
+udbredte algoritmer; byte-baserede varianter falder tilbage på enkeltbytes, så
+ethvert input overhovedet kan kodes.</p>
+<p>Ordforrådet fastlægges før modellen trænes, ud fra statistik over en stor
+tekstmængde, og det ændrer sig aldrig bagefter. Modellen lærer at arbejde med
+præcis de stumper tokenizeren producerer.</p>
+<p>Her er det faktiske output fra den WordPiece-tokenizer der driver denne
+artikels <a href="/blog/ai/ask/">Spørg</a>-visning. <code>##</code> markerer en stump der fortsætter den forrige:</p>
+<pre class="hl-code"><code>&quot;Why doesn&#039;t a larger context window replace RAG?&quot;
+why | doesn | &#039; | t | a | larger | context | window | replace | rag | ?
+
+&quot;transformers hallucinate unfathomably&quot;
+transformers | hall | ##uc | ##inate | un | ##fat | ##hom | ##ably
+</code></pre>
+<p>Tokens er ikke ord. Tegnsætning og ordstumper er også tokens, og en anden
+models tokenizer vil opdele den samme sætning anderledes. Derfor kan antal
+tokens og pris pr. token kun sammenlignes inden for den samme modelfamilie.</p>

@@ -1,0 +1,15 @@
+<p>Softmax tager eksponentialfunktionen af hvert logit og dividerer med
+summen, så hvert token får en positiv sandsynlighed og de alle tilsammen
+giver én:</p>
+<p><math display="block"><msub><mi>p</mi><mi>i</mi></msub><mo>=</mo><mfrac><msup><mi>e</mi><msub><mi>z</mi><mi>i</mi></msub></msup><mrow><msub><mo>∑</mo><mi>j</mi></msub><msup><mi>e</mi><msub><mi>z</mi><mi>j</mi></msub></msup></mrow></mfrac></math></p>
+<p>Den bevarer rækkefølgen af logits og forstærker afstandene mellem dem: et
+logit der er to point højere end et andet bliver omtrent syv gange så
+sandsynligt. Ethvert token i ordforrådet, uanset hvor usandsynligt, beholder
+en sandsynlighed over nul.</p>
+<p>Fordelingen beskriver hvad der typisk følger efter i tekst som konteksten,
+sådan som modellen har lært det under træningen. Den er ikke et kalibreret
+mål for sandhed. En flydende, selvsikker fortsættelse og en korrekt
+fortsættelse er to forskellige ting, hvilket er en del af grunden til at
+modeller kan fremsætte usandheder med høj sandsynlighed.</p>
+<p>Den samme funktion optræder inde i <a href="#qkv">attention</a>, hvor den gør
+query-key-scorer til vægte. Samme regnestykke, anden opgave.</p>

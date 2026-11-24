@@ -1,0 +1,20 @@
+<p>Inde i et attention-head ganges hvert tokens nuværende vektor med tre
+tillærte matricer, hvilket giver tre nye vektorer:</p>
+<ul>
+<li>en <strong>query</strong>: hvad denne position leder efter;</li>
+<li>en <strong>key</strong>: hvad denne position kan matches på;</li>
+<li>en <strong>value</strong>: hvad denne position bidrager med hvis der fokuseres på den.</li>
+</ul>
+<p>Scoren mellem position <math><mi>i</mi></math> og position <math><mi>j</mi></math> er prikproduktet af
+<math><mi>i</mi></math>’s query og <math><mi>j</mi></math>’s key, divideret med kvadratroden af key-længden for at
+holde tallene i et stabilt område. En <a href="#softmax">softmax</a> gør hver række af
+scorer til vægte med summen én, og outputtet for <math><mi>i</mi></math> er den vægtede sum af
+values:</p>
+<p><math display="block"><mi>Attention</mi><mo>(</mo><mi>Q</mi><mo>,</mo><mi>K</mi><mo>,</mo><mi>V</mi><mo>)</mo><mo>=</mo><mi>softmax</mi><mrow><mo>(</mo><mfrac><mrow><mi>Q</mi><msup><mi>K</mi><mi>T</mi></msup></mrow><msqrt><msub><mi>d</mi><mi>k</mi></msub></msqrt></mfrac><mo>)</mo></mrow><mi>V</mi></math></p>
+<p>Database-terminologien er kun en analogi. Hver key matcher hver query i en
+vis grad, og outputtet er en blanding, ikke én enkelt udvalgt post.</p>
+<p>Keys og values afhænger kun af et token og de tokens der står før det, aldrig
+af senere tokens, så når de først er beregnet kan de genbruges. Det er det
+<a href="#kv-cache">KV-cachen</a> gemmer. <strong>Grouped-query attention</strong> lader flere
+query-heads dele ét sæt keys og values, hvilket reducerer den cache
+betragteligt.</p>

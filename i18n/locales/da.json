@@ -34,8 +34,7 @@
   "blog": {
     "title": "Artikler",
     "lede": "Noter om ting jeg har bygget, og hvad der gik galt undervejs.",
-    "articleLabel": "Lang artikel med tidslinje og Spørg",
-    "englishOnlyNote": "Denne artikel er skrevet på engelsk."
+    "articleLabel": "Lang artikel med tidslinje og Spørg"
   },
   "ai": {
     "viewsLabel": "Visninger af denne artikel",
@@ -83,7 +82,7 @@
       "home": "Forside",
       "writing": "Artikler",
       "writingHint": "Alle indlæg",
-      "ai": "How modern language models work",
+      "ai": "Sådan fungerer moderne sprogmodeller",
       "aiHint": "AI-artiklen",
       "timeline": "Tidslinje",
       "timelineHint": "AI-artiklen, én linje per idé",
@@ -115,7 +114,22 @@
     "numbers": "Tal",
     "inlineCredit": "Søgning i denne artikel direkte på din enhed: den finder afsnit, den skriver ikke svar.",
     "howItWorks": "Sådan virker det",
-    "howTitle": "Sådan virker det"
+    "howTitle": "Sådan virker det",
+    "howIntroPrefix": "Denne side er et lille søgesystem af den slags, der beskrives i",
+    "howIntroSuffix": ". Hvert trin sker i din browser; dit spørgsmål sendes aldrig nogen steder hen.",
+    "step1Title": "Tokenisér.",
+    "step1Body": "Dit spørgsmål deles op i WordPiece-tokens fra modellens ordforråd",
+    "step1Link": "tokenisering",
+    "step2Title": "Indlejr (embed).",
+    "step2Body": "Hvert token vælger én række i en statisk embedding-tabel, og rækkerne gennemsnitstales til én vektor med {dim} tal",
+    "step2Link": "embeddings",
+    "step3Title": "Sammenlign.",
+    "step3Body": "Vektoren sammenlignes med vektorer, der på forhånd er beregnet for hvert tekstafsnit i artiklen, ved hjælp af cosinuslighed.",
+    "step4Title": "Match ord.",
+    "step4Body": "Præcise ord og udtryk fra dit spørgsmål matches mod hvert afsnits titel, begreber og tekst, så en specifik term som “KV-cache” aldrig overhales af noget blot vagt beslægtet.",
+    "step5Title": "Rangér.",
+    "step5Body": "De to signaler kombineres, og de bedste afsnit vises ovenfor med direkte link til deres sted i artiklen.",
+    "modelCredit": "Model: {name} af Minish Lab (MIT-licens), en statisk embedding-tabel på {dim} dimensioner, kvantiseret til 8 bit. Den hentes fra dette site én gang, når du første gang bruger formularen."
   },
   "error": {
     "notFoundTitle": "Siden blev ikke fundet",

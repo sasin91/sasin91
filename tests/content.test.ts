@@ -21,14 +21,21 @@ function flattenKeys(obj: Record<string, unknown>, prefix = ''): string[] {
 }
 
 describe('published content integrity', () => {
-  test('all 9 blog posts exist with HTML bodies and valid metadata', () => {
-    const posts = JSON.parse(
+  test('all 9 blog posts exist in both English and Danish with valid metadata', () => {
+    const enPosts = JSON.parse(
       readFileSync(resolve(ROOT, 'content/blog/meta.json'), 'utf8'),
     ) as PostMeta[]
+    const daPosts = JSON.parse(
+      readFileSync(resolve(ROOT, 'content/blog/meta.da.json'), 'utf8'),
+    ) as PostMeta[]
 
-    expect(posts).toHaveLength(9)
-    for (const post of posts) {
+    expect(enPosts).toHaveLength(9)
+    expect(daPosts).toHaveLength(9)
+    expect(daPosts.map((p) => p.key)).toEqual(enPosts.map((p) => p.key))
+
+    for (const post of enPosts) {
       expect(existsSync(resolve(ROOT, `content/blog/${post.key}.html`))).toBe(true)
+      expect(existsSync(resolve(ROOT, `content/blog/da/${post.key}.html`))).toBe(true)
       expect(post.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
       expect(post.url).toBe(`/${post.path}/`)
       if (post.heroIsSvg) {
@@ -37,27 +44,34 @@ describe('published content integrity', () => {
     }
   })
 
-  test('AI knowledge article includes all 32 nodes including the 3 newer ones', () => {
-    const article = JSON.parse(
+  test('AI knowledge article includes all 32 nodes in both English and Danish', () => {
+    const enArticle = JSON.parse(
       readFileSync(resolve(ROOT, 'content/ai/article.json'), 'utf8'),
     ) as AiArticleOutline
+    const daArticle = JSON.parse(
+      readFileSync(resolve(ROOT, 'content/ai/article.da.json'), 'utf8'),
+    ) as AiArticleOutline
 
-    expect(article.parts).toHaveLength(6)
-    expect(article.nodes).toHaveLength(32)
+    expect(enArticle.parts).toHaveLength(6)
+    expect(daArticle.parts).toHaveLength(6)
+    expect(enArticle.nodes).toHaveLength(32)
+    expect(daArticle.nodes).toHaveLength(32)
+    expect(daArticle.nodes.map((n) => n.id)).toEqual(enArticle.nodes.map((n) => n.id))
 
-    const ids = new Set(article.nodes.map((n) => n.id))
+    const ids = new Set(enArticle.nodes.map((n) => n.id))
     expect(ids.has('quantization')).toBe(true)
     expect(ids.has('local-inference')).toBe(true)
     expect(ids.has('hallucination')).toBe(true)
 
-    for (const node of article.nodes) {
+    for (const node of enArticle.nodes) {
       expect(existsSync(resolve(ROOT, `content/ai/nodes/${node.id}.html`))).toBe(true)
+      expect(existsSync(resolve(ROOT, `content/ai/da/nodes/${node.id}.html`))).toBe(true)
       for (const link of [...node.buildsOn, ...node.seeAlso]) {
         expect(ids.has(link.id)).toBe(true)
       }
     }
 
-    for (const path of article.learningPaths) {
+    for (const path of enArticle.learningPaths) {
       for (const nodeId of path.nodes) {
         expect(ids.has(nodeId)).toBe(true)
       }
@@ -102,14 +116,13 @@ describe('published content integrity', () => {
     expect(flattenKeys(da)).toEqual(flattenKeys(en))
   })
 
-  test('search index covers all 32 AI nodes and 9 posts', () => {
-    const index = JSON.parse(
-      readFileSync(resolve(ROOT, 'public/search/index.json'), 'utf8'),
-    ) as RawSearchIndex
-
-    expect(index.version).toBe(2)
-    expect(index.nodes.filter((n) => n.kind === 'ai')).toHaveLength(32)
-    expect(index.nodes.filter((n) => n.kind === 'post')).toHaveLength(9)
+  test('EN and DA search indexes cover all 32 AI nodes and 9 posts', () => {
+    for (const file of ['public/search/index.json', 'public/search/index.da.json']) {
+      const index = JSON.parse(readFileSync(resolve(ROOT, file), 'utf8')) as RawSearchIndex
+      expect(index.version).toBe(2)
+      expect(index.nodes.filter((n) => n.kind === 'ai')).toHaveLength(32)
+      expect(index.nodes.filter((n) => n.kind === 'post')).toHaveLength(9)
+    }
     expect(existsSync(resolve(ROOT, 'public/search/model.bin'))).toBe(true)
     expect(existsSync(resolve(ROOT, 'public/search/vocab.txt'))).toBe(true)
   })

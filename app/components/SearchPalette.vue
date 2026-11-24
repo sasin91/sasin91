@@ -147,11 +147,15 @@ function saveData(): boolean {
   return Boolean(connection?.saveData)
 }
 
+let loadedLocale: string | null = null
+
 function ensureLoaded() {
-  if (loadingPromise) return
+  const loc = currentLocale.value
+  if (loadingPromise && loadedLocale === loc) return
+  loadedLocale = loc
   loadingPromise = (async () => {
     try {
-      index.value = await loadSiteIndex()
+      index.value = await loadSiteIndex(loc)
       failed.value = false
     } catch (error) {
       console.error('Failed to load search index:', error)
@@ -162,7 +166,7 @@ function ensureLoaded() {
     if (saveData() || model.value) return
     modelLoading.value = true
     try {
-      model.value = await loadEmbeddingModel()
+      model.value = await loadEmbeddingModel(undefined, loc)
     } catch (error) {
       // Word matching remains available if the embedding model cannot be loaded.
       console.error('Failed to load embedding model:', error)
@@ -172,7 +176,7 @@ function ensureLoaded() {
   })()
 }
 
-watch(open, (isOpen) => {
+watch([open, currentLocale], ([isOpen]) => {
   if (isOpen) {
     ensureLoaded()
   }
