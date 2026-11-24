@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="1200" height="380" role="img" aria-label="Sessions on the cluster at 1 CPU. New visitors without a cookie: stock Trongate 1,378 requests a second with p99 up to about 1 second, lazy sessions 3,464 with a flat p99 of 26 ms. Returning visitors: stock 1,089, lazy 2,995.">
+  <defs>
+    <!-- Standalone only, see athletos-freebsd/architecture.svg for why
+         svg:root, not :root. -->
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="s-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/><stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="380" rx="24" fill="url(#s-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="379" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="48" font-size="16" fill="var(--diagram-text, #e5e7eb)">sessions, cluster, 1 CPU limit, requests per second</text>
+    <text x="1152" y="48" text-anchor="end" font-size="16" fill="light-dark(#15803d, #4ade80)" font-weight="700">2.5x for new visitors</text>
+
+    <!-- bars from x 260, 0.175 px per req/s -->
+    <g font-size="13">
+      <text x="48" y="98" fill="var(--diagram-muted, #9ca3af)">no cookie: every request a new visitor</text>
+
+      <text x="244" y="130" text-anchor="end" fill="light-dark(#be185d, #f472b6)">stock Trongate</text>
+      <rect x="260" y="114" width="241.2" height="24" rx="5" fill="light-dark(#be185d, #ec4899)"/>
+      <text x="517" y="131" font-size="12" fill="var(--diagram-muted, #6b7280)">1,378 · p99 up to about 1 s after ~100k session files</text>
+
+      <text x="244" y="166" text-anchor="end" fill="light-dark(#15803d, #4ade80)">lazy sessions</text>
+      <rect x="260" y="150" width="606.2" height="24" rx="5" fill="light-dark(#15803d, #22c55e)"/>
+      <text x="882" y="167" font-size="12" fill="var(--diagram-muted, #6b7280)">3,464 · p99 26 ms, flat</text>
+
+      <text x="48" y="226" fill="var(--diagram-muted, #9ca3af)">returning visitors: 1000 rotating session cookies</text>
+
+      <text x="244" y="258" text-anchor="end" fill="light-dark(#be185d, #f472b6)">stock Trongate</text>
+      <rect x="260" y="242" width="190.6" height="24" rx="5" fill="light-dark(#be185d, #ec4899)"/>
+      <text x="467" y="259" font-size="12" fill="var(--diagram-muted, #6b7280)">1,089 · same pod, the ~100k files still in /tmp</text>
+
+      <text x="244" y="294" text-anchor="end" fill="light-dark(#15803d, #4ade80)">lazy sessions</text>
+      <rect x="260" y="278" width="524.1" height="24" rx="5" fill="light-dark(#15803d, #22c55e)"/>
+      <text x="800" y="295" font-size="12" fill="var(--diagram-muted, #6b7280)">2,995</text>
+    </g>
+
+    <text x="48" y="346" font-size="13" fill="var(--diagram-muted, #9ca3af)">Lazy: start a session only for a visitor with a session cookie, or a request that writes to $_SESSION.</text>
+  </g>
+</svg>

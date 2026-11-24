@@ -1,0 +1,37 @@
+{
+  "name": "sasin91-xyz",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "npx wrangler dev",
+    "deploy": "nuxt build && wrangler deploy",
+    "index": "node scripts/build-search-index.mjs",
+    "test": "vitest run",
+    "typecheck": "nuxt typecheck",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxtjs/i18n": "^10.6.0",
+    "@ui-sdk/core": "^0.1.0-beta.17",
+    "@ui-sdk/vue": "^0.1.0-beta.17",
+    "nuxt": "^4.6.4",
+    "pdf-lib": "^1.17.1",
+    "vue": "^3.5.45",
+    "vue-router": "^5.4.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/user-event": "^14.6.13",
+    "@testing-library/vue": "^8.1.0",
+    "@types/node": "^26.6.7",
+    "@vitejs/plugin-vue": "^6.0.11",
+    "jsdom": "^31.0.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.1",
+    "vue-tsc": "^3.3.14",
+    "wrangler": "^4.168.0"
+  }
+}

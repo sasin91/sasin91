@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 460" width="1200" height="460" role="img" aria-label="Requests per second on a hello-world route by CPU limit, on the cluster. Raw PHP: 2,098 at 0.5 CPU, 4,520 at 1, 8,710 at 2 and 11,446 at 3. Trongate with returning visitors: 1,347, 3,031, 5,935 and 7,765.">
+  <defs>
+    <!-- Standalone only, see athletos-freebsd/architecture.svg for why
+         svg:root, not :root. -->
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="c-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/><stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="460" rx="24" fill="url(#c-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="459" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="48" font-size="16" fill="var(--diagram-text, #e5e7eb)">requests per second, hello-world route, cluster</text>
+
+    <!-- legend -->
+    <g font-size="13">
+      <rect x="760" y="36" width="14" height="14" rx="3" fill="light-dark(#0369a1, #0ea5e9)"/>
+      <text x="782" y="48" fill="light-dark(#075985, #38bdf8)">raw PHP</text>
+      <rect x="880" y="36" width="14" height="14" rx="3" fill="light-dark(#b45309, #f59e0b)"/>
+      <text x="902" y="48" fill="light-dark(#92400e, #fbbf24)">Trongate, returning visitors</text>
+    </g>
+
+    <!-- grid: 0 to 12,000 req/s over y 380 to 80, 0.025 px per req/s -->
+    <g stroke="var(--diagram-rule, #1f2937)">
+      <line x1="120" y1="380" x2="1140" y2="380"/>
+      <line x1="120" y1="305" x2="1140" y2="305" stroke-dasharray="4 6"/>
+      <line x1="120" y1="230" x2="1140" y2="230" stroke-dasharray="4 6"/>
+      <line x1="120" y1="155" x2="1140" y2="155" stroke-dasharray="4 6"/>
+      <line x1="120" y1="80" x2="1140" y2="80" stroke-dasharray="4 6"/>
+    </g>
+    <g font-size="12" text-anchor="end" fill="var(--diagram-muted, #6b7280)">
+      <text x="108" y="384">0</text>
+      <text x="108" y="309">3,000</text>
+      <text x="108" y="234">6,000</text>
+      <text x="108" y="159">9,000</text>
+      <text x="108" y="84">12,000</text>
+    </g>
+
+    <!-- bars -->
+    <g fill="light-dark(#0369a1, #0ea5e9)">
+      <rect x="163.5" y="327.55" width="80" height="52.45" rx="4"/>
+      <rect x="418.5" y="267" width="80" height="113" rx="4"/>
+      <rect x="673.5" y="162.25" width="80" height="217.75" rx="4"/>
+      <rect x="928.5" y="93.85" width="80" height="286.15" rx="4"/>
+    </g>
+    <g fill="light-dark(#b45309, #f59e0b)">
+      <rect x="251.5" y="346.33" width="80" height="33.67" rx="4"/>
+      <rect x="506.5" y="304.23" width="80" height="75.77" rx="4"/>
+      <rect x="761.5" y="231.63" width="80" height="148.37" rx="4"/>
+      <rect x="1016.5" y="185.88" width="80" height="194.12" rx="4"/>
+    </g>
+
+    <!-- values -->
+    <g font-size="13" text-anchor="middle" fill="light-dark(#075985, #38bdf8)">
+      <text x="203.5" y="319">2,098</text>
+      <text x="458.5" y="259">4,520</text>
+      <text x="713.5" y="154">8,710</text>
+      <text x="968.5" y="86">11,446</text>
+    </g>
+    <g font-size="13" text-anchor="middle" fill="light-dark(#92400e, #fbbf24)">
+      <text x="291.5" y="338">1,347</text>
+      <text x="546.5" y="296">3,031</text>
+      <text x="801.5" y="223">5,935</text>
+      <text x="1056.5" y="177">7,765</text>
+    </g>
+
+    <!-- CPU limits -->
+    <g font-size="14" text-anchor="middle" fill="var(--diagram-text, #e5e7eb)">
+      <text x="247.5" y="406">0.5 CPU</text>
+      <text x="502.5" y="406">1 CPU</text>
+      <text x="757.5" y="406">2 CPU</text>
+      <text x="1012.5" y="406">3 CPU</text>
+    </g>
+
+    <text x="48" y="440" font-size="13" fill="var(--diagram-muted, #9ca3af)">p99 at 0.5 CPU: about 55 to 70 ms, from CFS throttling, even for raw PHP. At 1 CPU: about 29 ms.</text>
+  </g>
+</svg>

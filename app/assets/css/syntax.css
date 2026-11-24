@@ -1,0 +1,159 @@
+.hl-code {
+  background-color: #fdf6e3;
+  color: #586e75;
+}
+.hl-code .hljs-comment,
+.hl-code .hljs-quote {
+  color: #6c7c7c;
+}
+.hl-code .hljs-keyword,
+.hl-code .hljs-selector-tag,
+.hl-code .hljs-addition {
+  color: #5e6e00;
+}
+.hl-code .hljs-number,
+.hl-code .hljs-string,
+.hl-code .hljs-meta .hljs-meta-string,
+.hl-code .hljs-literal,
+.hl-code .hljs-doctag,
+.hl-code .hljs-regexp {
+  color: #1e7871;
+}
+.hl-code .hljs-title,
+.hl-code .hljs-section,
+.hl-code .hljs-name,
+.hl-code .hljs-selector-id,
+.hl-code .hljs-selector-class {
+  color: #1c6ca6;
+}
+.hl-code .hljs-attribute,
+.hl-code .hljs-attr,
+.hl-code .hljs-variable,
+.hl-code .hljs-template-variable,
+.hl-code .hljs-class .hljs-title,
+.hl-code .hljs-type {
+  color: #856300;
+}
+.hl-code .hljs-symbol,
+.hl-code .hljs-bullet,
+.hl-code .hljs-subst,
+.hl-code .hljs-meta,
+.hl-code .hljs-meta .hljs-keyword,
+.hl-code .hljs-selector-attr,
+.hl-code .hljs-selector-pseudo,
+.hl-code .hljs-link {
+  color: #b23f10;
+}
+.hl-code .hljs-built_in,
+.hl-code .hljs-deletion {
+  color: #c22826;
+}
+.hl-code .hljs-formula {
+  background: #eee8d5;
+}
+.hl-code .hljs-emphasis {
+  font-style: italic;
+}
+.hl-code .hljs-strong {
+  font-weight: bold;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-color-scheme="light"]) {
+    .hl-code {
+      background-color: #2b303b;
+      color: #c0c5ce;
+    }
+    .hl-code .hljs-comment,
+    .hl-code .hljs-quote {
+      color: #8b98a6;
+    }
+    .hl-code .hljs-variable,
+    .hl-code .hljs-template-variable,
+    .hl-code .hljs-tag,
+    .hl-code .hljs-name,
+    .hl-code .hljs-selector-id,
+    .hl-code .hljs-selector-class,
+    .hl-code .hljs-regexp,
+    .hl-code .hljs-deletion {
+      color: #e07b84;
+    }
+    .hl-code .hljs-number,
+    .hl-code .hljs-built_in,
+    .hl-code .hljs-builtin-name,
+    .hl-code .hljs-literal,
+    .hl-code .hljs-type,
+    .hl-code .hljs-params,
+    .hl-code .hljs-meta,
+    .hl-code .hljs-link {
+      color: #df9b86;
+    }
+    .hl-code .hljs-attribute {
+      color: #ebcb8b;
+    }
+    .hl-code .hljs-string,
+    .hl-code .hljs-symbol,
+    .hl-code .hljs-bullet,
+    .hl-code .hljs-addition {
+      color: #a3be8c;
+    }
+    .hl-code .hljs-title,
+    .hl-code .hljs-section {
+      color: #9cb4ca;
+    }
+    .hl-code .hljs-keyword,
+    .hl-code .hljs-selector-tag {
+      color: #c4a3be;
+    }
+  }
+}
+
+@media screen {
+  :root[data-color-scheme="dark"] {
+    .hl-code {
+      background-color: #2b303b;
+      color: #c0c5ce;
+    }
+    .hl-code .hljs-comment,
+    .hl-code .hljs-quote {
+      color: #8b98a6;
+    }
+    .hl-code .hljs-variable,
+    .hl-code .hljs-template-variable,
+    .hl-code .hljs-tag,
+    .hl-code .hljs-name,
+    .hl-code .hljs-selector-id,
+    .hl-code .hljs-selector-class,
+    .hl-code .hljs-regexp,
+    .hl-code .hljs-deletion {
+      color: #e07b84;
+    }
+    .hl-code .hljs-number,
+    .hl-code .hljs-built_in,
+    .hl-code .hljs-builtin-name,
+    .hl-code .hljs-literal,
+    .hl-code .hljs-type,
+    .hl-code .hljs-params,
+    .hl-code .hljs-meta,
+    .hl-code .hljs-link {
+      color: #df9b86;
+    }
+    .hl-code .hljs-attribute {
+      color: #ebcb8b;
+    }
+    .hl-code .hljs-string,
+    .hl-code .hljs-symbol,
+    .hl-code .hljs-bullet,
+    .hl-code .hljs-addition {
+      color: #a3be8c;
+    }
+    .hl-code .hljs-title,
+    .hl-code .hljs-section {
+      color: #9cb4ca;
+    }
+    .hl-code .hljs-keyword,
+    .hl-code .hljs-selector-tag {
+      color: #c4a3be;
+    }
+  }
+}

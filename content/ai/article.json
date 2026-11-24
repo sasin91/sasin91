@@ -1,0 +1,1672 @@
+{
+    "path": "blog/ai",
+    "url": "/blog/ai/",
+    "title": "How modern language models work",
+    "description": "From text to tokens, attention, sampling, retrieval and tools: how a large language model turns a prompt into an answer, and what it does not do along the way.",
+    "published": "2026-10-02",
+    "publishedIso": "2026-10-02",
+    "publishedLong": "October 2, 2026",
+    "updated": "2026-10-02",
+    "updatedIso": "2026-10-02",
+    "updatedLong": "October 2, 2026",
+    "wasUpdated": false,
+    "parts": [
+        {
+            "id": "part-1",
+            "title": "From text to vectors",
+            "nodeIds": [
+                "text",
+                "tokenization",
+                "token-ids",
+                "embeddings",
+                "position"
+            ]
+        },
+        {
+            "id": "part-2",
+            "title": "Inside the transformer",
+            "nodeIds": [
+                "contextual-representations",
+                "transformer-layers",
+                "attention",
+                "qkv",
+                "dense-attention",
+                "sparse-attention",
+                "context-window",
+                "kv-cache"
+            ]
+        },
+        {
+            "id": "part-3",
+            "title": "Choosing the next token",
+            "nodeIds": [
+                "logits",
+                "softmax",
+                "sampling",
+                "sampling-controls",
+                "discarded-candidates",
+                "search-and-verification"
+            ]
+        },
+        {
+            "id": "part-4",
+            "title": "Running a model yourself",
+            "nodeIds": [
+                "quantization",
+                "local-inference"
+            ]
+        },
+        {
+            "id": "part-5",
+            "title": "Bringing in outside information",
+            "nodeIds": [
+                "rag",
+                "retrieval-vs-attention",
+                "external-memory",
+                "tool-use",
+                "mcp",
+                "code-retrieval"
+            ]
+        },
+        {
+            "id": "part-6",
+            "title": "Learning, and what the words mean",
+            "nodeIds": [
+                "training",
+                "hallucination",
+                "synthetic-data",
+                "self-improvement",
+                "agi"
+            ]
+        }
+    ],
+    "nodes": [
+        {
+            "id": "text",
+            "order": 1,
+            "partId": null,
+            "title": "Text",
+            "summary": "A language model never reads letters directly: before it can do anything, text has to become a sequence of integers.",
+            "concepts": [
+                "text",
+                "input",
+                "unicode",
+                "bytes",
+                "preprocessing"
+            ],
+            "searchTerms": [
+                "characters",
+                "letters",
+                "utf-8",
+                "how does an llm read text",
+                "input text"
+            ],
+            "learningObjectives": [
+                "Explain why a neural network cannot consume text as written",
+                "Name the steps between a string and the model's first computation"
+            ],
+            "misconceptions": [
+                "A language model reads the letters of a prompt the way a person does."
+            ],
+            "buildsOn": [],
+            "seeAlso": [
+                {
+                    "id": "tokenization",
+                    "title": "Tokenization"
+                }
+            ]
+        },
+        {
+            "id": "tokenization",
+            "order": 2,
+            "partId": null,
+            "title": "Tokenization",
+            "summary": "Text is split into units from a fixed vocabulary: whole words, pieces of words, or raw bytes.",
+            "concepts": [
+                "tokenization",
+                "token",
+                "vocabulary",
+                "subword",
+                "byte pair encoding",
+                "wordpiece"
+            ],
+            "searchTerms": [
+                "tokenizer",
+                "tokens",
+                "bpe",
+                "sentencepiece",
+                "subwords",
+                "word pieces",
+                "how many tokens"
+            ],
+            "learningObjectives": [
+                "Describe how a subword tokenizer splits common and rare words",
+                "Explain why token counts differ between models"
+            ],
+            "misconceptions": [
+                "One token is one word."
+            ],
+            "buildsOn": [
+                {
+                    "id": "text",
+                    "title": "Text"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "token-ids",
+                    "title": "Token IDs"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Context windows"
+                }
+            ]
+        },
+        {
+            "id": "token-ids",
+            "order": 3,
+            "partId": null,
+            "title": "Token IDs",
+            "summary": "Each token is replaced by its position in the vocabulary. The number is an index, and carries no meaning of its own.",
+            "concepts": [
+                "token id",
+                "vocabulary index",
+                "special tokens",
+                "integer"
+            ],
+            "searchTerms": [
+                "token ids",
+                "input ids",
+                "vocab index",
+                "bos",
+                "eos",
+                "end of sequence token"
+            ],
+            "learningObjectives": [
+                "Explain why token IDs are indices rather than quantities"
+            ],
+            "misconceptions": [
+                "Tokens with nearby IDs have similar meanings."
+            ],
+            "buildsOn": [
+                {
+                    "id": "tokenization",
+                    "title": "Tokenization"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "embeddings",
+                    "title": "Embeddings"
+                }
+            ]
+        },
+        {
+            "id": "embeddings",
+            "order": 4,
+            "partId": null,
+            "title": "Embeddings",
+            "summary": "Token IDs select rows of a learned table of vectors: the model's starting point for each token, not its final word on meaning.",
+            "concepts": [
+                "embedding",
+                "embedding table",
+                "vector",
+                "static embedding",
+                "embedding model"
+            ],
+            "searchTerms": [
+                "word vectors",
+                "vector representation",
+                "semantic vectors",
+                "embedding matrix",
+                "meaning of words"
+            ],
+            "learningObjectives": [
+                "Describe what an embedding table is and how it is used",
+                "Distinguish a token's input embedding from its contextual representation"
+            ],
+            "misconceptions": [
+                "An embedding is a fixed definition of what a word means."
+            ],
+            "buildsOn": [
+                {
+                    "id": "token-ids",
+                    "title": "Token IDs"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "contextual-representations",
+                    "title": "Context-dependent representations"
+                },
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval versus attention"
+                }
+            ]
+        },
+        {
+            "id": "position",
+            "order": 5,
+            "partId": null,
+            "title": "Positional information",
+            "summary": "Attention on its own ignores word order, so position has to be injected. Most current models do it by rotating queries and keys (RoPE).",
+            "concepts": [
+                "positional encoding",
+                "position",
+                "word order",
+                "rotary position embedding",
+                "rope"
+            ],
+            "searchTerms": [
+                "positional embeddings",
+                "sinusoidal",
+                "alibi",
+                "relative position",
+                "token order",
+                "rotary embeddings"
+            ],
+            "learningObjectives": [
+                "Explain why a transformer needs positional information",
+                "Contrast absolute position embeddings with rotary embeddings"
+            ],
+            "misconceptions": [
+                "Every model adds a position vector to each token embedding."
+            ],
+            "buildsOn": [
+                {
+                    "id": "embeddings",
+                    "title": "Embeddings"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                },
+                {
+                    "id": "qkv",
+                    "title": "Queries, keys and values"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Context windows"
+                }
+            ]
+        },
+        {
+            "id": "contextual-representations",
+            "order": 6,
+            "partId": null,
+            "title": "Context-dependent representations",
+            "summary": "As vectors pass through the network, each token's representation is rewritten using the tokens around it.",
+            "concepts": [
+                "contextual representation",
+                "hidden state",
+                "residual stream",
+                "contextual embedding"
+            ],
+            "searchTerms": [
+                "hidden states",
+                "activations",
+                "word sense",
+                "polysemy",
+                "meaning in context"
+            ],
+            "learningObjectives": [
+                "Explain how the same token ends up with different vectors in different sentences",
+                "Describe where contextual representations exist and how long they last"
+            ],
+            "misconceptions": [
+                "The meaning of a word in context is looked up from a stored table."
+            ],
+            "buildsOn": [
+                {
+                    "id": "embeddings",
+                    "title": "Embeddings"
+                },
+                {
+                    "id": "position",
+                    "title": "Positional information"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer layers"
+                },
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                }
+            ]
+        },
+        {
+            "id": "transformer-layers",
+            "order": 7,
+            "partId": null,
+            "title": "Transformer layers",
+            "summary": "A transformer is a stack of blocks. Each one lets tokens exchange information (attention), then transforms every token on its own (an MLP).",
+            "concepts": [
+                "transformer",
+                "layer",
+                "transformer block",
+                "feed-forward network",
+                "mlp",
+                "residual connection",
+                "mixture of experts"
+            ],
+            "searchTerms": [
+                "decoder only",
+                "architecture",
+                "ffn",
+                "layer norm",
+                "moe",
+                "how many layers",
+                "parameters"
+            ],
+            "learningObjectives": [
+                "Name the two sublayers of a transformer block and what each does",
+                "Explain why the same weights can process inputs of any length"
+            ],
+            "misconceptions": [
+                "Each layer of the model handles a different word of the input."
+            ],
+            "buildsOn": [
+                {
+                    "id": "contextual-representations",
+                    "title": "Context-dependent representations"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                },
+                {
+                    "id": "training",
+                    "title": "Inference versus training"
+                }
+            ]
+        },
+        {
+            "id": "attention",
+            "order": 8,
+            "partId": null,
+            "title": "Self-attention",
+            "summary": "Each token's representation gathers information from other positions in the context, weighted by how relevant the model computes them to be.",
+            "concepts": [
+                "self-attention",
+                "attention",
+                "attention head",
+                "attention weights",
+                "causal mask"
+            ],
+            "searchTerms": [
+                "attention mechanism",
+                "multi-head attention",
+                "attention is all you need",
+                "how does attention work"
+            ],
+            "learningObjectives": [
+                "Explain what attention computes for one position",
+                "State the scope of what attention can reach"
+            ],
+            "misconceptions": [
+                "Attention lets the model look things up beyond what is in its context."
+            ],
+            "buildsOn": [
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer layers"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "qkv",
+                    "title": "Queries, keys and values"
+                },
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval versus attention"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Context windows"
+                }
+            ]
+        },
+        {
+            "id": "qkv",
+            "order": 9,
+            "partId": null,
+            "title": "Queries, keys and values",
+            "summary": "Each token is projected into a query (what it looks for), a key (what it can be matched on) and a value (what it passes along).",
+            "concepts": [
+                "query",
+                "key",
+                "value",
+                "qkv",
+                "dot product",
+                "scaled dot-product attention",
+                "grouped-query attention"
+            ],
+            "searchTerms": [
+                "q k v",
+                "query key value",
+                "attention formula",
+                "gqa",
+                "multi-query attention",
+                "attention scores"
+            ],
+            "learningObjectives": [
+                "Write down scaled dot-product attention and explain each term",
+                "Explain why keys and values are what gets cached"
+            ],
+            "misconceptions": [
+                "Attention selects one matching token, like a database lookup."
+            ],
+            "buildsOn": [
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "kv-cache",
+                    "title": "KV cache"
+                },
+                {
+                    "id": "position",
+                    "title": "Positional information"
+                },
+                {
+                    "id": "softmax",
+                    "title": "Probabilities and softmax"
+                }
+            ]
+        },
+        {
+            "id": "dense-attention",
+            "order": 10,
+            "partId": null,
+            "title": "Dense attention",
+            "summary": "In full (dense) attention every token can attend to every earlier token, so the work grows with the square of the sequence length.",
+            "concepts": [
+                "dense attention",
+                "full attention",
+                "quadratic cost",
+                "flashattention"
+            ],
+            "searchTerms": [
+                "quadratic complexity",
+                "n squared",
+                "attention cost",
+                "flash attention",
+                "global attention",
+                "why is attention expensive",
+                "long documents"
+            ],
+            "learningObjectives": [
+                "Explain why attention cost grows quadratically with length",
+                "Distinguish exact optimisations like FlashAttention from approximations"
+            ],
+            "misconceptions": [
+                "FlashAttention is an approximation of attention."
+            ],
+            "buildsOn": [
+                {
+                    "id": "qkv",
+                    "title": "Queries, keys and values"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "sparse-attention",
+                    "title": "Sparse and sliding-window attention"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Context windows"
+                }
+            ]
+        },
+        {
+            "id": "sparse-attention",
+            "order": 11,
+            "partId": null,
+            "title": "Sparse and sliding-window attention",
+            "summary": "Some attention layers restrict each token to a window or pattern of positions, trading direct reach for lower cost. It all happens inside the model.",
+            "concepts": [
+                "sparse attention",
+                "sliding-window attention",
+                "local attention",
+                "attention pattern",
+                "receptive field"
+            ],
+            "searchTerms": [
+                "sliding window",
+                "local attention",
+                "longformer",
+                "bigbird",
+                "block sparse",
+                "windowed attention"
+            ],
+            "learningObjectives": [
+                "Describe sliding-window attention and how information still travels beyond the window",
+                "Explain why sparse attention is not a form of retrieval"
+            ],
+            "misconceptions": [
+                "Sparse attention fetches the relevant parts of a long document, like search."
+            ],
+            "buildsOn": [
+                {
+                    "id": "dense-attention",
+                    "title": "Dense attention"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval versus attention"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Context windows"
+                }
+            ]
+        },
+        {
+            "id": "context-window",
+            "order": 12,
+            "partId": null,
+            "title": "Context windows",
+            "summary": "The context window is the most tokens a model can process at once: prompt, documents, tool results and its own output together.",
+            "concepts": [
+                "context window",
+                "context length",
+                "context",
+                "long context",
+                "prompt"
+            ],
+            "searchTerms": [
+                "context size",
+                "token limit",
+                "max tokens",
+                "128k",
+                "1 million tokens",
+                "lost in the middle",
+                "larger context window"
+            ],
+            "learningObjectives": [
+                "Define the context window precisely",
+                "Explain why a larger context window does not remove the need for retrieval"
+            ],
+            "misconceptions": [
+                "The context window is a slice of the model's embeddings.",
+                "Everything inside the context window is used equally well.",
+                "A large enough context window makes retrieval unnecessary."
+            ],
+            "buildsOn": [
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                },
+                {
+                    "id": "tokenization",
+                    "title": "Tokenization"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "kv-cache",
+                    "title": "KV cache"
+                },
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval versus attention"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "External memory"
+                }
+            ]
+        },
+        {
+            "id": "kv-cache",
+            "order": 13,
+            "partId": null,
+            "title": "KV cache",
+            "summary": "During generation, keys and values already computed for earlier tokens are kept and reused, so each new token only computes its own.",
+            "concepts": [
+                "kv cache",
+                "key-value cache",
+                "prefix caching",
+                "inference memory"
+            ],
+            "searchTerms": [
+                "kv-cache",
+                "key value cache",
+                "prompt caching",
+                "paged attention",
+                "why is generation slow",
+                "cache"
+            ],
+            "learningObjectives": [
+                "Explain what the KV cache stores and why it speeds up generation",
+                "Estimate how KV cache memory grows with context length",
+                "State what the KV cache does not contain"
+            ],
+            "misconceptions": [
+                "The KV cache stores alternative completions the model considered.",
+                "The KV cache is a form of long-term memory or learning."
+            ],
+            "buildsOn": [
+                {
+                    "id": "qkv",
+                    "title": "Queries, keys and values"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Context windows"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "discarded-candidates",
+                    "title": "What happens to the tokens not chosen"
+                },
+                {
+                    "id": "sampling",
+                    "title": "Decoding and sampling"
+                },
+                {
+                    "id": "training",
+                    "title": "Inference versus training"
+                }
+            ]
+        },
+        {
+            "id": "logits",
+            "order": 14,
+            "partId": null,
+            "title": "Logits",
+            "summary": "The final representation at the last position is turned into one score per vocabulary entry: the logits.",
+            "concepts": [
+                "logits",
+                "unembedding",
+                "language modeling head",
+                "next-token prediction",
+                "score"
+            ],
+            "searchTerms": [
+                "lm head",
+                "output layer",
+                "next token scores",
+                "logit",
+                "next token prediction"
+            ],
+            "learningObjectives": [
+                "Describe how a hidden state becomes a score for every token in the vocabulary"
+            ],
+            "misconceptions": [
+                "Logits are probabilities."
+            ],
+            "buildsOn": [
+                {
+                    "id": "contextual-representations",
+                    "title": "Context-dependent representations"
+                },
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer layers"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "softmax",
+                    "title": "Probabilities and softmax"
+                },
+                {
+                    "id": "sampling",
+                    "title": "Decoding and sampling"
+                }
+            ]
+        },
+        {
+            "id": "softmax",
+            "order": 15,
+            "partId": null,
+            "title": "Probabilities and softmax",
+            "summary": "Softmax turns the logits into a probability distribution over the entire vocabulary.",
+            "concepts": [
+                "softmax",
+                "probability distribution",
+                "probability",
+                "normalization",
+                "calibration"
+            ],
+            "searchTerms": [
+                "probabilities",
+                "next token probability",
+                "exponential",
+                "logprobs",
+                "confidence"
+            ],
+            "learningObjectives": [
+                "Compute softmax for a small list of logits",
+                "Explain why a high probability is not the same as a correct answer"
+            ],
+            "misconceptions": [
+                "A token with high probability is likely to be factually correct."
+            ],
+            "buildsOn": [
+                {
+                    "id": "logits",
+                    "title": "Logits"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "sampling-controls",
+                    "title": "Temperature, top-k and top-p"
+                },
+                {
+                    "id": "qkv",
+                    "title": "Queries, keys and values"
+                }
+            ]
+        },
+        {
+            "id": "sampling",
+            "order": 16,
+            "partId": null,
+            "title": "Decoding and sampling",
+            "summary": "Generation is a loop: choose one token from the distribution, append it to the input, run the model again.",
+            "concepts": [
+                "decoding",
+                "sampling",
+                "autoregressive generation",
+                "greedy decoding",
+                "beam search"
+            ],
+            "searchTerms": [
+                "generation loop",
+                "argmax",
+                "next token",
+                "how does an llm generate text",
+                "autoregressive",
+                "streaming",
+                "random",
+                "randomly",
+                "pick words"
+            ],
+            "learningObjectives": [
+                "Describe the autoregressive generation loop",
+                "Explain why decoding settings belong to the inference software rather than the model"
+            ],
+            "misconceptions": [
+                "The model writes a whole answer at once and then displays it word by word."
+            ],
+            "buildsOn": [
+                {
+                    "id": "softmax",
+                    "title": "Probabilities and softmax"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "sampling-controls",
+                    "title": "Temperature, top-k and top-p"
+                },
+                {
+                    "id": "discarded-candidates",
+                    "title": "What happens to the tokens not chosen"
+                },
+                {
+                    "id": "kv-cache",
+                    "title": "KV cache"
+                }
+            ]
+        },
+        {
+            "id": "sampling-controls",
+            "order": 17,
+            "partId": null,
+            "title": "Temperature, top-k and top-p",
+            "summary": "Temperature reshapes the distribution; top-k and top-p cut off its unlikely tail before a token is drawn.",
+            "concepts": [
+                "temperature",
+                "top-k",
+                "top-p",
+                "nucleus sampling",
+                "min-p"
+            ],
+            "searchTerms": [
+                "top p",
+                "top k",
+                "nucleus",
+                "creativity",
+                "randomness",
+                "deterministic output",
+                "temperature 0"
+            ],
+            "learningObjectives": [
+                "Describe the effect of temperature, top-k and top-p on the next-token distribution"
+            ],
+            "misconceptions": [
+                "Raising the temperature makes the model think more creatively."
+            ],
+            "buildsOn": [
+                {
+                    "id": "sampling",
+                    "title": "Decoding and sampling"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "softmax",
+                    "title": "Probabilities and softmax"
+                }
+            ]
+        },
+        {
+            "id": "discarded-candidates",
+            "order": 18,
+            "partId": null,
+            "title": "What happens to the tokens not chosen",
+            "summary": "Next-token candidates that were not chosen are normally discarded. The model does not keep them as alternative lines of reasoning.",
+            "concepts": [
+                "rejected candidates",
+                "alternative completions",
+                "single sequence",
+                "logprobs",
+                "speculative decoding"
+            ],
+            "searchTerms": [
+                "does the model consider alternatives",
+                "branches",
+                "other answers",
+                "parallel reasoning",
+                "unchosen tokens",
+                "tokens not chosen",
+                "not picked",
+                "rejected tokens"
+            ],
+            "learningObjectives": [
+                "Explain why ordinary decoding produces exactly one sequence",
+                "Distinguish implicit alternatives in a distribution from explicitly generated alternatives"
+            ],
+            "misconceptions": [
+                "During generation the model explores several answers in parallel and keeps the best one."
+            ],
+            "buildsOn": [
+                {
+                    "id": "sampling",
+                    "title": "Decoding and sampling"
+                },
+                {
+                    "id": "kv-cache",
+                    "title": "KV cache"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "search-and-verification",
+                    "title": "Multiple samples, search and verification"
+                }
+            ]
+        },
+        {
+            "id": "search-and-verification",
+            "order": 19,
+            "partId": null,
+            "title": "Multiple samples, search and verification",
+            "summary": "Systems can explore alternatives deliberately: generate several candidates, search over partial solutions, and check the results. It is an outer loop around generation.",
+            "concepts": [
+                "best-of-n",
+                "self-consistency",
+                "verification",
+                "tree search",
+                "test-time compute",
+                "reward model"
+            ],
+            "searchTerms": [
+                "multiple samples",
+                "majority vote",
+                "verifier",
+                "reasoning models",
+                "thinking",
+                "test time compute",
+                "generate and test"
+            ],
+            "learningObjectives": [
+                "Describe best-of-n sampling and self-consistency",
+                "Explain why multi-candidate search is an outer loop rather than part of token generation"
+            ],
+            "misconceptions": [
+                "Running more candidates at inference time trains the model."
+            ],
+            "buildsOn": [
+                {
+                    "id": "discarded-candidates",
+                    "title": "What happens to the tokens not chosen"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "synthetic-data",
+                    "title": "Self-training and synthetic data"
+                },
+                {
+                    "id": "tool-use",
+                    "title": "Tool use"
+                }
+            ]
+        },
+        {
+            "id": "quantization",
+            "order": 20,
+            "partId": null,
+            "title": "Quantization",
+            "summary": "Quantization stores a model's weights in fewer bits, such as 8 or 4 instead of 16, trading a little accuracy for a model that is smaller and faster to read.",
+            "concepts": [
+                "quantization",
+                "quantisation",
+                "int8",
+                "4-bit",
+                "precision",
+                "model compression"
+            ],
+            "searchTerms": [
+                "gguf",
+                "q4",
+                "q8",
+                "fp16",
+                "bf16",
+                "awq",
+                "gptq",
+                "smaller model",
+                "compress a model",
+                "bits per weight"
+            ],
+            "learningObjectives": [
+                "Estimate the memory a model's weights need at a given precision",
+                "Explain what per-block scales do and why quality usually survives 8 and 4 bits"
+            ],
+            "misconceptions": [
+                "A quantized model is a smaller model trained separately from the original."
+            ],
+            "buildsOn": [
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer layers"
+                },
+                {
+                    "id": "kv-cache",
+                    "title": "KV cache"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "embeddings",
+                    "title": "Embeddings"
+                },
+                {
+                    "id": "training",
+                    "title": "Inference versus training"
+                }
+            ]
+        },
+        {
+            "id": "local-inference",
+            "order": 21,
+            "partId": null,
+            "title": "Running a model on your own hardware",
+            "summary": "Whether a model runs locally is mostly a question of memory: it must hold the weights and the KV cache, and generation speed is set by how fast those weights can be read.",
+            "concepts": [
+                "local inference",
+                "self-hosted model",
+                "memory bandwidth",
+                "vram",
+                "tokens per second",
+                "prefill and decode"
+            ],
+            "searchTerms": [
+                "run llm locally",
+                "llama.cpp",
+                "ollama",
+                "gpu memory",
+                "how much ram do i need",
+                "why is my local model slow",
+                "apple silicon",
+                "cpu inference",
+                "self-hosting"
+            ],
+            "learningObjectives": [
+                "Estimate whether a model fits in a machine's memory",
+                "Explain why generation speed follows memory bandwidth rather than processor speed"
+            ],
+            "misconceptions": [
+                "Faster processor cores are what make a local model generate faster."
+            ],
+            "buildsOn": [
+                {
+                    "id": "quantization",
+                    "title": "Quantization"
+                },
+                {
+                    "id": "kv-cache",
+                    "title": "KV cache"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer layers"
+                },
+                {
+                    "id": "training",
+                    "title": "Inference versus training"
+                }
+            ]
+        },
+        {
+            "id": "rag",
+            "order": 22,
+            "partId": null,
+            "title": "Retrieval-augmented generation",
+            "summary": "RAG searches an external collection at request time and places the most relevant passages in the context before the model answers.",
+            "concepts": [
+                "retrieval-augmented generation",
+                "rag",
+                "retrieval",
+                "vector search",
+                "chunking",
+                "reranking"
+            ],
+            "searchTerms": [
+                "retrieval augmented generation",
+                "vector database",
+                "semantic search",
+                "knowledge base",
+                "grounding",
+                "citations",
+                "document search"
+            ],
+            "learningObjectives": [
+                "Walk through the steps of a RAG pipeline",
+                "Name the main ways a RAG system fails"
+            ],
+            "misconceptions": [
+                "RAG teaches the model new facts by updating it."
+            ],
+            "buildsOn": [
+                {
+                    "id": "context-window",
+                    "title": "Context windows"
+                },
+                {
+                    "id": "embeddings",
+                    "title": "Embeddings"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval versus attention"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "External memory"
+                },
+                {
+                    "id": "code-retrieval",
+                    "title": "Codebase-aware retrieval"
+                }
+            ]
+        },
+        {
+            "id": "retrieval-vs-attention",
+            "order": 23,
+            "partId": null,
+            "title": "Retrieval versus attention",
+            "summary": "Attention mixes information among tokens already in the context. Retrieval decides which outside information gets into the context at all.",
+            "concepts": [
+                "retrieval",
+                "attention",
+                "similarity search",
+                "context selection"
+            ],
+            "searchTerms": [
+                "difference between attention and retrieval",
+                "is attention retrieval",
+                "does a bigger context window replace rag",
+                "long context vs rag",
+                "retrieval vs long context"
+            ],
+            "learningObjectives": [
+                "Contrast attention and retrieval by where they run and what they operate on",
+                "Explain why sparse attention and long contexts do not replace retrieval"
+            ],
+            "misconceptions": [
+                "Attention and retrieval are the same thing at different scales.",
+                "A long enough context window makes retrieval unnecessary."
+            ],
+            "buildsOn": [
+                {
+                    "id": "attention",
+                    "title": "Self-attention"
+                },
+                {
+                    "id": "sparse-attention",
+                    "title": "Sparse and sliding-window attention"
+                },
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "context-window",
+                    "title": "Context windows"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "External memory"
+                }
+            ]
+        },
+        {
+            "id": "external-memory",
+            "order": 24,
+            "partId": null,
+            "title": "External memory",
+            "summary": "Anything a system should remember beyond one context window has to be stored outside the model and read back in as tokens.",
+            "concepts": [
+                "memory",
+                "external memory",
+                "long-term memory",
+                "persistence",
+                "agent memory"
+            ],
+            "searchTerms": [
+                "does the model remember",
+                "chat memory",
+                "remember previous conversations",
+                "notes",
+                "scratchpad",
+                "vector store"
+            ],
+            "learningObjectives": [
+                "Explain why a model has no memory across requests by itself",
+                "Describe how memory features are built from storage and retrieval"
+            ],
+            "misconceptions": [
+                "A chat assistant remembers you because the model learned from your earlier conversations."
+            ],
+            "buildsOn": [
+                {
+                    "id": "context-window",
+                    "title": "Context windows"
+                },
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "kv-cache",
+                    "title": "KV cache"
+                },
+                {
+                    "id": "training",
+                    "title": "Inference versus training"
+                },
+                {
+                    "id": "tool-use",
+                    "title": "Tool use"
+                }
+            ]
+        },
+        {
+            "id": "tool-use",
+            "order": 25,
+            "partId": null,
+            "title": "Tool use",
+            "summary": "A model can emit a structured request to call a tool. Software outside the model runs it and feeds the result back into the context.",
+            "concepts": [
+                "tool use",
+                "function calling",
+                "tool call",
+                "agent",
+                "agent loop"
+            ],
+            "searchTerms": [
+                "function calling",
+                "tools",
+                "agents",
+                "agentic",
+                "api calls",
+                "run code",
+                "plugins"
+            ],
+            "learningObjectives": [
+                "Describe the loop between a model and the application that runs its tool calls",
+                "Explain where tool execution and permissions actually live"
+            ],
+            "misconceptions": [
+                "The model itself executes the code or API calls it requests."
+            ],
+            "buildsOn": [
+                {
+                    "id": "sampling",
+                    "title": "Decoding and sampling"
+                },
+                {
+                    "id": "context-window",
+                    "title": "Context windows"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "mcp",
+                    "title": "Model Context Protocol (MCP)"
+                },
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "code-retrieval",
+                    "title": "Codebase-aware retrieval"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "External memory"
+                }
+            ]
+        },
+        {
+            "id": "mcp",
+            "order": 26,
+            "partId": null,
+            "title": "Model Context Protocol (MCP)",
+            "summary": "MCP is an open protocol for exposing tools, data and prompts to AI applications. It standardises the connection, not the retrieval.",
+            "concepts": [
+                "model context protocol",
+                "mcp",
+                "protocol",
+                "mcp server",
+                "mcp client",
+                "json-rpc"
+            ],
+            "searchTerms": [
+                "mcp server",
+                "what is mcp",
+                "is mcp rag",
+                "connectors",
+                "integrations",
+                "anthropic mcp"
+            ],
+            "learningObjectives": [
+                "Describe the parts of an MCP connection and what a server can expose",
+                "Explain why MCP is not itself retrieval or memory"
+            ],
+            "misconceptions": [
+                "MCP is a kind of RAG.",
+                "MCP gives the model direct access to systems."
+            ],
+            "buildsOn": [
+                {
+                    "id": "tool-use",
+                    "title": "Tool use"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "code-retrieval",
+                    "title": "Codebase-aware retrieval"
+                }
+            ]
+        },
+        {
+            "id": "code-retrieval",
+            "order": 27,
+            "partId": null,
+            "title": "Codebase-aware retrieval",
+            "summary": "Coding agents find the relevant parts of a repository with search tools, such as text search, symbol indexes, embeddings or code graphs, and read them into context.",
+            "concepts": [
+                "code search",
+                "codebase retrieval",
+                "code knowledge graph",
+                "symbol index",
+                "language server",
+                "grep"
+            ],
+            "searchTerms": [
+                "coding agent",
+                "repository",
+                "repo",
+                "ripgrep",
+                "code graph",
+                "how do coding agents understand a codebase",
+                "lsp"
+            ],
+            "learningObjectives": [
+                "List the main ways an agent searches a codebase and when each works best",
+                "Explain why exact identifiers favour lexical search"
+            ],
+            "misconceptions": [
+                "A coding agent reads and understands the whole repository at once."
+            ],
+            "buildsOn": [
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "tool-use",
+                    "title": "Tool use"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "mcp",
+                    "title": "Model Context Protocol (MCP)"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "External memory"
+                },
+                {
+                    "id": "retrieval-vs-attention",
+                    "title": "Retrieval versus attention"
+                }
+            ]
+        },
+        {
+            "id": "training",
+            "order": 28,
+            "partId": null,
+            "title": "Inference versus training",
+            "summary": "Training changes a model's weights. Inference, meaning ordinary use, runs fixed weights and changes nothing in the model.",
+            "concepts": [
+                "training",
+                "inference",
+                "pretraining",
+                "fine-tuning",
+                "weights",
+                "in-context learning",
+                "gradient descent"
+            ],
+            "searchTerms": [
+                "does chatgpt learn from my conversations",
+                "does the model learn while chatting",
+                "rlhf",
+                "backpropagation",
+                "post-training",
+                "weights update"
+            ],
+            "learningObjectives": [
+                "Distinguish what changes during training from what changes during inference",
+                "Explain in-context learning without weight updates"
+            ],
+            "misconceptions": [
+                "A model learns from each conversation as it happens.",
+                "In-context learning updates the model's weights."
+            ],
+            "buildsOn": [
+                {
+                    "id": "transformer-layers",
+                    "title": "Transformer layers"
+                },
+                {
+                    "id": "sampling",
+                    "title": "Decoding and sampling"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "synthetic-data",
+                    "title": "Self-training and synthetic data"
+                },
+                {
+                    "id": "external-memory",
+                    "title": "External memory"
+                },
+                {
+                    "id": "kv-cache",
+                    "title": "KV cache"
+                }
+            ]
+        },
+        {
+            "id": "hallucination",
+            "order": 29,
+            "partId": null,
+            "title": "Hallucination",
+            "summary": "A model can state something false as fluently as something true, because it generates likely text and has no store of facts to check against.",
+            "concepts": [
+                "hallucination",
+                "confabulation",
+                "factual errors",
+                "calibration",
+                "grounding"
+            ],
+            "searchTerms": [
+                "why does ai make things up",
+                "made up citations",
+                "fake references",
+                "is the model lying",
+                "wrong answers",
+                "how to reduce hallucinations",
+                "confidently wrong"
+            ],
+            "learningObjectives": [
+                "Explain why fluent output is no evidence that it is correct",
+                "Name the main ways systems reduce hallucination, and what each depends on"
+            ],
+            "misconceptions": [
+                "A model looks facts up in an internal database, and a hallucination is the wrong row coming back.",
+                "When a model hallucinates, it knows the answer is false and says it anyway."
+            ],
+            "buildsOn": [
+                {
+                    "id": "training",
+                    "title": "Inference versus training"
+                },
+                {
+                    "id": "sampling",
+                    "title": "Decoding and sampling"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "rag",
+                    "title": "Retrieval-augmented generation"
+                },
+                {
+                    "id": "search-and-verification",
+                    "title": "Multiple samples, search and verification"
+                },
+                {
+                    "id": "tool-use",
+                    "title": "Tool use"
+                }
+            ]
+        },
+        {
+            "id": "synthetic-data",
+            "order": 30,
+            "partId": null,
+            "title": "Self-training and synthetic data",
+            "summary": "Model outputs that have been filtered, checked or ranked can become training data for a later model: a learning loop outside generation.",
+            "concepts": [
+                "synthetic data",
+                "self-training",
+                "distillation",
+                "rejection sampling",
+                "model collapse"
+            ],
+            "searchTerms": [
+                "training on model outputs",
+                "ai generated training data",
+                "self improvement loop",
+                "bootstrapping",
+                "data flywheel"
+            ],
+            "learningObjectives": [
+                "Describe a generate, verify and train loop",
+                "Explain why verification quality limits self-training"
+            ],
+            "misconceptions": [
+                "A model improves itself every time it generates and checks an answer."
+            ],
+            "buildsOn": [
+                {
+                    "id": "training",
+                    "title": "Inference versus training"
+                },
+                {
+                    "id": "search-and-verification",
+                    "title": "Multiple samples, search and verification"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "self-improvement",
+                    "title": "Recursive self-improvement"
+                }
+            ]
+        },
+        {
+            "id": "self-improvement",
+            "order": 31,
+            "partId": null,
+            "title": "Recursive self-improvement",
+            "summary": "The idea that an AI system could improve its own capabilities, including its ability to improve itself. A research concept, not a current mechanism.",
+            "concepts": [
+                "recursive self-improvement",
+                "intelligence explosion",
+                "automated ai research",
+                "feedback loop"
+            ],
+            "searchTerms": [
+                "singularity",
+                "self improving ai",
+                "ai improving ai",
+                "takeoff",
+                "seed ai"
+            ],
+            "learningObjectives": [
+                "State the recursive self-improvement hypothesis",
+                "Identify which parts of today's training loops resemble it, and which do not"
+            ],
+            "misconceptions": [
+                "Current models rewrite their own weights to become smarter while they run."
+            ],
+            "buildsOn": [
+                {
+                    "id": "synthetic-data",
+                    "title": "Self-training and synthetic data"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "agi",
+                    "title": "AGI, and why definitions vary"
+                },
+                {
+                    "id": "training",
+                    "title": "Inference versus training"
+                }
+            ]
+        },
+        {
+            "id": "agi",
+            "order": 32,
+            "partId": null,
+            "title": "AGI, and why definitions vary",
+            "summary": "Artificial general intelligence has no single agreed definition, so any claim about it depends on which definition is being used.",
+            "concepts": [
+                "artificial general intelligence",
+                "agi",
+                "definition",
+                "generality",
+                "benchmarks"
+            ],
+            "searchTerms": [
+                "what is agi",
+                "when will agi arrive",
+                "human level ai",
+                "superintelligence",
+                "general intelligence",
+                "asi"
+            ],
+            "learningObjectives": [
+                "Compare several definitions of AGI",
+                "Evaluate an AGI claim by identifying the definition and the measurement behind it"
+            ],
+            "misconceptions": [
+                "AGI is a well-defined threshold that a model either passes or does not."
+            ],
+            "buildsOn": [
+                {
+                    "id": "self-improvement",
+                    "title": "Recursive self-improvement"
+                }
+            ],
+            "seeAlso": [
+                {
+                    "id": "training",
+                    "title": "Inference versus training"
+                }
+            ]
+        }
+    ],
+    "learningPaths": [
+        {
+            "id": "llm-generation",
+            "title": "How an LLM generates text",
+            "nodes": [
+                "tokenization",
+                "embeddings",
+                "position",
+                "attention",
+                "kv-cache",
+                "logits",
+                "sampling"
+            ]
+        },
+        {
+            "id": "coding-agents",
+            "title": "How AI coding agents understand a repository",
+            "nodes": [
+                "context-window",
+                "retrieval-vs-attention",
+                "rag",
+                "external-memory",
+                "tool-use",
+                "mcp",
+                "code-retrieval"
+            ]
+        }
+    ]
+}

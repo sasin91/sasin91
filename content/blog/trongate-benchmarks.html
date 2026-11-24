@@ -1,0 +1,300 @@
+<div class="note">
+<p>trongate.cloud is still a work in progress at the time of writing, 4 October
+2026.</p>
+</div>
+<p>You push, we deploy. <a href="https://trongate.cloud">trongate.cloud</a> hosts
+<a href="/blog/trongate/">Trongate</a> apps on Kubernetes, with HTTPS, a database and
+room to grow, and nothing to configure.</p>
+<section id="Simple-stable-and-scales-with-you">
+<h2>Simple, stable, and scales with you</h2>
+<section id="You-push-we-deploy">
+<h3>You push, we deploy</h3>
+<p>Connect your GitHub repository, then push. Your app is built and deployed,
+live over HTTPS at <code>{slug}.trongate.dev</code>.</p>
+</section>
+
+<section id="Nothing-to-manage">
+<h3>Nothing to manage</h3>
+<p>No servers and no Dockerfile. Each project gets its own MariaDB database. Each team gets its own Kubernetes namespace with network
+policies, so other tenants cannot reach in.</p>
+</section>
+
+<section id="Scales-with-you">
+<h3>Scales with you</h3>
+<p>No size to pick, and CPU is not capped. We watch what real apps use, and a
+Trongate app’s throughput follows the CPU it gets almost one for one.</p>
+</section>
+
+</section>
+
+<section id="Built-for-Trongate">
+<h2>Built for Trongate</h2>
+<p>Tailored for Trongate first. Trongate apps are detected and built without configuration, and <code>BASE_URL</code>
+and <code>ENV</code> in <code>config.php</code> are set for you. The app you run locally is the app
+that runs here.</p>
+<p>Stability matters to Trongate developers; the framework’s own <a href="https://trongate.io/essays/trongates-new-versioning-system">essay on its
+versioning system</a>
+explains why. trongate.cloud is built with the same priority: few moving
+parts, and Trongate measured as Trongate rather than as generic PHP.</p>
+</section>
+
+<section id="A-proven-platform-we-run-it-ourselves">
+<h2>A proven platform: we run it ourselves</h2>
+<p>The trongate.cloud control panel is a Trongate app, and it runs on
+trongate.cloud, on the same platform as every customer app.</p>
+</section>
+
+<section id="Benchmarks">
+<h2>Benchmarks</h2>
+<p>The benchmarks use a stock Trongate v2 app, built exactly the way customer
+apps are, measured on the platform on 2026-10-04:</p>
+<ul>
+<li><strong>2,582 requests a second</strong> over HTTPS through the public gateway, at 1 CPU.</li>
+<li><strong>p99 of about 29 ms</strong> at 1 CPU.</li>
+<li><strong>No evictions</strong> under the heaviest run, with the cluster at 78% CPU.</li>
+<li><strong>Throughput follows CPU</strong>, from 1,347 requests a second on half a CPU to
+7,765 on three.</li>
+</ul>
+<p><figure class="diagram" role="img" aria-label="Requests per second by CPU limit: raw PHP and Trongate both scale almost linearly from 0.5 to 3 CPU"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 460" width="1200" height="460" role="img" aria-label="Requests per second on a hello-world route by CPU limit, on the cluster. Raw PHP: 2,098 at 0.5 CPU, 4,520 at 1, 8,710 at 2 and 11,446 at 3. Trongate with returning visitors: 1,347, 3,031, 5,935 and 7,765.">
+  <defs>
+    <!-- Standalone only, see athletos-freebsd/architecture.svg for why
+         svg:root, not :root. -->
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="c-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/><stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="460" rx="24" fill="url(#c-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="459" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="48" font-size="16" fill="var(--diagram-text, #e5e7eb)">requests per second, hello-world route, cluster</text>
+
+    <!-- legend -->
+    <g font-size="13">
+      <rect x="760" y="36" width="14" height="14" rx="3" fill="light-dark(#0369a1, #0ea5e9)"/>
+      <text x="782" y="48" fill="light-dark(#075985, #38bdf8)">raw PHP</text>
+      <rect x="880" y="36" width="14" height="14" rx="3" fill="light-dark(#b45309, #f59e0b)"/>
+      <text x="902" y="48" fill="light-dark(#92400e, #fbbf24)">Trongate, returning visitors</text>
+    </g>
+
+    <!-- grid: 0 to 12,000 req/s over y 380 to 80, 0.025 px per req/s -->
+    <g stroke="var(--diagram-rule, #1f2937)">
+      <line x1="120" y1="380" x2="1140" y2="380"/>
+      <line x1="120" y1="305" x2="1140" y2="305" stroke-dasharray="4 6"/>
+      <line x1="120" y1="230" x2="1140" y2="230" stroke-dasharray="4 6"/>
+      <line x1="120" y1="155" x2="1140" y2="155" stroke-dasharray="4 6"/>
+      <line x1="120" y1="80" x2="1140" y2="80" stroke-dasharray="4 6"/>
+    </g>
+    <g font-size="12" text-anchor="end" fill="var(--diagram-muted, #6b7280)">
+      <text x="108" y="384">0</text>
+      <text x="108" y="309">3,000</text>
+      <text x="108" y="234">6,000</text>
+      <text x="108" y="159">9,000</text>
+      <text x="108" y="84">12,000</text>
+    </g>
+
+    <!-- bars -->
+    <g fill="light-dark(#0369a1, #0ea5e9)">
+      <rect x="163.5" y="327.55" width="80" height="52.45" rx="4"/>
+      <rect x="418.5" y="267" width="80" height="113" rx="4"/>
+      <rect x="673.5" y="162.25" width="80" height="217.75" rx="4"/>
+      <rect x="928.5" y="93.85" width="80" height="286.15" rx="4"/>
+    </g>
+    <g fill="light-dark(#b45309, #f59e0b)">
+      <rect x="251.5" y="346.33" width="80" height="33.67" rx="4"/>
+      <rect x="506.5" y="304.23" width="80" height="75.77" rx="4"/>
+      <rect x="761.5" y="231.63" width="80" height="148.37" rx="4"/>
+      <rect x="1016.5" y="185.88" width="80" height="194.12" rx="4"/>
+    </g>
+
+    <!-- values -->
+    <g font-size="13" text-anchor="middle" fill="light-dark(#075985, #38bdf8)">
+      <text x="203.5" y="319">2,098</text>
+      <text x="458.5" y="259">4,520</text>
+      <text x="713.5" y="154">8,710</text>
+      <text x="968.5" y="86">11,446</text>
+    </g>
+    <g font-size="13" text-anchor="middle" fill="light-dark(#92400e, #fbbf24)">
+      <text x="291.5" y="338">1,347</text>
+      <text x="546.5" y="296">3,031</text>
+      <text x="801.5" y="223">5,935</text>
+      <text x="1056.5" y="177">7,765</text>
+    </g>
+
+    <!-- CPU limits -->
+    <g font-size="14" text-anchor="middle" fill="var(--diagram-text, #e5e7eb)">
+      <text x="247.5" y="406">0.5 CPU</text>
+      <text x="502.5" y="406">1 CPU</text>
+      <text x="757.5" y="406">2 CPU</text>
+      <text x="1012.5" y="406">3 CPU</text>
+    </g>
+
+    <text x="48" y="440" font-size="13" fill="var(--diagram-muted, #9ca3af)">p99 at 0.5 CPU: about 55 to 70 ms, from CFS throttling, even for raw PHP. At 1 CPU: about 29 ms.</text>
+  </g>
+</svg>
+</figure></p>
+</section>
+
+<section id="For-the-Trongate-team-the-session-finding">
+<h2>For the Trongate team: the session finding</h2>
+<p>Measuring the platform also turned up one thing in Trongate itself, and the
+data below supports a lazy session pull request to
+<a href="https://github.com/trongate/trongate-framework">trongate-framework</a>, pending
+review.</p>
+<p>Stock <code>engine/ignition.php</code> calls <code>session_start()</code> on every request. On a
+public host, every bot, health check and first visit writes a session file,
+and PHP’s session garbage collection then scans a directory that only grows.
+Stock p99 climbed to about 1 s after roughly 100,000 session files, and a
+returning visitors run on the same pod right after dropped to 1,089 requests
+a second because of the pile-up. The lazy session runs used a fresh pod.</p>
+<p>The lazy session fix starts a session only when the visitor already has a
+session cookie, or when the request writes to <code>$_SESSION</code>:</p>
+<div class="codeblock"><div class="filename">ignition.lazy.php</div><pre class="hl-code"><code><span class="hljs-keyword">if</span> (<span class="hljs-keyword">isset</span>($_COOKIE[session_name()])) {
+    session_start();
+} <span class="hljs-keyword">else</span> {
+    $_SESSION = [];
+    ob_start();
+    register_shutdown_function(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">()</span>: <span class="hljs-title">void</span> </span>{
+        <span class="hljs-keyword">if</span> (<span class="hljs-keyword">empty</span>($_SESSION) || session_status() === PHP_SESSION_ACTIVE) <span class="hljs-keyword">return</span>;
+        <span class="hljs-keyword">if</span> (headers_sent()) <span class="hljs-keyword">return</span>; <span class="hljs-comment">// logged in the real patch</span>
+        $data = $_SESSION;
+        session_start();
+        $_SESSION = array_merge($_SESSION, $data);
+    });
+}
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>1 CPU</th>
+<th>Stock Trongate</th>
+<th>Lazy sessions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>New visitors</td>
+<td>1,378, p99 up to about 1 s</td>
+<td>3,464, p99 26 ms, flat</td>
+</tr>
+<tr>
+<td>Returning visitors</td>
+<td>1,089, after the pile-up</td>
+<td>2,995</td>
+</tr>
+</tbody>
+</table>
+<p><figure class="diagram" role="img" aria-label="Sessions before and after, at 1 CPU: new visitors from 1,378 to 3,464 requests a second, returning visitors from 1,089 to 2,995"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="1200" height="380" role="img" aria-label="Sessions on the cluster at 1 CPU. New visitors without a cookie: stock Trongate 1,378 requests a second with p99 up to about 1 second, lazy sessions 3,464 with a flat p99 of 26 ms. Returning visitors: stock 1,089, lazy 2,995.">
+  <defs>
+    <!-- Standalone only, see athletos-freebsd/architecture.svg for why
+         svg:root, not :root. -->
+    <style>svg:root { color-scheme: dark; }</style>
+    <linearGradient id="s-panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--diagram-bg, #12121b)"/><stop offset="100%" stop-color="var(--diagram-panel, #0a0a10)"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="380" rx="24" fill="url(#s-panel)"/>
+  <rect x="0.5" y="0.5" width="1199" height="379" rx="24" fill="none" stroke="var(--diagram-rule, #ffffff)" stroke-opacity="0.08"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <text x="48" y="48" font-size="16" fill="var(--diagram-text, #e5e7eb)">sessions, cluster, 1 CPU limit, requests per second</text>
+    <text x="1152" y="48" text-anchor="end" font-size="16" fill="light-dark(#15803d, #4ade80)" font-weight="700">2.5x for new visitors</text>
+
+    <!-- bars from x 260, 0.175 px per req/s -->
+    <g font-size="13">
+      <text x="48" y="98" fill="var(--diagram-muted, #9ca3af)">no cookie: every request a new visitor</text>
+
+      <text x="244" y="130" text-anchor="end" fill="light-dark(#be185d, #f472b6)">stock Trongate</text>
+      <rect x="260" y="114" width="241.2" height="24" rx="5" fill="light-dark(#be185d, #ec4899)"/>
+      <text x="517" y="131" font-size="12" fill="var(--diagram-muted, #6b7280)">1,378 · p99 up to about 1 s after ~100k session files</text>
+
+      <text x="244" y="166" text-anchor="end" fill="light-dark(#15803d, #4ade80)">lazy sessions</text>
+      <rect x="260" y="150" width="606.2" height="24" rx="5" fill="light-dark(#15803d, #22c55e)"/>
+      <text x="882" y="167" font-size="12" fill="var(--diagram-muted, #6b7280)">3,464 · p99 26 ms, flat</text>
+
+      <text x="48" y="226" fill="var(--diagram-muted, #9ca3af)">returning visitors: 1000 rotating session cookies</text>
+
+      <text x="244" y="258" text-anchor="end" fill="light-dark(#be185d, #f472b6)">stock Trongate</text>
+      <rect x="260" y="242" width="190.6" height="24" rx="5" fill="light-dark(#be185d, #ec4899)"/>
+      <text x="467" y="259" font-size="12" fill="var(--diagram-muted, #6b7280)">1,089 · same pod, the ~100k files still in /tmp</text>
+
+      <text x="244" y="294" text-anchor="end" fill="light-dark(#15803d, #4ade80)">lazy sessions</text>
+      <rect x="260" y="278" width="524.1" height="24" rx="5" fill="light-dark(#15803d, #22c55e)"/>
+      <text x="800" y="295" font-size="12" fill="var(--diagram-muted, #6b7280)">2,995</text>
+    </g>
+
+    <text x="48" y="346" font-size="13" fill="var(--diagram-muted, #9ca3af)">Lazy: start a session only for a visitor with a session cookie, or a request that writes to $_SESSION.</text>
+  </g>
+</svg>
+</figure></p>
+<p>12 behaviour checks pass with and without the fix: cookies, flashdata across
+a redirect, CSRF, a write after 100 KB of output, and no leaked locks.
+Starting the session from <code>header_register_callback</code> instead leaked the
+session lock under FrankenPHP, so that version was dropped.</p>
+<p>Session stores, with lazy sessions at 1 CPU, returning visitors: 2,995
+requests a second with files, 1,542 with Valkey (phpredis, persistent) and
+913 with Memcached (extension defaults). On Kubernetes, files live with one
+pod and are lost when it is replaced, which logs visitors out; a network store
+keeps sessions across redeploys and replicas. Without phpredis’
+<code>?persistent=1</code>, Valkey dropped to about 250, a new TCP connection per
+request.</p>
+<p>Requests a second by CPU, for reference:</p>
+<table>
+<thead>
+<tr>
+<th>CPU</th>
+<th>Raw PHP</th>
+<th>Trongate, returning visitors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.5</td>
+<td>2,098</td>
+<td>1,347</td>
+</tr>
+<tr>
+<td>1</td>
+<td>4,520</td>
+<td>3,031</td>
+</tr>
+<tr>
+<td>2</td>
+<td>8,710</td>
+<td>5,935</td>
+</tr>
+<tr>
+<td>3</td>
+<td>11,446</td>
+<td>7,765</td>
+</tr>
+</tbody>
+</table>
+<p>Trongate did 62 to 68% of raw PHP here. The Trongate team’s <a href="https://trongate.io/benchmarks">published
+benchmark</a> puts it at 89% (13,965 against
+15,772), but its tool, hardware and concurrency are not published, so the two
+are not comparable.</p>
+<p>Method: Trongate v2 at
+<a href="https://github.com/trongate/trongate-framework">cc968cf</a> with a hello-world
+module, built with Railpack 0.40.1 for FrankenPHP with PHP 8.4.26 and OPcache
+on, plus a raw PHP file with the same response. <code>wrk</code> with a 5 s warm-up, then
+3 runs of 20 s: on the cluster 3 threads and 48 connections from the other
+node, locally 2 threads and 32 connections pinned to their own core. “New
+visitors” send no cookie, as <code>wrk</code> and <code>ab</code> do by default; “returning
+visitors” rotate 1000 session cookies with a Lua script. CPU figures are pod
+CPU limits set for the runs. At half a CPU, CFS throttling added a p99 tail
+of 55 to 70 ms. Railpack’s Caddyfile logs at <code>DEBUG</code>; <code>INFO</code> gave 23% more
+requests a second locally and 7% on the cluster at 0.5 CPU. Reproduce it all
+with the <a href="https://github.com/sasin91/trongate-bench">benchmark
+kit</a>.</p>
+</section>
+
+<section id="Try-it">
+<h2>Try it</h2>
+<p>Push a Trongate app to <a href="https://trongate.cloud">trongate.cloud</a>.</p>
+<p>trongate.cloud is an independent project and is not affiliated with or
+endorsed by the Trongate team.</p>
+</section>

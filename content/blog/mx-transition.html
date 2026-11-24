@@ -1,0 +1,69 @@
+<p><img src="/images/trongate/trongate_logo_trans_bg.png" alt="Trongate: The framework they don’t want you to know about" /></p>
+<video controls loop muted playsinline width="100%">
+  <source src="/videos/blog/trongate/view_transitions.webm" type="video/webm">
+  Your browser cannot play this video. <a href="/videos/blog/trongate/view_transitions.webm">Download it directly</a>.
+</video>
+<p><a href="https://trongate-framework.fly.dev">Demo</a> · <a href="https://github.com/sasin91/mx-transition">source</a></p>
+<p>View Transitions is a <a href="https://developer.chrome.com/docs/web-platform/view-transitions">Relatively New Browser API</a>, it offers smooth and granular transitions between elements and pages through CSS animations</p>
+<div class="codeblock"><div class="filename">mx-get.html</div><pre class="hl-code"><code><span class="hljs-tag">&lt;<span class="hljs-name">button</span> <span class="hljs-attr">mx-get</span>=<span class="hljs-string">"/hello"</span> <span class="hljs-attr">mx-transition</span>=<span class="hljs-string">"reload"</span>&gt;</span>reload<span class="hljs-tag">&lt;/<span class="hljs-name">button</span>&gt;</span>
+</code></pre></div>
+<div class="codeblock"><div class="filename">anchor.html</div><pre class="hl-code"><code><span class="hljs-tag">&lt;<span class="hljs-name">a</span> <span class="hljs-attr">href</span>=<span class="hljs-string">"https://trongate-framework.fly.dev/"</span> <span class="hljs-attr">mx-transition</span>=<span class="hljs-string">"reload"</span>&gt;</span>reload<span class="hljs-tag">&lt;/<span class="hljs-name">a</span>&gt;</span>
+</code></pre></div>
+<div class="codeblock"><div class="filename">templates/views/public.php</div><pre class="hl-code"><code>&lt;!DOCTYPE html&gt;
+&lt;html lang=<span class="hljs-string">"en"</span> mx-transition=<span class="hljs-string">"reload"</span>&gt;
+&lt;head&gt;
+	&lt;meta charset=<span class="hljs-string">"UTF-8"</span>&gt;
+	&lt;meta name=<span class="hljs-string">"viewport"</span> content=<span class="hljs-string">"width=device-width, initial-scale=1.0"</span>&gt;
+	&lt;base href=<span class="hljs-string">"&lt;?= BASE_URL ?&gt;"</span>&gt;
+	&lt;link rel=<span class="hljs-string">"stylesheet"</span> href=<span class="hljs-string">"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"</span>&gt;
+	&lt;link rel=<span class="hljs-string">"stylesheet"</span> href=<span class="hljs-string">"css/trongate.css"</span>&gt;
+	&lt;link rel=<span class="hljs-string">"stylesheet"</span> href=<span class="hljs-string">"css/app.css"</span>&gt;
+	&lt;link rel=<span class="hljs-string">"icon"</span> type=<span class="hljs-string">"image/x-icon"</span> href=<span class="hljs-string">"/favicon.png"</span>&gt;
+	&lt;title&gt;<span class="hljs-meta">&lt;?</span>= WEBSITE_NAME <span class="hljs-meta">?&gt;</span>&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+	&lt;div <span class="hljs-class"><span class="hljs-keyword">class</span>="<span class="hljs-title">wrapper</span>"&gt;
+		&lt;<span class="hljs-title">header</span>&gt;
+			&lt;<span class="hljs-title">div</span> <span class="hljs-title">id</span>="<span class="hljs-title">header</span>-<span class="hljs-title">sm</span>"&gt;
+				&lt;<span class="hljs-title">div</span> <span class="hljs-title">id</span>="<span class="hljs-title">hamburger</span>" <span class="hljs-title">onclick</span>="<span class="hljs-title">openSlideNav</span>()"&gt;&amp;#9776;&lt;/<span class="hljs-title">div</span>&gt;
+				&lt;<span class="hljs-title">div</span> <span class="hljs-title">class</span>="<span class="hljs-title">logo</span>"&gt;
+					&lt;?= <span class="hljs-title">anchor</span>(<span class="hljs-title">BASE_URL</span>, <span class="hljs-title">WEBSITE_NAME</span>) ?&gt;
+				&lt;/<span class="hljs-title">div</span>&gt;
+				&lt;<span class="hljs-title">div</span>&gt;
+					&lt;?= <span class="hljs-title">anchor</span>('<span class="hljs-title">account</span>', '&lt;<span class="hljs-title">i</span> <span class="hljs-title">class</span>="<span class="hljs-title">fa</span> <span class="hljs-title">fa</span>-<span class="hljs-title">user</span>"&gt;&lt;/<span class="hljs-title">i</span>&gt;') ?&gt;
+					&lt;?= <span class="hljs-title">anchor</span>('<span class="hljs-title">logout</span>', '&lt;<span class="hljs-title">i</span> <span class="hljs-title">class</span>="<span class="hljs-title">fa</span> <span class="hljs-title">fa</span>-<span class="hljs-title">sign</span>-<span class="hljs-title">out</span>"&gt;&lt;/<span class="hljs-title">i</span>&gt;') ?&gt;
+				&lt;/<span class="hljs-title">div</span>&gt;
+			&lt;/<span class="hljs-title">div</span>&gt;
+			&lt;<span class="hljs-title">div</span> <span class="hljs-title">id</span>="<span class="hljs-title">header</span>-<span class="hljs-title">lg</span>"&gt;
+				&lt;<span class="hljs-title">div</span> <span class="hljs-title">class</span>="<span class="hljs-title">logo</span>"&gt;
+					&lt;?= <span class="hljs-title">anchor</span>(<span class="hljs-title">BASE_URL</span>, <span class="hljs-title">WEBSITE_NAME</span>) ?&gt;
+				&lt;/<span class="hljs-title">div</span>&gt;
+				&lt;<span class="hljs-title">div</span>&gt;
+					&lt;<span class="hljs-title">ul</span> <span class="hljs-title">id</span>="<span class="hljs-title">top</span>-<span class="hljs-title">nav</span>"&gt;
+						&lt;<span class="hljs-title">li</span>&gt;&lt;<span class="hljs-title">a</span> <span class="hljs-title">href</span>="&lt;?= <span class="hljs-title">BASE_URL</span> ?&gt;/" <span class="hljs-title">mx</span>-<span class="hljs-title">transition</span>="<span class="hljs-title">reload</span>"&gt;&lt;<span class="hljs-title">i</span> <span class="hljs-title">class</span>="<span class="hljs-title">fa</span> <span class="hljs-title">fa</span>-<span class="hljs-title">home</span>"&gt;&lt;/<span class="hljs-title">i</span>&gt; <span class="hljs-title">Home</span>&lt;/<span class="hljs-title">a</span>&gt;&lt;/<span class="hljs-title">li</span>&gt;
+						&lt;<span class="hljs-title">li</span>&gt;&lt;<span class="hljs-title">a</span> <span class="hljs-title">href</span>="&lt;?= <span class="hljs-title">BASE_URL</span> ?&gt;<span class="hljs-title">about</span>" <span class="hljs-title">mx</span>-<span class="hljs-title">transition</span>&gt;&lt;<span class="hljs-title">i</span> <span class="hljs-title">class</span>="<span class="hljs-title">fa</span> <span class="hljs-title">fa</span>-<span class="hljs-title">lightbulb</span>-<span class="hljs-title">o</span>"&gt;&lt;/<span class="hljs-title">i</span>&gt; <span class="hljs-title">About</span> <span class="hljs-title">Us</span>&lt;/<span class="hljs-title">a</span>&gt;&lt;/<span class="hljs-title">li</span>&gt;
+						&lt;<span class="hljs-title">li</span>&gt;&lt;<span class="hljs-title">a</span> <span class="hljs-title">href</span>="&lt;?= <span class="hljs-title">BASE_URL</span> ?&gt;<span class="hljs-title">our_values</span>" <span class="hljs-title">mx</span>-<span class="hljs-title">transition</span>="<span class="hljs-title">none</span>"&gt;&lt;<span class="hljs-title">i</span> <span class="hljs-title">class</span>="<span class="hljs-title">fa</span> <span class="hljs-title">fa</span>-<span class="hljs-title">street</span>-<span class="hljs-title">view</span>"&gt;&lt;/<span class="hljs-title">i</span>&gt; <span class="hljs-title">Our</span> <span class="hljs-title">Values</span>&lt;/<span class="hljs-title">a</span>&gt;&lt;/<span class="hljs-title">li</span>&gt;
+						&lt;<span class="hljs-title">li</span>&gt;&lt;<span class="hljs-title">a</span> <span class="hljs-title">href</span>="&lt;?= <span class="hljs-title">BASE_URL</span> ?&gt;"&gt;&lt;<span class="hljs-title">i</span> <span class="hljs-title">class</span>="<span class="hljs-title">fa</span> <span class="hljs-title">fa</span>-<span class="hljs-title">gears</span>"&gt;&lt;/<span class="hljs-title">i</span>&gt; <span class="hljs-title">How</span> <span class="hljs-title">We</span> <span class="hljs-title">Work</span>&lt;/<span class="hljs-title">a</span>&gt;&lt;/<span class="hljs-title">li</span>&gt;
+						&lt;<span class="hljs-title">li</span>&gt;&lt;<span class="hljs-title">a</span> <span class="hljs-title">href</span>="&lt;?= <span class="hljs-title">BASE_URL</span> ?&gt;"&gt;&lt;<span class="hljs-title">i</span> <span class="hljs-title">class</span>="<span class="hljs-title">fa</span> <span class="hljs-title">fa</span>-<span class="hljs-title">send</span>"&gt;&lt;/<span class="hljs-title">i</span>&gt; <span class="hljs-title">Get</span> <span class="hljs-title">In</span> <span class="hljs-title">Touch</span>&lt;/<span class="hljs-title">a</span>&gt;&lt;/<span class="hljs-title">li</span>&gt;
+					&lt;/<span class="hljs-title">ul</span>&gt;
+				&lt;/<span class="hljs-title">div</span>&gt;
+			&lt;/<span class="hljs-title">div</span>&gt;
+		&lt;/<span class="hljs-title">header</span>&gt;
+		&lt;<span class="hljs-title">main</span> <span class="hljs-title">class</span>="<span class="hljs-title">container</span>"&gt;&lt;?= <span class="hljs-title">Template</span>::<span class="hljs-title">display</span>($<span class="hljs-title">data</span>) ?&gt;&lt;/<span class="hljs-title">main</span>&gt;
+	&lt;/<span class="hljs-title">div</span>&gt;
+	&lt;<span class="hljs-title">footer</span>&gt;
+		&lt;<span class="hljs-title">div</span> <span class="hljs-title">class</span>="<span class="hljs-title">container</span>"&gt;
+			&lt;!-- <span class="hljs-title">it</span>'<span class="hljs-title">s</span> <span class="hljs-title">okay</span> <span class="hljs-title">to</span> <span class="hljs-title">remove</span> <span class="hljs-title">the</span> <span class="hljs-title">links</span> <span class="hljs-title">and</span> <span class="hljs-title">content</span> <span class="hljs-title">here</span> - <span class="hljs-title">everything</span> <span class="hljs-title">is</span> <span class="hljs-title">cool</span> (<span class="hljs-title">DC</span>) --&gt;
+			&lt;<span class="hljs-title">div</span>&gt;&amp;<span class="hljs-title">copy</span>; <span class="hljs-title">Copyright</span> &lt;?= <span class="hljs-title">date</span>('<span class="hljs-title">Y</span>') . ' ' . <span class="hljs-title">OUR_NAME</span> ?&gt;&lt;/<span class="hljs-title">div</span>&gt;
+			&lt;<span class="hljs-title">div</span>&gt;&lt;?= <span class="hljs-title">anchor</span>('<span class="hljs-title">https</span>://<span class="hljs-title">trongate</span>.<span class="hljs-title">io</span>', '<span class="hljs-title">Powered</span> <span class="hljs-title">by</span> <span class="hljs-title">Trongate</span>') ?&gt;&lt;/<span class="hljs-title">div</span>&gt;
+		&lt;/<span class="hljs-title">div</span>&gt;
+	&lt;/<span class="hljs-title">footer</span>&gt;
+	&lt;<span class="hljs-title">div</span> <span class="hljs-title">id</span>="<span class="hljs-title">slide</span>-<span class="hljs-title">nav</span>"&gt;
+		&lt;<span class="hljs-title">div</span> <span class="hljs-title">id</span>="<span class="hljs-title">close</span>-<span class="hljs-title">btn</span>" <span class="hljs-title">onclick</span>="<span class="hljs-title">closeSlideNav</span>()"&gt;&amp;<span class="hljs-title">times</span>;&lt;/<span class="hljs-title">div</span>&gt;
+		&lt;<span class="hljs-title">ul</span> <span class="hljs-title">auto</span>-<span class="hljs-title">populate</span>="<span class="hljs-title">true</span>"&gt;&lt;/<span class="hljs-title">ul</span>&gt;
+	&lt;/<span class="hljs-title">div</span>&gt;
+	&lt;<span class="hljs-title">script</span> <span class="hljs-title">src</span>="<span class="hljs-title">js</span>/<span class="hljs-title">app</span>.<span class="hljs-title">js</span>"&gt;&lt;/<span class="hljs-title">script</span>&gt;
+	&lt;<span class="hljs-title">script</span> <span class="hljs-title">src</span>="<span class="hljs-title">js</span>/<span class="hljs-title">trongate</span>-<span class="hljs-title">mx</span>.<span class="hljs-title">js</span>"&gt;&lt;/<span class="hljs-title">script</span>&gt;
+&lt;/<span class="hljs-title">body</span>&gt;
+&lt;/<span class="hljs-title">html</span>&gt;
+</span></code></pre></div>
